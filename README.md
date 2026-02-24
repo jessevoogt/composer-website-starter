@@ -1,6 +1,26 @@
 # Setup Guide
 
-This guide explains how to set up the composer portfolio site for a new composer.
+This guide explains how to set up the composer portfolio site.
+
+## Features
+
+- Audio player that keeps playing as you navigate from page to page
+- Perusal Score viewer, with workflow from pdf file to images with watermark added automatically. It is also possible to have the site ONLY be a list of scores that open this score viewer. Perusal Score also has its own audio player that plays the audio for that work (all movements if multiple).
+- Contact form (UI only - no actual processing logic), which can be configured just to be an email address
+- A few basic preconfigured starter themes and customization capability of colors and fonts
+- Social Media preview image generation from assets (this is the image that shows when you share your site with Facebook or Instagram for example)
+- Custom logo
+- Ability to set background image and theme via dev tools directly on the site when run locally in dev mode
+- Home Page: Split-page Hero
+- Home Page: Featured Recordings section (optional)
+- Home Page: Select Items section (optional)
+- simple local-only workflow with conventions-based source folder structure to house raw assets like wav, mp3, jpg, png, and pdf scores
+- Push-button build/preview/deploy via buttons at bottom right of CMS (keystatic)
+
+## What is NOT supported
+
+- Any back-end forms (these would have to be implemented separately on your server to handle the contact form)
+- WYSIWIG editing - you edit in the local CMS (or just editing yaml directly) and then save while running dev, and it will hot-reload the localhost:4321 Astro website to show the changes
 
 ## Prerequisites
 
@@ -21,7 +41,10 @@ npm run init:source
 npm run dev
 ```
 
-Open `http://localhost:4321/keystatic` to configure your site using the CMS interface.
+This will launch the starter website at `http://localhost:4321/`
+You can open `http://localhost:4322/keystatic` to configure your site using the CMS interface.
+This CMS is also available via a button in the Astro Dev Tools, which will link directly
+to the settings page for that page.
 
 ## Source Template Workflow
 

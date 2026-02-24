@@ -20,7 +20,7 @@ import {
 // - Work definitions in source/works/
 // - Site configuration singletons in source/site/ and source/pages/
 //
-// Run: npm run dev  →  open http://localhost:4321/keystatic
+// Run: npm run dev  →  open http://localhost:4322/keystatic
 
 const HOME_HERO_IMAGE_OPTIONS = [
   { label: 'Use hero config default', value: '' },
