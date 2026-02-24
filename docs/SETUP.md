@@ -14,15 +14,26 @@ This guide explains how to set up the composer portfolio site for a new composer
 # 1. Install dependencies
 npm install
 
-# 2. Start the dev server (opens browser + Keystatic CMS)
+# 2. Initialize local composer content from the template
+npm run init:source
+
+# 3. Start the dev server (opens browser + Keystatic CMS)
 npm run dev
 ```
 
 Open `http://localhost:4321/keystatic` to configure your site using the CMS interface.
 
+## Source Template Workflow
+
+- `source-template/` is committed starter content.
+- `source/` is your local working copy and is gitignored by default.
+- `npm run dev`, `npm run build`, and ingest commands auto-run `init:source` if `source/` is missing.
+- To reset your local content back to defaults, run `npm run init:source:reset`.
+- If you intentionally want to commit `source/` in your own repo, remove the `source/` rule from `.gitignore`.
+
 ## Configuration
 
-All composer-specific data lives in the `source/` folder. You can edit these files directly (they're YAML) or use the Keystatic GUI at `/keystatic`.
+All composer-specific data lives in the local `source/` folder. You can edit these files directly (they're YAML) or use the Keystatic GUI at `/keystatic`.
 
 ### Site Identity (`source/site/site.yaml`)
 
@@ -362,12 +373,12 @@ If you already have a main website and only need perusal score hosting:
 ## Build Pipeline
 
 ```
-lint  →  ingest:assets  →  generate:data  →  lint  →  astro build
-  ↓           ↓                  ↓              ↓           ↓
-tsc,     Copies hero,      Generates work   tsc,      Builds static
-eslint,  branding, and     images, perusal  eslint,   HTML output
-astro    profile assets;   score data, and  astro
-check    auto-generates    search index     check
-         missing social
-         preview assets
+lint  →  init:source  →  ingest:assets  →  generate:data  →  lint  →  astro build
+  ↓            ↓               ↓                 ↓              ↓           ↓
+tsc,      Creates local    Copies hero,      Generates work   tsc,      Builds static
+eslint,   source/ from     branding, and     images, perusal  eslint,   HTML output
+astro     source-template/ profile assets;   score data, and  astro
+check                      auto-generates    search index     check
+                           missing social
+                           preview assets
 ```

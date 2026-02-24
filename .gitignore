@@ -33,41 +33,11 @@ package-lock.json
 # cursor rules
 .cursor/rules
 
-# Works source — track YAML/markdown, ignore binary assets
-# The source/works/ folder is local (not on Drive). YAMLs are committed.
-# Large binaries (.mp3, .wav, images) are gitignored — kept locally or on Drive.
-source/works/**/*.mp3
-source/works/**/*.wav
-source/works/**/*.aiff
-source/works/**/*.flac
-source/works/**/*.jpg
-source/works/**/*.jpeg
-source/works/**/*.png
-source/works/**/*.tiff
-source/works/**/*.tif
-source/works/**/*.webp
-source/works/**/*.avif
+# Local composer content (initialized from source-template/)
+# Remove this ignore rule if you intentionally want to commit source/ changes.
+source/
 .ingest-manifest.json
 .deploy-manifest.json
-
-# Hero images — binary assets in source/home/hero/
-source/home/hero/**/*.jpg
-source/home/hero/**/*.jpeg
-source/home/hero/**/*.png
-source/home/hero/**/*.webp
-
-# Branding — binary assets in source/branding/
-source/branding/**/*.svg
-source/branding/**/*.ico
-source/branding/**/*.png
-source/branding/**/*.jpg
-source/branding/**/*.webp
-
-# About page — profile image in source/pages/about/
-source/pages/about/**/*.jpg
-source/pages/about/**/*.jpeg
-source/pages/about/**/*.png
-source/pages/about/**/*.webp
 
 # Keystatic standalone server entry files (not committed)
 keystatic-entry.jsx

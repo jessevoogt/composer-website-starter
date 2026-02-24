@@ -3,8 +3,8 @@
 // Override sourceDir with WORKS_SOURCE_DIR in .env.local for per-machine paths.
 
 export default {
-  // Local source/works folder (checked into the repo, binary assets gitignored)
-  // Override with WORKS_SOURCE_DIR in .env.local if you need a different path
+  // Local source/works folder (generated from source-template/ and ignored by default)
+  // Override with WORKS_SOURCE_DIR in .env.local if you need a different path.
   sourceDir: './source/works',
 
   // Default composer name inserted into generated MDX when work.yaml omits it

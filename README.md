@@ -63,12 +63,18 @@ A ready-to-use, SEO and accessibility-focused Astro starter template. Built with
 
 Clone this theme locally and run any of the following commands in your terminal:
 
-| Command           | Action                                       |
-| :---------------- | :------------------------------------------- |
-| `npm install`     | Installs dependencies                        |
-| `npm run dev`     | Starts local dev server at `localhost:4321`  |
-| `npm run build`   | Build your production site to `./dist/`      |
-| `npm run preview` | Preview your build locally, before deploying |
+| Command                 | Action                                                         |
+| :---------------------- | :------------------------------------------------------------- |
+| `npm install`           | Installs dependencies                                          |
+| `npm run init:source`   | Creates local `source/` from committed `source-template/`      |
+| `npm run dev`           | Starts local dev server at `localhost:4321`                    |
+| `npm run build`         | Build your production site to `./dist/`                        |
+| `npm run preview`       | Preview your build locally, before deploying                   |
+| `npm run init:source:reset` | Resets local `source/` back to the template defaults      |
+
+`source-template/` is committed to Git as the starter baseline.
+`source/` is local working content and is gitignored by default. `dev`, `build`, and ingest commands auto-run `init:source` when `source/` is missing.
+If you want to track `source/` in your own repo, remove the `source/` rule from `.gitignore`.
 
 See [`docs/SETUP.md`](docs/SETUP.md) for detailed configuration instructions.
 
