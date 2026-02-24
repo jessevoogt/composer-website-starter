@@ -65,7 +65,9 @@ function getListeningPids(port) {
 
   try {
     if (process.platform === 'win32') {
-      const output = execSync(`netstat -ano | findstr :${normalizedPort} | findstr LISTENING`, { encoding: 'utf8' }).trim()
+      const output = execSync(`netstat -ano | findstr :${normalizedPort} | findstr LISTENING`, {
+        encoding: 'utf8',
+      }).trim()
       if (!output) return []
 
       const pids = new Set()
@@ -652,7 +654,7 @@ const buildPlugin = {
         previewProcess = spawn(
           'node',
           ['node_modules/.bin/astro', 'preview', '--port', String(PREVIEW_PORT), '--host', '127.0.0.1'],
-          { stdio: 'inherit', cwd: root }
+          { stdio: 'inherit', cwd: root },
         )
         previewProcess.on('exit', () => {
           console.log('[preview] Preview server stopped.')
@@ -684,7 +686,7 @@ const buildPlugin = {
         injectTo: 'head',
         children: `
           #jv-toolbar {
-            position: fixed; bottom: 24px; right: 24px; z-index: 99999;
+            position: fixed; top: 12px; right: 15rem; z-index: 99999;
             display: flex; gap: 8px; align-items: center;
             font-family: system-ui, -apple-system, sans-serif;
           }
@@ -723,7 +725,9 @@ const buildPlugin = {
             devBtn.textContent = 'Dev'
             toolbar.appendChild(devBtn)
 
-            ${LIVE_URL ? `
+            ${
+              LIVE_URL
+                ? `
             var liveBtn = document.createElement('a')
             liveBtn.id = 'jv-live-btn'
             liveBtn.className = 'jv-btn'
@@ -732,7 +736,9 @@ const buildPlugin = {
             liveBtn.rel = 'noopener noreferrer'
             liveBtn.textContent = '↗ Live'
             toolbar.appendChild(liveBtn)
-            ` : ''}
+            `
+                : ''
+            }
 
             var btn = document.createElement('button')
             btn.id = 'jv-build-btn'
@@ -951,11 +957,19 @@ const GENERATE_SEARCH_SCRIPT = path.join(root, 'scripts', 'generate-page-search-
 
 // File types that should trigger the pipeline
 const WATCHED_EXTENSIONS = new Set([
-  '.yaml',                          // Keystatic edits
-  '.md',                            // prose.md body content
-  '.jpg', '.jpeg', '.png', '.webp', '.avif', '.gif', // thumbnail / recording photos
-  '.mp3', '.wav', '.aiff', '.flac', // audio recordings
-  '.pdf',                           // perusal scores
+  '.yaml', // Keystatic edits
+  '.md', // prose.md body content
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.avif',
+  '.gif', // thumbnail / recording photos
+  '.mp3',
+  '.wav',
+  '.aiff',
+  '.flac', // audio recordings
+  '.pdf', // perusal scores
 ])
 
 function spawnScript(scriptPath, args = []) {
