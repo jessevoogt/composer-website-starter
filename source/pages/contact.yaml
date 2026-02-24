@@ -1,0 +1,18 @@
+title: Contact
+metaTitle: Contact FirstName LastName
+metaDescription: >-
+  Get in touch with composer FirstName LastName about scores, performances, and
+  commissions.
+searchResultText: Contact FirstName LastName about scores, performances, and commissions.
+introText: >-
+  For score inquiries, performance opportunities, and collaborations, please
+  feel free to get in touch.
+contactFormEnabled: true
+contactFormNameLabel: Name
+contactFormNamePlaceholder: What should I call you?
+contactFormEmailLabel: Email
+contactFormEmailPlaceholder: you@domain.com
+contactFormMessageLabel: Message
+contactFormMessagePlaceholder: Enter your message here...
+contactFormSubmitText: Send
+preferredHeroId: inside-piano

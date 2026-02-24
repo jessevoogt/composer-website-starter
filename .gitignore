@@ -33,8 +33,7 @@ package-lock.json
 # cursor rules
 .cursor/rules
 
-# Local composer content (initialized from source-template/)
-# Remove this ignore rule if you intentionally want to commit source/ changes.
-source/
+# Local composer runtime manifests
+# source/ is excluded from git status via .git/info/exclude (set by init:source).
 .ingest-manifest.json
 .deploy-manifest.json

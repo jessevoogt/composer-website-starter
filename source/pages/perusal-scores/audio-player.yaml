@@ -1,0 +1,10 @@
+hideFeaturedPlayerControls: inherit
+hideFullscreenControl: false
+forceHideControls:
+  previousTrack: inherit
+  playPause: inherit
+  nextTrack: inherit
+  seek: inherit
+  mute: inherit
+  volume: inherit
+  trackDetails: inherit

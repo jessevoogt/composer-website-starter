@@ -7,6 +7,7 @@
   "type": "module",
   "homepage": "https://example.com/",
   "scripts": {
+    "postinstall": "npm run init:source",
     "init:source": "node ./scripts/init-source.mjs",
     "init:source:reset": "node ./scripts/init-source.mjs --reset",
     "generate:data": "node ./scripts/generate-works-images.mjs && node ./scripts/generate-perusal-scores.mjs && node ./scripts/generate-page-search-index.mjs",

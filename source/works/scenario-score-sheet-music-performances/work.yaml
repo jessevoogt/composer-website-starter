@@ -1,0 +1,40 @@
+title: 'Scenario: Score + Sheet Music + Performances'
+subtitle: no recordings
+description: |
+  Demonstrates a work that has no recordings but includes a perusal score,
+  mixed sheet music link formats, and performance history entries.
+thumbnail:
+  alt: Placeholder cover image for score, sheet music, and performances scenario.
+  crop: ''
+completionDate: '2024-09-14'
+duration: ca. 9'
+difficulty: Advanced
+tags:
+  - Scenario
+  - Metadata
+  - Resources
+instrumentation:
+  - string quartet
+searchKeywords:
+  - no recordings
+  - sheet music links
+  - performances list
+selected: true
+recordings: []
+sheetMusic:
+  - label: Full score
+    url: https://example.com/scenario-score-sheet-music-performances/full-score
+  - label: Purchase parts
+    url: https://example.com/scenario-score-sheet-music-performances/parts
+    tooltip: Includes score and parts bundle.
+performances:
+  - date: '2025-02-28'
+    venue: City Arts Center
+    performers:
+      - Kermit the Frog, Miss Piggy, Gonzo, and Fozzie Bear
+    notes: Premiere.
+  - date: '2025-09-19'
+    venue: North Hall
+    performers:
+      - Kermit the Frog, Miss Piggy, Gonzo, and Fozzie Bear
+    notes: Revised edition.

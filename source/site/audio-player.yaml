@@ -1,0 +1,13 @@
+hideFeaturedPlayerControls: false
+enableTrackTextScroll: true
+forceHideControls:
+  previousTrack: false
+  playPause: false
+  nextTrack: false
+  seek: false
+  mute: false
+  volume: false
+  currentTime: false
+  duration: false
+  trackDetails: false
+  trackText: false

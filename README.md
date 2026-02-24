@@ -34,10 +34,7 @@ This guide explains how to set up the composer portfolio site.
 # 1. Install dependencies
 npm install
 
-# 2. Initialize local composer content from the template
-npm run init:source
-
-# 3. Start the dev server (opens browser + Keystatic CMS)
+# 2. Start the dev server (opens browser + Keystatic CMS)
 npm run dev
 ```
 
@@ -49,10 +46,10 @@ to the settings page for that page.
 ## Source Template Workflow
 
 - `source-template/` is committed starter content.
-- `source/` is your local working copy and is gitignored by default.
+- `source/` is your local working copy. `npm install` auto-runs `init:source`, which initializes `source/` (if missing) and keeps it out of `git status` via `.git/info/exclude` (so Keystatic local mode can still read it).
 - `npm run dev`, `npm run build`, and ingest commands auto-run `init:source` if `source/` is missing.
 - To reset your local content back to defaults, run `npm run init:source:reset`.
-- If you intentionally want to commit `source/` in your own repo, remove the `source/` rule from `.gitignore`.
+- If you intentionally want to commit `source/` in your own repo, remove the `source/` rule from `.git/info/exclude`.
 
 ## Configuration
 

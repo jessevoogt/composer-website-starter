@@ -1,0 +1,38 @@
+title: Simple One Recording With Score
+subtitle: for solo piano
+description: >
+  Starter example for a single-movement work with one recording and a perusal
+  score.
+
+  Use this when you need the simplest possible recording setup.
+thumbnail:
+  alt: Placeholder cover image for Simple One Recording With Score.
+  crop: ''
+completionDate: '2026-03-03'
+duration: ca. 4'
+difficulty: Beginner
+tags:
+  - Piano
+  - Solo
+  - Starter
+instrumentation:
+  - piano
+searchKeywords:
+  - starter example
+  - with score
+selected: true
+selectedOrder: 2
+recordings:
+  - folder: kermit-demo-2026
+    performers:
+      - Kermit the Frog
+    date: '2026-03-18'
+    duration: 3' 52"
+    youtubeUrl: https://example.com/simple-one-recording-with-score/kermit-demo
+    photo:
+      alt: Placeholder recording image for Simple One Recording With Score.
+      crop: ''
+    featuredRecording: true
+    movements: []
+sheetMusic: []
+performances: []
