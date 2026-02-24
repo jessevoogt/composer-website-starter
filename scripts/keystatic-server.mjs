@@ -55,6 +55,75 @@ let buildRunning = false
 let publishRunning = false
 let previewProcess = null
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function getListeningPids(port) {
+  const normalizedPort = Number(port)
+  if (!Number.isInteger(normalizedPort) || normalizedPort < 1 || normalizedPort > 65535) return []
+
+  try {
+    if (process.platform === 'win32') {
+      const output = execSync(`netstat -ano | findstr :${normalizedPort} | findstr LISTENING`, { encoding: 'utf8' }).trim()
+      if (!output) return []
+
+      const pids = new Set()
+      for (const line of output.split('\n').filter(Boolean)) {
+        const parts = line.trim().split(/\s+/)
+        const pid = Number(parts[parts.length - 1])
+        if (Number.isInteger(pid)) pids.add(pid)
+      }
+      return [...pids]
+    }
+
+    const output = execSync(`lsof -n -iTCP:${normalizedPort} -sTCP:LISTEN -t`, { encoding: 'utf8' }).trim()
+    if (!output) return []
+    return [
+      ...new Set(
+        output
+          .split('\n')
+          .map((line) => Number(line.trim()))
+          .filter((pid) => Number.isInteger(pid)),
+      ),
+    ]
+  } catch {
+    return []
+  }
+}
+
+function terminatePid(pid) {
+  if (!Number.isInteger(pid)) return
+  if (process.platform === 'win32') {
+    execSync(`taskkill /PID ${pid} /F`, { stdio: 'pipe' })
+    return
+  }
+  process.kill(pid, 'SIGKILL')
+}
+
+async function forceFreePort(port, label) {
+  const pids = getListeningPids(port).filter((pid) => pid !== process.pid)
+  if (pids.length === 0) return
+
+  const target = label ? `${label} port` : 'port'
+  console.warn(`[startup] ${target} ${port} is in use. Terminating existing process(es): ${pids.join(', ')}`)
+
+  for (const pid of pids) {
+    try {
+      terminatePid(pid)
+    } catch {
+      // Process may have already exited.
+    }
+  }
+
+  await sleep(400)
+
+  const remainingPids = getListeningPids(port).filter((pid) => pid !== process.pid)
+  if (remainingPids.length > 0) {
+    throw new Error(`Port ${port} is still in use after termination attempt: ${remainingPids.join(', ')}`)
+  }
+}
+
 function resolvePreferredHeroConfigPath(pageKey) {
   switch (pageKey) {
     case 'contact':
@@ -578,33 +647,7 @@ const buildPlugin = {
 
         console.log(`\n[preview] Starting astro preview on port ${PREVIEW_PORT}...`)
 
-        // Free the port if anything is already listening on it (cross-platform)
-        try {
-          if (process.platform === 'win32') {
-            // Windows: parse netstat output to find PIDs listening on the port, then kill them
-            const output = execSync(`netstat -ano | findstr :${PREVIEW_PORT} | findstr LISTENING`, { encoding: 'utf8' }).trim()
-            const pids = new Set()
-            for (const line of output.split('\n').filter(Boolean)) {
-              const parts = line.trim().split(/\s+/)
-              if (parts.length >= 5) pids.add(parts[4])
-            }
-            for (const pid of pids) {
-              try { execSync(`taskkill /PID ${pid} /F`, { stdio: 'pipe' }) } catch { /* already exited */ }
-            }
-          } else {
-            // macOS / Linux: use lsof
-            const pids = execSync(`lsof -ti :${PREVIEW_PORT}`, { encoding: 'utf8' }).trim()
-            if (pids) {
-              for (const pid of pids.split('\n')) {
-                try { process.kill(Number(pid), 'SIGKILL') } catch { /* PID may have already exited */ }
-              }
-            }
-          }
-          // Give the OS a moment to release the port
-          await new Promise((resolve) => setTimeout(resolve, 400))
-        } catch {
-          // No process found on the port — that's fine
-        }
+        await forceFreePort(PREVIEW_PORT, 'Preview')
 
         previewProcess = spawn(
           'node',
@@ -867,6 +910,8 @@ const buildPlugin = {
     ]
   },
 }
+
+await forceFreePort(PORT, 'Keystatic')
 
 const server = await createServer({
   root,
