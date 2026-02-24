@@ -38,7 +38,3 @@ package-lock.json
 source/
 .ingest-manifest.json
 .deploy-manifest.json
-
-# Keystatic standalone server entry files (not committed)
-keystatic-entry.jsx
-keystatic.html
