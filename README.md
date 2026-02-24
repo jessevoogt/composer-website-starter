@@ -15,7 +15,7 @@ This guide explains how to set up the composer portfolio site.
 - Home Page: Featured Recordings section (optional)
 - Home Page: Select Items section (optional)
 - simple local-only workflow with conventions-based source folder structure to house raw assets like wav, mp3, jpg, png, and pdf scores
-- Push-button build/preview/deploy via buttons at bottom right of CMS (keystatic)
+- Push-button Build / Preview / Publish via buttons in the header of the CMS (keystatic)
 
 ## What is NOT supported
 
