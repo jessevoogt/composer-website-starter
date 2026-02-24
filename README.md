@@ -1,149 +1,384 @@
-# Accessible Astro Starter
+# Setup Guide
 
-[![Built with Astro](https://astro.badg.es/v2/built-with-astro/small.svg)](https://astro.build)
+This guide explains how to set up the composer portfolio site for a new composer.
 
-<img width="1200" height="627" alt="social-preview" src="https://github.com/user-attachments/assets/fa1a8b50-3aab-4bd3-8f50-1d43586fbd84" />
+## Prerequisites
 
-A ready-to-use, SEO and accessibility-focused Astro starter template. Built with modern web standards, WCAG 2.2 AA guidelines, and European Accessibility Act (EAA) compliance in mind, it provides a solid foundation for creating inclusive websites. Features Tailwind CSS 4 integration, comprehensive component library with enhanced form validation, color contrast checker, and typography with Atkinson Hyperlegible font for improved readability. Includes dynamic blog/works pages with social sharing, contact forms, and full MDX support.
+- **Node.js** 22.x (see `.nvmrc` for exact version)
+- **npm** 10+
+- **ffmpeg** (optional — needed for WAV/AIFF/FLAC audio conversion and duration detection)
 
-[![LIVE DEMO](https://img.shields.io/badge/LIVE_DEMO-4ECCA3?style=for-the-badge&logo=astro&logoColor=black)](https://accessible-astro-starter.incluud.dev/) &nbsp;
-[![DOCUMENTATION](https://img.shields.io/badge/DOCUMENTATION-A682FF?style=for-the-badge&logo=astro&logoColor=black)](https://accessible-astro.incluud.dev/) &nbsp;
-[![Sponsor on Open Collective](https://img.shields.io/badge/Open%20Collective-7FADF2?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/incluud) &nbsp;
+## Quick Start
 
-## Our mission
+```sh
+# 1. Install dependencies
+npm install
 
-> Provide developers with accessible, easy-to-use components that make building inclusive web applications simpler and faster, without compromising on customization or performance.
+# 2. Initialize local composer content from the template
+npm run init:source
 
-## (Accessibility) Features
-
-- Astro 5.13.0+
-- Tailwind CSS 4.1+ support
-- TypeScript integration with path aliases for easier imports and content collections support
-- Prettier integration with `prettier-plugin-astro` and `prettier-plugin-tailwind`
-- ESLint integration with strict accessibility settings for `eslint-plugin-jsx-a11y`
-- Markdown and MDX support with comprehensive examples and components
-- Modern OKLCH color system with automatic palette generation from primary/secondary colors
-- Atkinson Hyperlegible font for improved readability and accessibility
-- Lucide icon set via `astro-icon` for consistent, friendly icons
-- Semantic HTML structure with `Button`, `Link` and `Heading` components
-- Excellent Lighthouse/PageSpeed scores
-- Accessible landmarks such as `header`, `main`, `footer`, `section` and `nav`
-- Outline focus indicator which works on dark and light backgrounds
-- Several `aria` attributes which provide a better experience for screen reader users
-- `[...page].astro` and `[post].astro` demonstrate the use of dynamic routes and provide a basic blog with breadcrumbs and pagination
-- `404.astro` provides a custom 404 error page which you can adjust to your needs
-- `Header.astro` component with optimized accessibility and design
-- `Footer.astro` component with informative content and links
-- `SkipLinks.astro` component to skip to either the main menu or the main content
-- `Navigation.astro` component with keyboard accessible (dropdown) navigation and highlighted menu item option
-- `ResponsiveToggle.astro` component with accessible responsive toggle functionality
-- `DarkMode.astro` component toggle with accessible button and a user system preferred color scheme setting
-- `SiteMeta.astro` SEO component for setting custom metadata on different pages
-- `.sr-only` utility class for screen reader only text content (hides text visually)
-- `prefers-reduced-motion` disables animations for users that have this preference turned on
-- Components including `ColorContrast.astro`, `BlockQuote.astro`, `BreakoutImage.astro`, `Logo.astro`, `SocialShares.astro`, `PageHeader.astro`, `FeaturedPosts.astro`, and `FeaturedWorks.astro`
-- Enhanced form components with comprehensive validation: `Form`, `Input`, `Textarea`, `Checkbox`, `Radio`, and `Fieldset` with WCAG 2.2 compliance
-- Automatic form validation with custom patterns, error handling, and screen reader support
-- Blog and works pages with featured images, author details, social sharing, and breakout images
-- Contact page with comprehensive form validation showcase and accessibility demonstrations
-- Thank-you page for form submissions with interactive feedback
-- Accessibility Statement template page
-- Color Contrast Checker interactive page
-- Comprehensive sitemap page with organized navigation and automatic XML sitemap generation via `@astrojs/sitemap`
-- Enhanced accessible-components showcase page with expanded component demonstrations
-- Smooth micro-interactions and animations on hover, open and close states (respecting reduced motion preferences)
-- Comprehensive SCSS utility classes
-- CSS with logical properties and custom properties
-- Accessible button and hyperlink styling with clear focus states
-- Styled `<kbd>` element for keyboard shortcut documentation
-
-## Getting started
-
-**Requirements:** Node.js 22.x (see `.nvmrc`), npm 10+
-
-Clone this theme locally and run any of the following commands in your terminal:
-
-| Command                 | Action                                                         |
-| :---------------------- | :------------------------------------------------------------- |
-| `npm install`           | Installs dependencies                                          |
-| `npm run init:source`   | Creates local `source/` from committed `source-template/`      |
-| `npm run dev`           | Starts local dev server at `localhost:4321`                    |
-| `npm run build`         | Build your production site to `./dist/`                        |
-| `npm run preview`       | Preview your build locally, before deploying                   |
-| `npm run init:source:reset` | Resets local `source/` back to the template defaults      |
-
-`source-template/` is committed to Git as the starter baseline.
-`source/` is local working content and is gitignored by default. `dev`, `build`, and ingest commands auto-run `init:source` when `source/` is missing.
-If you want to track `source/` in your own repo, remove the `source/` rule from `.gitignore`.
-
-See [`docs/SETUP.md`](docs/SETUP.md) for detailed configuration instructions.
-
-## Accessible Astro projects
-
-- [Accessible Astro Starter](https://github.com/incluud/accessible-astro-starter): Fully accessible starter for kickstarting Astro projects, with Tailwind.
-- [Accessible Astro Components](https://github.com/incluud/accessible-astro-components/): Library of reusable, accessible components built for Astro.
-- [Accessible Astro Dashboard](https://github.com/incluud/accessible-astro-dashboard/): User-friendly dashboard interface with a login screen and widgets.
-- [Accessible Astro Docs](https://github.com/incluud/accessible-astro-docs): Comprehensive documentation for all Accessible Astro projects.
-- [Color Contrast Checker](https://github.com/incluud/color-contrast-checker): WCAG-compliant color contrast checker with design system token generation.
-
-Check out our [roadmap](https://github.com/orgs/incluud/projects/4/views/1) to see what's coming next!
-
-## Contributing
-
-We welcome contributions to improve the documentation! You can help by:
-
-1. [Filing an issue](https://github.com/incluud/accessible-astro-starter/issues)
-2. [Submitting a pull request](https://github.com/incluud/accessible-astro-starter/pulls)
-3. [Starting a discussion](https://github.com/incluud/accessible-astro-starter/discussions)
-4. [Supporting on Open Collective](https://opencollective.com/incluud)
-
-## Support this project
-
-Your support helps us cover basic costs and continue building accessible solutions for the Astro ecosystem. By becoming a sponsor, you're not just supporting code – you're helping create a more inclusive web for everyone. Every contribution, big or small, helps maintain and improve these accessibility-focused tools.
-
-[![Sponsor on Open Collective](https://img.shields.io/badge/Open%20Collective-7FADF2?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/incluud)
-
-## Together we make a difference
-
-We want to express our heartfelt gratitude to everyone who contributes to making the web more accessible:
-
-- **The Astro team** for creating an amazing static site generator and the wonderful Starlight theme
-- **Our contributors** who dedicate their time and expertise to improve these tools
-- [**Niek Derksen**](https://niekderksen.nl) for conducting comprehensive accessibility audits to ensure WCAG compliance
-- **Our sponsors** who help make this project sustainable
-- **The web community** for embracing and promoting web accessibility
-- **You, the developer** for choosing to make your projects more accessible
-
-<a href="https://github.com/incluud/accessible-astro-starter/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=incluud/accessible-astro-starter" />
-</a><br /><br />
-
-Together, we're not just building documentation or components – we're creating a more inclusive and accessible web for everyone. Every contribution, whether it's code, documentation, bug reports, or feedback, helps move us closer to this goal. ✨
-
-Remember: Accessibility is not a feature, it's a fundamental right. Thank you for being part of this journey!
-
-## Updating works images helper
-
-If you add or remove images in `src/assets/images/works`, regenerate the helper file used by `src/utils/prepareWorks.ts` by running:
-
-```
-node ./scripts/generate-works-images.mjs
+# 3. Start the dev server (opens browser + Keystatic CMS)
+npm run dev
 ```
 
-This writes `src/utils/works-images.ts` which exports an array of imported images used as fallbacks for works entries.
+Open `http://localhost:4321/keystatic` to configure your site using the CMS interface.
 
-## Updating the social preview image
+## Source Template Workflow
 
-If you regenerate the Open Graph preview image, run:
+- `source-template/` is committed starter content.
+- `source/` is your local working copy and is gitignored by default.
+- `npm run dev`, `npm run build`, and ingest commands auto-run `init:source` if `source/` is missing.
+- To reset your local content back to defaults, run `npm run init:source:reset`.
+- If you intentionally want to commit `source/` in your own repo, remove the `source/` rule from `.gitignore`.
 
-```bash
+## Configuration
+
+All composer-specific data lives in the local `source/` folder. You can edit these files directly (they're YAML) or use the Keystatic GUI at `/keystatic`.
+
+### Site Identity (`source/site/site.yaml`)
+
+| Field                  | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| `composerName`         | Your full name (used throughout the site)                         |
+| `siteTitle`            | Browser tab title (e.g. "Jane Doe - Composer")                    |
+| `siteDescription`      | Default meta description for search engines                       |
+| `siteUrl`              | Canonical URL (e.g. `https://janedoe.com`)                        |
+| `email`                | Contact email shown on the contact page                           |
+| `copyrightHolder`      | Footer copyright name (defaults to composer name)                 |
+| `googleAnalyticsId`    | GA4 Measurement ID (e.g. `G-XXXXXXXXXX`). Leave blank to disable. |
+| `perusalScoreOnlyMode` | `true` = minimal site with only perusal score pages               |
+
+### Navigation (`source/site/navigation.yaml`)
+
+Customise which menu items appear in the header and footer:
+
+```yaml
+mainNavFontSizePx: 15
+
+menuItems:
+  - label: Works
+    href: /works/
+    enabled: true
+    order: 0
+  - label: About
+    href: /about/
+    enabled: true
+    order: 1
+  - label: Contact
+    href: /contact/
+    enabled: true
+    order: 2
+
+footerLinks:
+  - label: Accessibility
+    href: /accessibility-statement/
+  - label: Sitemap
+    href: /sitemap/
+```
+
+Set `enabled: false` to hide a menu item without removing it.
+Set `mainNavFontSizePx` to change desktop header menu text size.
+
+### Social Media (`source/site/social.yaml`)
+
+```yaml
+links:
+  - platform: instagram
+    url: https://www.instagram.com/yourhandle/
+    enabled: true
+  - platform: youtube
+    url: https://www.youtube.com/@yourchannel
+    enabled: true
+```
+
+Supported platforms: `instagram`, `youtube`, `facebook`, `soundcloud`, `twitter`, `linkedin`, `tiktok`, `bandcamp`.
+
+### Share Buttons (`source/site/sharing.yaml`)
+
+Controls which share buttons appear on work detail pages:
+
+```yaml
+enabledShares:
+  - facebook
+  - twitter
+  - email
+  - copy-link
+```
+
+Options: `facebook`, `twitter`, `threads`, `bluesky`, `email`, `copy-link`, `linkedin`.
+
+### Audio Player (`source/site/audio-player.yaml`)
+
+Controls the featured audio player shown on work pages:
+
+```yaml
+hideFeaturedPlayerControls: false
+enableTrackTextScroll: true
+forceHideControls:
+  previousTrack: false
+  playPause: false
+  nextTrack: false
+  seek: false
+  mute: false
+  volume: false
+  currentTime: false
+  duration: false
+  trackDetails: false
+  trackText: false
+```
+
+A separate config at `source/pages/perusal-scores/audio-player.yaml` controls the audio player on perusal score pages. Values set to `inherit` fall back to the site-wide player config above.
+
+### Theme (`source/site/theme.yaml`)
+
+Theme colors and typography live in `source/site/theme.yaml` (or the **Theme** singleton in Keystatic).
+
+- `fontBody` and `fontHeading` can be switched to bundled local fonts, `system-ui`, or supported Google Fonts.
+- When a Google Font is selected, the site injects the required `fonts.googleapis.com` stylesheet automatically.
+
+### Brand / Logo (`source/branding/brand-logo.yaml`)
+
+Use this config to control text fallback and image sizing metadata for the header logo.
+
+```yaml
+firstName: Jane
+lastName: Doe
+logoImageAlt: Jane Doe logo # optional
+logoWidth: 180 # optional, px
+logoHeight: 52 # optional, px
+```
+
+- Add an image named `logo.*` inside `source/branding/` to enable image logo mode automatically.
+- Supported `logo.*` formats: `.svg`, `.ico`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.avif`, `.gif`.
+- If no `logo.*` file exists, the site falls back to text logo mode (`firstName` + `lastName`).
+- `logoWidth` and `logoHeight` are optional pixel controls exposed in Keystatic (Brand / Logo).
+
+### Branding Assets (`source/branding/`)
+
+Place your favicon, logo, and social preview images here:
+
+- `favicon.svg` — SVG favicon
+- `favicon.ico` — ICO fallback
+- `favicon-96x96.png` — 96px PNG favicon
+- `apple-touch-icon.png` — 180px Apple touch icon
+- `web-app-manifest-192x192.png` — PWA icon (192px)
+- `web-app-manifest-512x512.png` — PWA icon (512px)
+- `logo.svg` (or `.ico`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.avif`, `.gif`) — optional header logo (auto-detected by `logo.*` filename)
+- `social-preview-image.png` — Open Graph image
+- `social-preview-image.svg` — SVG version of the social preview
+
+`source/branding/` is the source of truth. During `npm run ingest:assets` (and therefore `npm run dev` / `npm run build`), files are copied from `source/branding/` to `public/`.
+
+#### Social Preview Auto-Generation
+
+Social preview files are handled by `scripts/generate-social-preview-image.mjs`:
+
+- If both `source/branding/social-preview-image.svg` and `.png` exist, the script leaves them as-is.
+- If one exists and the other is missing, it generates the missing one from the existing file.
+- If both are missing, it generates both from:
+  - `source/site/site.yaml` (`composerName`, `siteUrl`)
+  - `source/site/theme.yaml` (theme colors/fonts)
+  - `source/branding/favicon.svg` (or `favicon-96x96.png`) as a large monotone watermark behind the centered text
+
+Run manually:
+
+```sh
 npm run generate:social-image
 ```
 
-This updates:
+Force a full regeneration of both source files:
 
-- `public/social-preview-image.svg`
-- `public/social-preview-image.png`
-- `src/data/social-image-version.ts`
+```sh
+npm run generate:social-image -- --force
+```
 
-`SiteMeta` appends `?v=<YYYYMMDDHHmmss>` to `/social-preview-image.png`, so the share image cache-busts only when you regenerate it.
+After generation, the script mirrors `source/branding/social-preview-image.{svg,png}` to `public/social-preview-image.{svg,png}`.
+
+### Hero Images (`source/home/hero/`)
+
+Hero images for the homepage background. Convention: `NN-slug.jpg` with an optional `NN-slug.yaml` sidecar.
+
+**Image file** (e.g. `01-concert-hall.jpg`):
+
+- Name format: two-digit prefix for sort order, then a slug
+- Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp`
+
+**Sidecar YAML** (e.g. `01-concert-hall.yaml`):
+
+```yaml
+label: Concert Hall
+alt: Grand concert hall with a piano on stage.
+credit: 'Photo by Someone on Unsplash'
+position: 50% 58%
+filter: ''
+```
+
+**Hero config** (`hero-config.yaml`):
+
+```yaml
+preferredHeroId: concert-hall # slug of the preferred default hero
+fallbackHeroId: inside-piano # fallback if preferred not found
+defaultFilter: saturate(0.72) contrast(1.06) brightness(0.72)
+```
+
+### Home: Hero (`source/pages/home/hero.yaml`)
+
+```yaml
+heroTitle: '' # Defaults to composer name
+heroSubtitle: Composer
+heroTagline: “A strikingly original voice — lyrical, atmospheric, and quietly unforgettable.”
+listenNowText: Listen Now
+searchMusicText: Search Music
+preferredHeroId: ''
+heroImageColumnSide: left
+heroImageColumnWidthPercent: 41
+```
+
+### Home: Featured Recording (`source/pages/home/featured-recording.yaml`)
+
+```yaml
+featuredPlayerImageColumnSide: right
+featuredPlayerImageColumnWidthPercent: 58
+```
+
+### Home: Select Works (`source/pages/home/select-works.yaml`)
+
+```yaml
+selectWorksLabel: Select Works
+selectWorksRandomize: true
+selectWorksShowAll: false
+selectWorksMaxItems: 16 # omit for no max
+selectWorksExcludeFeaturedWork: true
+```
+
+### Home: SEO (`source/pages/home/seo.yaml`)
+
+```yaml
+metaTitle: '' # Defaults to "Composer Name — Subtitle"
+metaDescription: '' # Defaults to site description
+searchResultText: ''
+```
+
+### Home: Contact (`source/pages/home/contact.yaml`)
+
+```yaml
+hideContactSection: false
+contactIntro: '' # Optional override; blank = use Contact Page introText
+contactEmailLeadText: '' # Optional override; blank = use Contact Page contactEmailLeadText
+```
+
+### Contact Page (`source/pages/contact.yaml`)
+
+```yaml
+title: Contact
+metaTitle: '' # Defaults to "Contact Composer Name"
+metaDescription: ''
+introText: For score inquiries...
+contactEmailLeadText: ''
+contactEmailLinkText: '' # Blank = show the email address
+contactFormEnabled: false # Set true when a form handler is wired up
+contactFormNameLabel: Name
+contactFormNamePlaceholder: What should I call you?
+contactFormEmailLabel: Email
+contactFormEmailPlaceholder: you@domain.com
+contactFormMessageLabel: Message
+contactFormMessagePlaceholder: Enter your message here...
+contactFormSubmitText: Send
+```
+
+### Works Page (`source/pages/works.yaml`)
+
+```yaml
+title: Works
+introText: '' # Blank = "A showcase of compositions by [composer name]."
+hideIntroText: false
+workLabelSingular: work
+workLabelPlural: works
+searchLabel: Search works
+searchPlaceholder: Enter keywords...
+preferredHeroId: hall
+```
+
+### About Page (`source/pages/about/`)
+
+- `about.yaml` — bio text, meta description, profile image alt text
+- `profile.jpg` (or `.png`, `.webp`) — your profile photo
+
+The bio uses Keystatic's rich text editor and supports paragraphs (separated by blank lines), bold, italic, and links.
+
+## Adding Works
+
+Works live in `source/works/`. Each work has its own folder containing:
+
+- `work.yaml` — metadata (title, description, tags, recordings, etc.)
+- `thumbnail.{jpg,png,webp}` — work thumbnail image
+- `score.pdf` — perusal score (optional)
+- `recordings/` — recording audio and photos
+
+Use Keystatic at `/keystatic` → Works to manage these through the GUI.
+
+After adding or modifying works, run:
+
+```sh
+npm run ingest:works    # Process works into content collections
+npm run build           # Rebuild the site
+```
+
+## Deployment
+
+### SFTP Deploy
+
+Configure in `source/site/deploy.yaml` (via Keystatic → Deployment):
+
+```yaml
+sftpHost: your-server.com
+sftpUser: username
+sftpRemotePath: /public_html
+sftpPort: 22
+sftpSkipAudio: false
+```
+
+The SFTP password is retrieved from a platform-specific secure store:
+
+**macOS** — stored in Keychain:
+
+```sh
+security add-generic-password -a "username" -s "your-server.com" -w
+```
+
+**Windows / Linux** — set the `SFTP_PASSWORD` environment variable:
+
+```sh
+export SFTP_PASSWORD="your-password"         # Linux / macOS fallback
+$env:SFTP_PASSWORD = "your-password"         # PowerShell
+set SFTP_PASSWORD=your-password              # cmd.exe
+```
+
+Then deploy:
+
+```sh
+npm run build
+npm run deploy           # Upload changed files
+npm run deploy -- --dry-run  # Preview what would change
+```
+
+### Perusal-Score-Only Mode
+
+If you already have a main website and only need perusal score hosting:
+
+1. Set `perusalScoreOnlyMode: true` in Keystatic → Site Identity
+2. Build and deploy as normal
+3. The site will show a minimal index linking to each work's perusal score
+
+## Build Pipeline
+
+```
+lint  →  init:source  →  ingest:assets  →  generate:data  →  lint  →  astro build
+  ↓            ↓               ↓                 ↓              ↓           ↓
+tsc,      Creates local    Copies hero,      Generates work   tsc,      Builds static
+eslint,   source/ from     branding, and     images, perusal  eslint,   HTML output
+astro     source-template/ profile assets;   score data, and  astro
+check                      auto-generates    search index     check
+                           missing social
+                           preview assets
+```
