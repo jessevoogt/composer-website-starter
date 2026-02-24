@@ -1,0 +1,116 @@
+---
+import type { SearchableWork } from '../scripts/works-search-types'
+import type { SearchableItem } from '../scripts/search-types'
+
+type SearchMode = 'works' | 'site'
+
+interface Props {
+  /** Works-only data (used when mode is 'works'). */
+  works?: SearchableWork[]
+  /** Site-wide search data (used when mode is 'site'). */
+  items?: SearchableItem[]
+  /** Optional script element id to read JSON data from. */
+  dataScriptId?: string
+  mode?: SearchMode
+  idPrefix?: string
+  label?: string
+  placeholder?: string
+  autofocus?: boolean
+  showInitialResults?: boolean
+  initialResultsLimit?: number
+}
+
+const {
+  works,
+  items,
+  dataScriptId,
+  mode = 'works',
+  idPrefix = 'works-search',
+  label = mode === 'site' ? 'Search' : 'Search works',
+  placeholder = mode === 'site' ? 'Search pages and works\u2026' : 'Enter keywords\u2026',
+  autofocus = false,
+  showInitialResults = false,
+  initialResultsLimit = 10,
+} = Astro.props
+
+const serializedData = mode === 'site' ? JSON.stringify(items ?? []) : JSON.stringify(works ?? [])
+
+const labelId = `${idPrefix}-label`
+const inputId = `${idPrefix}-input`
+const listboxId = `${idPrefix}-listbox`
+const normalizedInitialResultsLimit =
+  Number.isFinite(initialResultsLimit) && initialResultsLimit > 0 ? Math.floor(initialResultsLimit) : 10
+---
+
+<div
+  class="works-search"
+  data-works-search
+  data-works-search-mode={mode}
+  data-works-search-data-ref={dataScriptId ? dataScriptId : undefined}
+  data-works-search-show-initial-results={showInitialResults ? 'true' : 'false'}
+  data-works-search-initial-limit={String(normalizedInitialResultsLimit)}
+>
+  {
+    !dataScriptId && (
+      <script
+        is:inline
+        type="application/json"
+        data-works-search-data
+        set:html={serializedData}
+      />
+    )
+  }
+
+  <label id={labelId} for={inputId} class="works-search-label">
+    {label}
+  </label>
+
+  <div class="works-search-combobox-wrapper">
+    <span class="works-search-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="11" cy="11" r="6.5"></circle>
+        <path d="M16.2 16.2L21 21"></path>
+      </svg>
+    </span>
+
+    <input
+      id={inputId}
+      type="text"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded="false"
+      aria-controls={listboxId}
+      aria-activedescendant=""
+      aria-labelledby={labelId}
+      autocomplete="off"
+      placeholder={placeholder}
+      class="works-search-input"
+      autofocus={autofocus ? true : undefined}
+      data-works-search-input
+    />
+
+    <button
+      type="button"
+      class="works-search-clear"
+      aria-label="Clear search"
+      hidden
+      data-works-search-clear
+    >
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    <ul
+      id={listboxId}
+      role="listbox"
+      aria-labelledby={labelId}
+      class="works-search-listbox"
+      hidden
+    >
+    </ul>
+
+    <div class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-works-search-status></div>
+  </div>
+</div>

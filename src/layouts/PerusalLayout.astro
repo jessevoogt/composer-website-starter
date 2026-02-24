@@ -1,0 +1,59 @@
+---
+import '../styles/site.css'
+import { getSiteConfig } from '@/utils/source-config'
+import SiteMeta from '@components/SiteMeta.astro'
+import GoogleAnalytics from '@components/GoogleAnalytics.astro'
+
+interface Props {
+  title?: string
+  description?: string
+  url?: URL | string
+  image?: string
+  imageAlt?: string
+  author?: string
+  skipTargetId?: string
+  pageContentClass?: string
+  bodyClass?: string
+}
+
+const siteConfig = getSiteConfig()
+
+const {
+  title = siteConfig.siteTitle,
+  description = siteConfig.siteDescription,
+  url = Astro.site,
+  image = '/social-preview-image.png',
+  imageAlt = `${siteConfig.composerName} social preview image`,
+  author = siteConfig.composerName,
+  skipTargetId = 'main-content',
+  pageContentClass,
+  bodyClass,
+} = Astro.props
+---
+
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=7" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
+    <link rel="shortcut icon" href="/favicon.ico?v=7" />
+    <meta name="apple-mobile-web-app-title" content={siteConfig.composerName} />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <SiteMeta title={title} description={description} url={String(url)} image={image} imageAlt={imageAlt} author={author} />
+    <GoogleAnalytics />
+  </head>
+  <body class:list={[bodyClass]}>
+    <a class="skip-link" href={`#${skipTargetId}`}>Skip to main content</a>
+    <main id="main-content" class:list={['page-content', pageContentClass]}>
+      <slot />
+    </main>
+    <slot name="body-overlays" />
+    <slot name="body-scripts" />
+  </body>
+</html>

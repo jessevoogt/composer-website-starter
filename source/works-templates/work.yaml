@@ -1,0 +1,102 @@
+# work.yaml — Copy this file into your work folder and fill in the fields.
+# The folder name becomes the URL slug (e.g. folder "nocturne" → example.com/works/nocturne/)
+
+# ── Required ──────────────────────────────────────────────────────────────────
+
+title: ''
+# composer: "FirstName LastName"   # Defaults to config value; uncomment to override
+description: ''
+
+# ── Optional descriptive ──────────────────────────────────────────────────────
+
+# subtitle: ""
+# duration: "ca. 6' 30\""
+# completionDate: "2025-01-01"
+# difficulty: ""              # e.g. Beginner, Intermediate, Advanced
+# programNote: ""
+# perusalScore: "score.pdf"   # Filename of PDF in this folder (generates watermarked perusal viewer)
+
+# ── Thumbnail ─────────────────────────────────────────────────────────────────
+# Place your high-res image in this folder and reference it here.
+# The ingest script will resize and convert it to WebP automatically.
+
+thumbnail:
+  src: 'thumbnail.jpg' # Filename relative to this folder (jpg, png, etc.)
+  alt: '' # Describe the image for accessibility
+  # crop: "cc"                # Optional crop hint: tl tc tr cl cc cr bl bc br
+
+# ── Categorization ────────────────────────────────────────────────────────────
+
+tags: []
+#  - "Piano"
+#  - "Solo"
+#  - "Romantic"
+
+instrumentation: []
+#  - "piano"
+
+searchKeywords: []
+#  - "additional search term"
+
+# ── Featured work ─────────────────────────────────────────────────────────────
+
+selected: false
+# selectedOrder: 1            # Integer to control ordering among selected works
+
+# ── Recordings ────────────────────────────────────────────────────────────────
+# Each recording is listed here inline. Asset files (mp3, photo) live in a
+# subfolder under recordings/{folder}/. The folder name is used to locate
+# those files — use a numeric prefix to control display order.
+
+recordings: []
+#  - folder: "kermit-the-frog-2021"       # Subfolder under recordings/ holding the assets
+#    performers:
+#      - "Anna Heller"
+#    ensemble: ""                     # Optional: ensemble name (e.g. "Calefax Reed Quintet")
+#    date: "2021-08-27"
+#    duration: "6' 19\""
+#    youtubeUrl: "https://youtu.be/..."
+#    mp3: "recording.mp3"             # Relative to the recordings/{folder}/ subfolder
+#    photo:
+#      src: "photo.webp"              # Relative to the recordings/{folder}/ subfolder
+#      alt: "Anna Heller performing ..."
+#      crop: "cc"                     # Optional crop hint: tl tc tr cl cc cr bl bc br
+#    featuredRecording: true
+#    notes: ""
+
+# Multi-movement works: use movements instead of top-level mp3/photo
+#  - folder: "oleg-bezuglov-2021"
+#    performers:
+#      - "Oleg Bezuglov"
+#    date: "2021-06-05"
+#    movements:
+#      - label: "I. Allegro"
+#        youtubeUrl: "https://youtu.be/..."
+#        duration: "ca. 4' 15\""
+#        mp3: "movement-1.mp3"
+#        photo: "photo-1.webp"
+#        photoAlt: "Oleg Bezuglov performing ..."
+#        featuredRecording: true
+#      - label: "II. Andante"
+#        youtubeUrl: "https://youtu.be/..."
+#        duration: "ca. 3' 00\""
+#        mp3: "movement-2.mp3"
+#        photo: "photo-2.webp"
+#        photoAlt: "Oleg Bezuglov performing ..."
+
+# ── Sheet music ───────────────────────────────────────────────────────────────
+# Leave empty array if none.
+
+sheetMusic: []
+#  - label: "Study score (PDF)"
+#    url: "https://example.com/sheet-music"
+#    tooltip: "Optional helper text"
+
+# ── Performances ──────────────────────────────────────────────────────────────
+# Optional: track live performances.
+
+performances: []
+#  - date: "2025-01-01"
+#    venue: "Concert Hall"
+#    performers: ["Name"]
+#    notes: ""

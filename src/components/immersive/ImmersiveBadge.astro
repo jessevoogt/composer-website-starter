@@ -1,0 +1,24 @@
+---
+interface Props {
+  href?: string
+  class?: string
+}
+
+const { href, class: className } = Astro.props
+---
+
+{
+  href ? (
+    <a href={href} class:list={['tag-badge', className]}>
+      <span class="tag-badge-label">
+        <slot />
+      </span>
+    </a>
+  ) : (
+    <span class:list={['tag-badge', className]}>
+      <span class="tag-badge-label">
+        <slot />
+      </span>
+    </span>
+  )
+}

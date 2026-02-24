@@ -1,0 +1,56 @@
+---
+interface Props {
+  /** Accept ISO string or Date */
+  date?: string | Date
+  /** Optional locale (defaults to en-US) */
+  locale?: string
+  /** Optional format options for Intl.DateTimeFormat */
+  options?: Intl.DateTimeFormatOptions
+}
+
+const { date, locale = 'en-US', options } = Astro.props as Props
+
+function parseDatePreserveLocal(dateInput: string | Date | undefined) {
+  if (!dateInput) return undefined
+
+  // If already a Date, return it (assumed correct)
+  if (dateInput instanceof Date) return dateInput
+
+  // If the input is a date-only string like YYYY-MM-DD, construct a local Date
+  // to avoid timezone shifts when formatting. Detect using a simple regex.
+  const dateOnlyMatch = /^\d{4}-\d{2}-\d{2}$/.test(dateInput)
+  if (dateOnlyMatch) {
+    const [y, m, d] = dateInput.split('-').map(Number)
+    // monthIndex is zero-based
+    return new Date(y, m - 1, d)
+  }
+
+  // Fallback: let Date parse the string (e.g., full ISO with time)
+  const parsed = new Date(dateInput)
+  if (Number.isNaN(parsed.getTime())) return undefined
+  return parsed
+}
+
+function formatDateInput(dateInput: string | Date | undefined) {
+  const d = parseDatePreserveLocal(dateInput)
+  if (!d) return ''
+  return new Intl.DateTimeFormat(locale, options ?? { year: 'numeric', month: 'long', day: 'numeric' }).format(d)
+}
+
+const formatted = formatDateInput(date)
+// For the machine-readable datetime attribute, prefer the original ISO-like
+// input when it was a date-only string, otherwise use an ISO timestamp from Date.
+let datetime: string | undefined = undefined
+if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  // Keep date-only value for datetime attribute (valid per spec: YYYY-MM-DD)
+  datetime = date
+} else if (date instanceof Date) {
+  datetime = date.toISOString()
+} else if (typeof date === 'string') {
+  // Attempt to parse and use ISO if possible
+  const p = new Date(date)
+  if (!Number.isNaN(p.getTime())) datetime = p.toISOString()
+}
+---
+
+{formatted ? (<time datetime={datetime}>{formatted}</time>) : ''}

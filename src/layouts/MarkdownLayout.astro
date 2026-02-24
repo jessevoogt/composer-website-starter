@@ -1,0 +1,13 @@
+---
+import SiteLayout from './SiteLayout.astro'
+
+const { frontmatter } = Astro.props
+---
+
+<SiteLayout title={frontmatter.title}>
+  <div class="container">
+    <div class="narrow space-content">
+      <slot />
+    </div>
+  </div>
+</SiteLayout>

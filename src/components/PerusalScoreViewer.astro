@@ -1,0 +1,1331 @@
+---
+import { getSiteConfig } from '@/utils/source-config'
+
+interface Props {
+  title: string
+  slug: string
+  pageCount: number
+  pageHashes?: string[]
+  hideBuiltinNav?: boolean
+}
+
+const siteConfig = getSiteConfig()
+const siteDomain = siteConfig.siteUrl ? new URL(siteConfig.siteUrl).hostname : 'the composer website'
+const printMessage = `Printing of perusal scores is not permitted. Visit ${siteDomain} to view the score online.`
+const { title, slug, pageCount, pageHashes = [], hideBuiltinNav = false } = Astro.props
+const pages = Array.from({ length: pageCount }, (_, i) => ({
+  src:
+    typeof pageHashes[i] === 'string' && pageHashes[i].length > 0
+      ? `/scores/${slug}/page-${i + 1}.webp?h=${encodeURIComponent(pageHashes[i])}`
+      : `/scores/${slug}/page-${i + 1}.webp`,
+  alt: `Page ${i + 1} of ${pageCount} — ${title} perusal score`,
+  pageNum: i + 1,
+}))
+---
+
+<section
+  class="score-viewer"
+  data-score-viewer
+  data-page-count={pageCount}
+  style={`--perusal-print-message: '${printMessage.replace(/'/g, "\\'")}';`}
+  data-score-static-layout={pageCount === 1 ? 'single' : pageCount === 2 ? 'double' : 'none'}
+  data-score-layout={pageCount === 1 ? 'single' : 'double'}
+  data-score-single-page={pageCount === 1 ? 'true' : 'false'}
+  data-score-ready="false"
+  aria-label={`Perusal score for ${title}`}
+>
+  {
+    !hideBuiltinNav && (
+      <div class="score-nav" data-score-nav hidden>
+        <button type="button" class="score-nav-btn score-nav-prev" data-score-prev aria-label="Previous page">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            class="score-nav-icon"
+          >
+            <path d="m15 6-6 6 6 6" />
+          </svg>
+          <span class="score-nav-label">Prev</span>
+        </button>
+        <span class="score-page-indicator" data-score-page-indicator aria-live="polite">
+          <span class="score-page-indicator-visual" data-score-page-indicator-visual aria-hidden="true">
+            Page 1 of {pageCount}
+          </span>
+          <span class="sr-only score-page-indicator-sr" data-score-page-indicator-sr>
+            Page 1 of {pageCount}
+          </span>
+        </span>
+        <button type="button" class="score-nav-btn score-nav-next" data-score-next aria-label="Next page">
+          <span class="score-nav-label">Next</span>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            class="score-nav-icon"
+          >
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        </button>
+      </div>
+    )
+  }
+
+  <div
+    class="score-booklet"
+    data-score-booklet
+    tabindex="0"
+    role="group"
+    aria-roledescription="score booklet"
+    aria-label={`${pageCount} pages`}
+  >
+    {
+      pages.map((page) => (
+        <div class="score-page" data-page-num={page.pageNum}>
+          <img
+            src={page.src}
+            alt={page.alt}
+            width="1200"
+            loading={page.pageNum <= 2 ? 'eager' : 'lazy'}
+            decoding={page.pageNum <= 2 ? 'sync' : 'async'}
+            draggable="false"
+          />
+        </div>
+      ))
+    }
+  </div>
+
+  <p class="perusal-score-notice">
+    This score is provided for perusal purposes only. Printing and downloading are disabled.
+  </p>
+  <p class="sr-only">End of perusal score — {pageCount} pages shown</p>
+</section>
+
+<script>
+  // Module-level cleanup registry: persists across View Transitions navigations
+  const viewerCleanups = new Map<HTMLElement, () => void>()
+
+  function initScoreViewer(viewer: HTMLElement): void {
+    viewerCleanups.get(viewer)?.()
+    viewerCleanups.delete(viewer)
+
+    // Nav elements may live inside the viewer (built-in) or elsewhere in the document (external)
+    const nav =
+      viewer.querySelector<HTMLElement>('[data-score-nav]') ?? document.querySelector<HTMLElement>('[data-score-nav]')
+    const prevBtn =
+      viewer.querySelector<HTMLButtonElement>('[data-score-prev]') ??
+      document.querySelector<HTMLButtonElement>('[data-score-prev]')
+    const nextBtn =
+      viewer.querySelector<HTMLButtonElement>('[data-score-next]') ??
+      document.querySelector<HTMLButtonElement>('[data-score-next]')
+    const indicator =
+      viewer.querySelector<HTMLElement>('[data-score-page-indicator]') ??
+      document.querySelector<HTMLElement>('[data-score-page-indicator]')
+    const indicatorVisual =
+      viewer.querySelector<HTMLElement>('[data-score-page-indicator-visual]') ??
+      document.querySelector<HTMLElement>('[data-score-page-indicator-visual]')
+    const indicatorSr =
+      viewer.querySelector<HTMLElement>('[data-score-page-indicator-sr]') ??
+      document.querySelector<HTMLElement>('[data-score-page-indicator-sr]')
+    const pageJumpDropdown =
+      viewer.querySelector<HTMLElement>('[data-perusal-page-jump]') ??
+      document.querySelector<HTMLElement>('[data-perusal-page-jump]')
+    const pageJumpTrigger = pageJumpDropdown?.querySelector<HTMLButtonElement>('[data-dropdown-trigger]') ?? null
+    const pageJumpTriggerLabel = pageJumpDropdown?.querySelector<HTMLElement>('[data-dropdown-trigger-label]') ?? null
+    const pageJumpInput = pageJumpDropdown?.querySelector<HTMLInputElement>('[data-dropdown-input]') ?? null
+    const pageJumpOptionButtons = pageJumpDropdown
+      ? Array.from(pageJumpDropdown.querySelectorAll<HTMLButtonElement>('[data-dropdown-option]'))
+      : []
+    let booklet = viewer.querySelector<HTMLElement>('[data-score-booklet]')
+    let sourcePageElements = Array.from(viewer.querySelectorAll<HTMLElement>('.score-page[data-page-num]'))
+    const originalBookletMarkup = booklet?.innerHTML ?? ''
+    const originalBookletOuterMarkup = booklet?.outerHTML ?? ''
+    const pageCount = parseInt(viewer.dataset.pageCount ?? '0', 10)
+
+    const useStaticSpreadOnly = pageCount <= 2
+    const staticSpreadPageCount = pageCount === 2 ? 2 : 1
+
+    const announceReady = (): void => {
+      if (viewer.dataset.scoreReady === 'true') return
+      viewer.dataset.scoreReady = 'true'
+      if (nav && !useStaticSpreadOnly) nav.hidden = false
+      viewer.dispatchEvent(new CustomEvent('perusal-score-viewer-ready', { bubbles: true }))
+    }
+    const announceLoadProgress = (loaded: number, timedOut = false): void => {
+      viewer.dispatchEvent(
+        new CustomEvent('perusal-score-loading-progress', {
+          bubbles: true,
+          detail: { loaded, total: sourcePageElements.length, timedOut },
+        }),
+      )
+    }
+
+    if (!prevBtn || !nextBtn || !resolveLiveBooklet() || pageCount <= 0) {
+      announceReady()
+      return
+    }
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const wideViewport = window.matchMedia('(min-width: 48rem)')
+    const compactIndicatorViewport = window.matchMedia('(max-width: 48rem)')
+    const portraitViewport = window.matchMedia('(orientation: portrait)')
+    const coarsePointerViewport = window.matchMedia('(pointer: coarse)')
+    type ViewerModePreference = 'auto' | 'spreads' | 'single'
+
+    let currentPage = 0
+    let pagesPerSpread = 1
+    let pageFlipInstance: InstanceType<typeof import('page-flip').PageFlip> | null = null
+    let flipPageElements = [...sourcePageElements]
+    let preloadPromise: Promise<boolean> | null = null
+    let flipDisabledForSession = false
+    let layoutSyncToken = 0
+    let resizeSyncFrame = 0
+    let lastIndicatorDisplayText = 'Page 1'
+    let lastIndicatorSrText = `Page 1 of ${pageCount}`
+    let lastIndicatorPageNumber = 1
+    let pageJumpOptionsSignature = ''
+    let modePreference: ViewerModePreference = 'auto'
+    const perusalPage = viewer.closest<HTMLElement>('[data-perusal-page]')
+    const initialModeControl = perusalPage?.querySelector<HTMLElement>('[data-perusal-view-mode]')
+
+    function normalizeModePreference(value: unknown): ViewerModePreference {
+      if (value === 'spreads' || value === 'single') return value
+      return 'auto'
+    }
+
+    if (initialModeControl) {
+      const initialModeValue =
+        initialModeControl instanceof HTMLSelectElement
+          ? initialModeControl.value
+          : initialModeControl.dataset.dropdownValue
+      modePreference = normalizeModePreference(initialModeValue)
+    }
+
+    function annotateSourcePages(): void {
+      sourcePageElements.forEach((el, i) => {
+        const sourcePageNum = parseInt(el.dataset.pageNum ?? `${i + 1}`, 10)
+        el.dataset.sourcePageNum = Number.isFinite(sourcePageNum) ? `${sourcePageNum}` : `${i + 1}`
+      })
+    }
+
+    function insertFreshBookletFromMarkup(): HTMLElement | null {
+      if (!originalBookletOuterMarkup) return null
+      const template = document.createElement('template')
+      template.innerHTML = originalBookletOuterMarkup.trim()
+      const restoredBooklet = template.content.firstElementChild
+      if (!(restoredBooklet instanceof HTMLElement)) return null
+
+      const notice = viewer.querySelector<HTMLElement>('.perusal-score-notice')
+      if (notice?.parentElement === viewer) {
+        viewer.insertBefore(restoredBooklet, notice)
+      } else {
+        viewer.appendChild(restoredBooklet)
+      }
+
+      booklet = restoredBooklet
+      return booklet
+    }
+
+    function resolveLiveBooklet(): HTMLElement | null {
+      if (booklet && booklet.isConnected && viewer.contains(booklet)) {
+        return booklet
+      }
+
+      const liveBooklet = viewer.querySelector<HTMLElement>('[data-score-booklet]')
+      if (liveBooklet) {
+        booklet = liveBooklet
+        return booklet
+      }
+
+      return insertFreshBookletFromMarkup()
+    }
+
+    function restoreSourcePagesFromMarkup(): void {
+      const liveBooklet = resolveLiveBooklet()
+      if (!liveBooklet || !originalBookletMarkup) return
+      liveBooklet.innerHTML = originalBookletMarkup
+      liveBooklet.removeAttribute('style')
+      Array.from(liveBooklet.classList).forEach((className) => {
+        if (className.startsWith('stf__')) {
+          liveBooklet.classList.remove(className)
+        }
+      })
+      sourcePageElements = Array.from(liveBooklet.querySelectorAll<HTMLElement>('.score-page[data-page-num]'))
+      annotateSourcePages()
+      flipPageElements = [...sourcePageElements]
+      preloadPromise = null
+    }
+
+    function syncSourcePagesFromDom(): boolean {
+      const liveBooklet = resolveLiveBooklet()
+      if (!liveBooklet) return false
+      const livePages = Array.from(liveBooklet.querySelectorAll<HTMLElement>('.score-page[data-page-num]'))
+      if (livePages.length === 0) return false
+      sourcePageElements = livePages
+      annotateSourcePages()
+      flipPageElements = [...sourcePageElements]
+      return true
+    }
+
+    function ensureSourcePagesReady(): boolean {
+      if (sourcePageElements.length > 0 && sourcePageElements.every((el) => el.isConnected)) {
+        return true
+      }
+      if (syncSourcePagesFromDom()) return true
+      restoreSourcePagesFromMarkup()
+      return syncSourcePagesFromDom()
+    }
+
+    annotateSourcePages()
+
+    function isSinglePageDeviceContext(): boolean {
+      return portraitViewport.matches
+    }
+
+    function getSpreadSizeForCurrentViewport(): number {
+      if (pageCount <= 1) return 1
+      if (modePreference === 'single') return 1
+      if (modePreference === 'spreads') {
+        if (useStaticSpreadOnly) return staticSpreadPageCount
+        return 2
+      }
+      if (isSinglePageDeviceContext()) return 1
+      if (useStaticSpreadOnly) return staticSpreadPageCount
+      return wideViewport.matches ? 2 : 1
+    }
+
+    function shouldUseFlipMode(): boolean {
+      if (useStaticSpreadOnly) return false
+      if (prefersReducedMotion.matches) return false
+      if (modePreference === 'single') return false
+      if (modePreference === 'spreads') return true
+      return wideViewport.matches && !isSinglePageDeviceContext()
+    }
+
+    function updateLayoutDataset(mode: 'spread' | 'flip'): void {
+      if (mode === 'flip') {
+        viewer.dataset.scoreLayout = 'flip'
+        viewer.dataset.scoreSinglePage = 'false'
+        return
+      }
+      const isSingle = pagesPerSpread === 1
+      viewer.dataset.scoreLayout = isSingle ? 'single' : 'double'
+      viewer.dataset.scoreSinglePage = isSingle ? 'true' : 'false'
+    }
+
+    function createTransparentPaddingPage(position: 'front-pad' | 'back-pad'): HTMLElement {
+      const paddingPage = document.createElement('div')
+      paddingPage.className = 'score-page score-page-padding'
+      paddingPage.dataset.paddingPage = position
+      paddingPage.setAttribute('aria-hidden', 'true')
+      paddingPage.setAttribute('role', 'presentation')
+
+      const sheet = document.createElement('span')
+      sheet.className = 'score-page-padding-sheet'
+      sheet.setAttribute('aria-hidden', 'true')
+      paddingPage.appendChild(sheet)
+
+      return paddingPage
+    }
+
+    function buildPseudoCoverPages(realPages: HTMLElement[]): HTMLElement[] {
+      if (realPages.length === 0) return realPages
+
+      // Keep StPageFlip in non-cover mode for stable edge animation, then emulate
+      // a cover-like opening by prepending a transparent page.
+      const pages = [createTransparentPaddingPage('front-pad'), ...realPages]
+
+      // Maintain even spread parity so the back of the score lands naturally.
+      if (realPages.length % 2 === 0) {
+        pages.push(createTransparentPaddingPage('back-pad'))
+      }
+
+      return pages
+    }
+
+    function getSourcePageNumber(el: HTMLElement | undefined): number | null {
+      if (!el) return null
+      const sourcePageNum = parseInt(el.dataset.sourcePageNum ?? '', 10)
+      return Number.isFinite(sourcePageNum) ? sourcePageNum : null
+    }
+
+    function getVisibleSourcePages(pageIndex: number, orientation: 'portrait' | 'landscape'): number[] {
+      const indices = orientation === 'portrait' ? [pageIndex] : [pageIndex, pageIndex + 1]
+      const visible = new Set<number>()
+
+      indices.forEach((idx) => {
+        if (idx < 0 || idx >= flipPageElements.length) return
+        const sourcePageNum = getSourcePageNumber(flipPageElements[idx])
+        if (sourcePageNum !== null) visible.add(sourcePageNum)
+      })
+
+      return Array.from(visible).sort((a, b) => a - b)
+    }
+
+    function hasPreviousSourcePage(pageIndex: number): boolean {
+      for (let i = pageIndex - 1; i >= 0; i -= 1) {
+        if (getSourcePageNumber(flipPageElements[i]) !== null) return true
+      }
+      return false
+    }
+
+    function hasNextSourcePage(pageIndex: number, orientation: 'portrait' | 'landscape'): boolean {
+      const nextSpreadStart = pageIndex + (orientation === 'portrait' ? 1 : 2)
+      for (let i = nextSpreadStart; i < flipPageElements.length; i += 1) {
+        if (getSourcePageNumber(flipPageElements[i]) !== null) return true
+      }
+      return false
+    }
+
+    function shouldShowNav(): boolean {
+      if (pageCount <= 1) return false
+      if (pageFlipInstance) return true
+      return pagesPerSpread === 1 || pageCount > pagesPerSpread
+    }
+
+    function updateNavVisibility(): void {
+      if (!nav) return
+      nav.hidden = !shouldShowNav()
+    }
+
+    type PageJumpOption = {
+      value: string
+      label: string
+      srLabel: string
+      shortLabel: string
+    }
+
+    function getCompactPageLabel(displayText: string, firstPageOnly = false): string {
+      const compactLabel = displayText.replace(/^Pages?\s+/i, '').trim()
+      if (!firstPageOnly) return compactLabel
+
+      const [firstPart] = compactLabel.split('-')
+      const firstPageLabel = firstPart?.trim() ?? ''
+      return firstPageLabel || compactLabel
+    }
+
+    function getPageLabelState(visiblePages: number[]): { displayText: string; srText: string; pageNumber: number } {
+      const normalizedVisiblePages = visiblePages.filter((pageNum) => Number.isFinite(pageNum) && pageNum > 0)
+
+      if (normalizedVisiblePages.length === 0) {
+        return {
+          displayText: 'Page 1',
+          srText: `Page 1 of ${pageCount}`,
+          pageNumber: 1,
+        }
+      }
+
+      const firstPage = normalizedVisiblePages[0]
+      const lastPage = normalizedVisiblePages[normalizedVisiblePages.length - 1]
+
+      if (firstPage === lastPage) {
+        return {
+          displayText: `Page ${firstPage}`,
+          srText: `Page ${firstPage} of ${pageCount}`,
+          pageNumber: firstPage,
+        }
+      }
+
+      return {
+        displayText: `Pages ${firstPage} - ${lastPage}`,
+        srText: `Pages ${firstPage} - ${lastPage} of ${pageCount}`,
+        pageNumber: firstPage,
+      }
+    }
+
+    function getSinglePageJumpOptions(): PageJumpOption[] {
+      return Array.from({ length: pageCount }, (_, index) => {
+        const pageNum = index + 1
+        return {
+          value: `${pageNum}`,
+          label: `Page ${pageNum}`,
+          srLabel: `Page ${pageNum} of ${pageCount}`,
+          shortLabel: `${pageNum}`,
+        }
+      })
+    }
+
+    function getSpreadPageJumpOptions(): PageJumpOption[] {
+      const spreadOptions: PageJumpOption[] = []
+      for (let firstPage = 1; firstPage <= pageCount; firstPage += 2) {
+        const secondPage = Math.min(firstPage + 1, pageCount)
+        const labelState = getPageLabelState([firstPage, secondPage])
+        spreadOptions.push({
+          value: `${firstPage}`,
+          label: labelState.displayText,
+          srLabel: labelState.srText,
+          shortLabel: getCompactPageLabel(labelState.displayText, true),
+        })
+      }
+      return spreadOptions
+    }
+
+    function getFlipLandscapeSpreadJumpOptions(): PageJumpOption[] {
+      const spreadOptions: PageJumpOption[] = []
+      const seenValues = new Set<string>()
+
+      for (let pageIndex = 0; pageIndex < flipPageElements.length; pageIndex += 2) {
+        const visibleSourcePages = getVisibleSourcePages(pageIndex, 'landscape')
+        if (visibleSourcePages.length === 0) continue
+
+        const labelState = getPageLabelState(visibleSourcePages)
+        const value = `${labelState.pageNumber}`
+        if (seenValues.has(value)) continue
+        seenValues.add(value)
+
+        spreadOptions.push({
+          value,
+          label: labelState.displayText,
+          srLabel: labelState.srText,
+          shortLabel: getCompactPageLabel(labelState.displayText, true),
+        })
+      }
+
+      return spreadOptions.length > 0 ? spreadOptions : getSpreadPageJumpOptions()
+    }
+
+    function getPageJumpOptionsForCurrentLayout(): PageJumpOption[] {
+      if (pageFlipInstance) {
+        const orientation = pageFlipInstance.getOrientation()
+        if (orientation === 'landscape') {
+          return getFlipLandscapeSpreadJumpOptions()
+        }
+        return getSinglePageJumpOptions()
+      }
+
+      if (viewer.getAttribute('data-score-mode') === 'spread' && pagesPerSpread === 2) {
+        return getSpreadPageJumpOptions()
+      }
+
+      return getSinglePageJumpOptions()
+    }
+
+    function syncPageJumpDropdown(pageNumber: number, displayText: string, srText: string): void {
+      if (!pageJumpDropdown) return
+
+      const safePageNumber = Math.max(1, Math.min(pageCount, pageNumber))
+      const nextOptions = getPageJumpOptionsForCurrentLayout()
+      const nextSignature = nextOptions.map((option) => `${option.value}:${option.label}`).join('|')
+      const selectedOption =
+        nextOptions.find((option) => option.value === `${safePageNumber}`) ?? nextOptions[0] ?? null
+      const selectedValue = selectedOption?.value ?? `${safePageNumber}`
+
+      if (nextSignature !== pageJumpOptionsSignature) {
+        pageJumpOptionsSignature = nextSignature
+
+        pageJumpOptionButtons.forEach((optionButton, index) => {
+          const optionRow = optionButton.closest('li')
+          const option = nextOptions[index]
+
+          if (!option) {
+            if (optionRow instanceof HTMLElement) optionRow.hidden = true
+            optionButton.hidden = true
+            optionButton.disabled = true
+            optionButton.tabIndex = -1
+            optionButton.setAttribute('aria-checked', 'false')
+            return
+          }
+
+          if (optionRow instanceof HTMLElement) optionRow.hidden = false
+          optionButton.hidden = false
+          optionButton.disabled = false
+          optionButton.dataset.dropdownValue = option.value
+          optionButton.dataset.dropdownShortLabel = option.shortLabel
+          optionButton.textContent = option.label
+          optionButton.setAttribute('aria-label', option.srLabel)
+        })
+
+        pageJumpDropdown.dataset.dropdownValue = selectedValue
+        if (pageJumpInput) pageJumpInput.value = selectedValue
+
+        const refreshDropdown = (window as Window & {
+          __sharedDropdownState?: { refresh?: (dropdown: HTMLElement) => void }
+        }).__sharedDropdownState?.refresh
+        if (typeof refreshDropdown === 'function') {
+          refreshDropdown(pageJumpDropdown)
+        }
+      }
+
+      pageJumpDropdown.dataset.dropdownValue = selectedValue
+      if (pageJumpInput) pageJumpInput.value = selectedValue
+      if (pageJumpTriggerLabel) {
+        pageJumpTriggerLabel.textContent = displayText
+        pageJumpTriggerLabel.dataset.dropdownShortLabel =
+          selectedOption?.shortLabel ?? getCompactPageLabel(displayText, true)
+        pageJumpTriggerLabel.setAttribute('aria-hidden', 'true')
+      }
+      if (pageJumpTrigger) {
+        pageJumpTrigger.setAttribute('aria-label', `${srText}. Activate to jump to a specific page`)
+      }
+
+      pageJumpOptionButtons.forEach((optionButton) => {
+        if (optionButton.hidden || optionButton.disabled) return
+        const optionValue = optionButton.dataset.dropdownValue ?? ''
+        const matchedOption = nextOptions.find((option) => option.value === optionValue)
+        const isSelected = optionValue === selectedValue
+        optionButton.setAttribute('aria-checked', isSelected ? 'true' : 'false')
+        optionButton.tabIndex = isSelected ? 0 : -1
+        if (matchedOption) {
+          optionButton.dataset.dropdownShortLabel = matchedOption.shortLabel
+          optionButton.setAttribute('aria-label', matchedOption.srLabel)
+        }
+      })
+    }
+
+    function setIndicatorText(displayText: string, srText: string, pageNumber: number): void {
+      lastIndicatorDisplayText = displayText
+      lastIndicatorSrText = srText
+      lastIndicatorPageNumber = pageNumber
+      const visualText = displayText
+      if (indicatorVisual) {
+        indicatorVisual.textContent = visualText
+      } else if (indicator && !pageJumpDropdown) {
+        indicator.textContent = visualText
+      }
+      if (indicatorSr) {
+        indicatorSr.textContent = srText
+      }
+      indicator?.setAttribute('aria-label', srText)
+      syncPageJumpDropdown(pageNumber, displayText, srText)
+    }
+
+    function updateIndicator(): void {
+      if (!indicator && !indicatorVisual && !pageJumpDropdown) return
+      const leftPage = currentPage + 1
+      const rightPage = Math.min(currentPage + 2, pageCount)
+      const visiblePages = pagesPerSpread === 1 || rightPage === leftPage ? [leftPage] : [leftPage, rightPage]
+      const labelState = getPageLabelState(visiblePages)
+      setIndicatorText(labelState.displayText, labelState.srText, labelState.pageNumber)
+    }
+
+    function updateNavButtons(): void {
+      if (!prevBtn || !nextBtn) return
+      prevBtn.disabled = currentPage <= 0
+      nextBtn.disabled = currentPage + pagesPerSpread >= pageCount
+      updateNavVisibility()
+    }
+
+    function showSpread(): void {
+      if (!ensureSourcePagesReady()) return
+
+      sourcePageElements.forEach((el, i) => {
+        const isVisible = i >= currentPage && i < currentPage + pagesPerSpread
+        el.toggleAttribute('data-visible', isVisible)
+      })
+
+      // Defensive fallback: if a teardown race leaves no visible source pages,
+      // force the first spread visible so the score never renders blank.
+      if (!sourcePageElements.some((el) => el.hasAttribute('data-visible'))) {
+        currentPage = 0
+        sourcePageElements.forEach((el, i) => {
+          const isVisible = i < pagesPerSpread
+          el.toggleAttribute('data-visible', isVisible)
+        })
+      }
+
+      updateIndicator()
+      updateNavButtons()
+    }
+
+    function updatePageFlipIndicator(): void {
+      if ((!indicator && !indicatorVisual && !pageJumpDropdown) || !pageFlipInstance) return
+      const pageIndex = pageFlipInstance.getCurrentPageIndex()
+      const orientation = pageFlipInstance.getOrientation()
+      const visibleSourcePages = getVisibleSourcePages(pageIndex, orientation)
+
+      if (visibleSourcePages.length === 0) {
+        // Safety fallback for synthetic padding sheets.
+        const pageNumber = Math.min(pageCount, pageIndex + 1)
+        const labelState = getPageLabelState([pageNumber])
+        setIndicatorText(labelState.displayText, labelState.srText, labelState.pageNumber)
+        return
+      }
+
+      if (visibleSourcePages.length === 1) {
+        const labelState = getPageLabelState(visibleSourcePages)
+        setIndicatorText(labelState.displayText, labelState.srText, labelState.pageNumber)
+        return
+      }
+
+      const labelState = getPageLabelState(visibleSourcePages)
+      setIndicatorText(labelState.displayText, labelState.srText, labelState.pageNumber)
+    }
+
+    function updatePageFlipNavButtons(): void {
+      if (!prevBtn || !nextBtn || !pageFlipInstance) return
+      const pageIndex = pageFlipInstance.getCurrentPageIndex()
+      const orientation = pageFlipInstance.getOrientation()
+      prevBtn.disabled = !hasPreviousSourcePage(pageIndex)
+      nextBtn.disabled = !hasNextSourcePage(pageIndex, orientation)
+      updateNavVisibility()
+    }
+
+    function getFirstVisibleSourcePageIndex(): number {
+      if (!pageFlipInstance) return currentPage
+      const pageIndex = pageFlipInstance.getCurrentPageIndex()
+      const orientation = pageFlipInstance.getOrientation()
+      const visibleSourcePages = getVisibleSourcePages(pageIndex, orientation)
+      if (visibleSourcePages.length > 0) {
+        return Math.max(0, Math.min(pageCount - 1, visibleSourcePages[0] - 1))
+      }
+      return Math.max(0, Math.min(pageCount - 1, pageIndex))
+    }
+
+    function destroyPageFlip(preserveCurrentPage: boolean): void {
+      if (!pageFlipInstance) return
+      if (preserveCurrentPage) {
+        currentPage = getFirstVisibleSourcePageIndex()
+      }
+      try {
+        pageFlipInstance.destroy()
+      } catch {
+        // Ignore errors during cleanup
+      }
+      pageFlipInstance = null
+      restoreSourcePagesFromMarkup()
+
+      // Some page-flip teardown paths can mutate the container after destroy().
+      // Re-assert original markup on the next frame if needed.
+      window.requestAnimationFrame(() => {
+        const liveBooklet = viewer.querySelector<HTMLElement>('[data-score-booklet]')
+        if (liveBooklet?.querySelector('.score-page[data-page-num]')) return
+        restoreSourcePagesFromMarkup()
+      })
+    }
+
+    function normalizeCurrentPageForSpread(): void {
+      currentPage = Math.max(0, Math.min(currentPage, Math.max(0, pageCount - 1)))
+      if (pagesPerSpread === 2 && currentPage % 2 !== 0) {
+        currentPage = Math.max(0, currentPage - 1)
+      }
+    }
+
+    function applySpreadMode(nextSpreadSize: number): void {
+      const shouldRestorePages =
+        pageFlipInstance !== null ||
+        viewer.getAttribute('data-score-mode') === 'flip' ||
+        sourcePageElements.some((el) => !el.isConnected)
+
+      if (shouldRestorePages) {
+        if (pageFlipInstance) {
+          destroyPageFlip(true)
+        } else {
+          restoreSourcePagesFromMarkup()
+        }
+      }
+
+      // Always re-bind to the live DOM after mode switches; stale references from
+      // flip teardown can otherwise leave spread updates targeting detached nodes.
+      ensureSourcePagesReady()
+      pagesPerSpread = Math.max(1, nextSpreadSize)
+      normalizeCurrentPageForSpread()
+      viewer.setAttribute('data-score-mode', 'spread')
+      updateLayoutDataset('spread')
+      showSpread()
+
+      // Defensive post-flip pass: some destroy paths can mutate page nodes on the
+      // frame after teardown, so verify we still have a visible source page.
+      window.requestAnimationFrame(() => {
+        if (viewer.getAttribute('data-score-mode') !== 'spread') return
+        if (!ensureSourcePagesReady()) return
+        if (sourcePageElements.some((el) => el.hasAttribute('data-visible'))) return
+        currentPage = 0
+        showSpread()
+      })
+    }
+
+    function goToPage(pageNumber: number): void {
+      const safePageNumber = Math.max(1, Math.min(pageCount, Math.floor(pageNumber)))
+
+      if (pageFlipInstance) {
+        pageFlipInstance.turnToPage(getFlipIndexForSourcePage(safePageNumber))
+        updatePageFlipIndicator()
+        updatePageFlipNavButtons()
+        return
+      }
+
+      currentPage = safePageNumber - 1
+      normalizeCurrentPageForSpread()
+      showSpread()
+    }
+
+    function goNext(): void {
+      if (pageFlipInstance) {
+        pageFlipInstance.flipNext()
+        return
+      }
+      const next = currentPage + pagesPerSpread
+      if (next < pageCount) {
+        currentPage = next
+        showSpread()
+      }
+    }
+
+    function goPrev(): void {
+      if (pageFlipInstance) {
+        pageFlipInstance.flipPrev()
+        return
+      }
+      const prev = currentPage - pagesPerSpread
+      if (prev >= 0) {
+        currentPage = prev
+        showSpread()
+      }
+    }
+
+    const onPageJumpChange = (event: Event): void => {
+      if (!(event instanceof CustomEvent)) return
+      if (!pageJumpDropdown || event.target !== pageJumpDropdown) return
+
+      const detail = event.detail as { value?: unknown } | undefined
+      const rawPageNumber = Number.parseInt(String(detail?.value ?? ''), 10)
+      if (!Number.isFinite(rawPageNumber) || rawPageNumber <= 0) return
+      goToPage(rawPageNumber)
+    }
+
+    prevBtn.addEventListener('click', goPrev)
+    nextBtn.addEventListener('click', goNext)
+    if (pageJumpDropdown) {
+      pageJumpDropdown.addEventListener('shared-dropdown-change', onPageJumpChange)
+    }
+
+    // Keyboard navigation while focus is within the viewer
+    const onBookletKeydown = (e: KeyboardEvent): void => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        goPrev()
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        goNext()
+      }
+    }
+    viewer.addEventListener('keydown', onBookletKeydown)
+
+    // Initialize in spread mode first so there is always a rendered fallback.
+    pagesPerSpread = getSpreadSizeForCurrentViewport()
+    viewer.setAttribute('data-score-mode', 'spread')
+    updateLayoutDataset('spread')
+    showSpread()
+
+    async function preloadAllScoreImages(timeoutMs: number): Promise<boolean> {
+      const images = sourcePageElements
+        .map((pageElement) => pageElement.querySelector<HTMLImageElement>('img'))
+        .filter((img): img is HTMLImageElement => !!img)
+
+      const total = images.length
+      if (total === 0) {
+        announceLoadProgress(0)
+        return true
+      }
+
+      images.forEach((img) => {
+        img.loading = 'eager'
+        img.decoding = 'async'
+      })
+
+      let loaded = 0
+      let settled = false
+      announceLoadProgress(0)
+
+      const markLoaded = (): void => {
+        if (settled) return
+        loaded += 1
+        announceLoadProgress(loaded)
+      }
+
+      const waitForImage = (img: HTMLImageElement): Promise<void> =>
+        new Promise((resolve) => {
+          const finish = (): void => {
+            markLoaded()
+            resolve()
+          }
+
+          const decodeAndFinish = (): void => {
+            if (typeof img.decode === 'function') {
+              img
+                .decode()
+                .catch(() => {})
+                .finally(finish)
+              return
+            }
+            finish()
+          }
+
+          if (img.complete) {
+            decodeAndFinish()
+            return
+          }
+
+          const onSettled = (): void => {
+            img.removeEventListener('load', onSettled)
+            img.removeEventListener('error', onSettled)
+            decodeAndFinish()
+          }
+
+          img.addEventListener('load', onSettled, { once: true })
+          img.addEventListener('error', onSettled, { once: true })
+        })
+
+      const allLoadedPromise = Promise.all(images.map((img) => waitForImage(img))).then(() => true)
+      const timeoutPromise = new Promise<boolean>((resolve) => {
+        window.setTimeout(() => resolve(false), timeoutMs)
+      })
+
+      const allLoaded = await Promise.race([allLoadedPromise, timeoutPromise])
+      settled = true
+
+      if (!allLoaded) {
+        announceLoadProgress(loaded, true)
+      } else {
+        announceLoadProgress(total)
+      }
+
+      return allLoaded
+    }
+
+    function ensurePreloadPromise(): Promise<boolean> {
+      if (!preloadPromise) {
+        preloadPromise = preloadAllScoreImages(30000)
+      }
+      return preloadPromise
+    }
+
+    function getFlipIndexForSourcePage(sourcePageNumber: number): number {
+      const index = flipPageElements.findIndex((el) => getSourcePageNumber(el) === sourcePageNumber)
+      return index >= 0 ? index : 0
+    }
+
+    async function enableFlipMode(syncToken: number): Promise<boolean> {
+      if (!shouldUseFlipMode() || flipDisabledForSession) return false
+      if (!ensureSourcePagesReady()) return false
+
+      const allImagesLoaded = await ensurePreloadPromise()
+      if (syncToken !== layoutSyncToken) return false
+      if (!allImagesLoaded) {
+        flipDisabledForSession = true
+        console.warn('Timed out preloading all score pages; using spread mode for this session.')
+        return false
+      }
+
+      if (!shouldUseFlipMode() || flipDisabledForSession) return false
+
+      try {
+        const { PageFlip } = await import('page-flip')
+        if (syncToken !== layoutSyncToken) return false
+        if (!shouldUseFlipMode()) return false
+
+        const liveBooklet = resolveLiveBooklet()
+        if (!liveBooklet) return false
+
+        // On return visits the module is cached and resolves instantly, but the browser may
+        // not have painted yet. Wait two animation frames so the booklet has real dimensions.
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+        if (syncToken !== layoutSyncToken) return false
+        if (!shouldUseFlipMode()) return false
+
+        // If the booklet still has no usable width, keep spread mode and retry on a later resize.
+        if (liveBooklet.clientWidth === 0) return false
+
+        const sourcePageToPreserve = Math.max(1, Math.min(pageCount, currentPage + 1))
+        if (syncToken !== layoutSyncToken || !shouldUseFlipMode()) return false
+
+        destroyPageFlip(false)
+        viewer.setAttribute('data-score-mode', 'flip')
+        updateLayoutDataset('flip')
+
+        // Show all pages so page-flip can measure them
+        sourcePageElements.forEach((el) => {
+          el.setAttribute('data-visible', '')
+        })
+
+        // Emulate cover opening with transparent padding while keeping page-flip's
+        // native non-cover geometry (avoids edge jitter).
+        flipPageElements = buildPseudoCoverPages(sourcePageElements)
+
+        const flipBooklet = resolveLiveBooklet()
+        if (!flipBooklet) return false
+
+        const pf = new PageFlip(flipBooklet, {
+          width: 600,
+          height: 800,
+          size: 'stretch' as import('page-flip').SizeType,
+          drawShadow: true,
+          flippingTime: 600,
+          usePortrait: true,
+          autoSize: false,
+          showCover: false,
+          maxShadowOpacity: 0.5,
+          mobileScrollSupport: false,
+        })
+
+        pf.loadFromHTML(flipPageElements)
+        pageFlipInstance = pf
+        pf.turnToPage(getFlipIndexForSourcePage(sourcePageToPreserve))
+
+        pf.on('flip', () => {
+          updatePageFlipIndicator()
+          updatePageFlipNavButtons()
+        })
+
+        pf.on('changeOrientation', () => {
+          updatePageFlipIndicator()
+          updatePageFlipNavButtons()
+        })
+
+        // Set initial state
+        updatePageFlipIndicator()
+        updatePageFlipNavButtons()
+        return true
+      } catch (error) {
+        flipDisabledForSession = true
+        console.warn('Could not initialize page-flip, using spread mode.', error)
+        return false
+      }
+    }
+
+    async function syncViewerMode(): Promise<void> {
+      const syncToken = ++layoutSyncToken
+      ensureSourcePagesReady()
+
+      if (!shouldUseFlipMode() || flipDisabledForSession) {
+        applySpreadMode(getSpreadSizeForCurrentViewport())
+        announceReady()
+        return
+      }
+
+      if (pageFlipInstance) {
+        updatePageFlipIndicator()
+        updatePageFlipNavButtons()
+        announceReady()
+        return
+      }
+
+      applySpreadMode(getSpreadSizeForCurrentViewport())
+      const didEnableFlip = await enableFlipMode(syncToken)
+      if (syncToken !== layoutSyncToken) return
+
+      if (!didEnableFlip) {
+        applySpreadMode(getSpreadSizeForCurrentViewport())
+      }
+
+      announceReady()
+    }
+
+    const scheduleViewerModeSync = (): void => {
+      if (resizeSyncFrame) {
+        window.cancelAnimationFrame(resizeSyncFrame)
+      }
+      resizeSyncFrame = window.requestAnimationFrame(() => {
+        resizeSyncFrame = 0
+        void syncViewerMode()
+      })
+    }
+
+    const onViewportChange = (): void => {
+      scheduleViewerModeSync()
+      setIndicatorText(lastIndicatorDisplayText, lastIndicatorSrText, lastIndicatorPageNumber)
+    }
+
+    const onVisualViewportResize = (): void => {
+      scheduleViewerModeSync()
+    }
+
+    const onModePreferenceChange = (event: Event): void => {
+      if (!(event instanceof CustomEvent)) return
+      const detail = event.detail as { mode?: unknown; viewer?: unknown } | undefined
+      if (detail?.viewer instanceof HTMLElement && detail.viewer !== viewer) return
+
+      const nextMode = normalizeModePreference(detail?.mode)
+      if (nextMode === modePreference) return
+      modePreference = nextMode
+      scheduleViewerModeSync()
+    }
+
+    wideViewport.addEventListener('change', onViewportChange)
+    compactIndicatorViewport.addEventListener('change', onViewportChange)
+    portraitViewport.addEventListener('change', onViewportChange)
+    coarsePointerViewport.addEventListener('change', onViewportChange)
+    prefersReducedMotion.addEventListener('change', onViewportChange)
+    window.addEventListener('resize', onViewportChange, { passive: true })
+    window.visualViewport?.addEventListener('resize', onVisualViewportResize)
+    document.addEventListener('perusal-score-view-mode-change', onModePreferenceChange)
+
+    void syncViewerMode()
+
+    // Casual protection: block right-click on the viewer
+    viewer.addEventListener('contextmenu', (e: Event) => {
+      e.preventDefault()
+    })
+
+    // Block Ctrl+S / Ctrl+P when viewer is in viewport
+    const onDocKeydown = (e: KeyboardEvent): void => {
+      const isModifier = e.ctrlKey || e.metaKey
+      if (isModifier && (e.key === 's' || e.key === 'p')) {
+        const rect = viewer.getBoundingClientRect()
+        const inViewport = rect.top < window.innerHeight && rect.bottom > 0
+        if (inViewport) {
+          e.preventDefault()
+        }
+      }
+    }
+    document.addEventListener('keydown', onDocKeydown)
+
+    // Register cleanup for this viewer (called on astro:before-swap)
+    viewerCleanups.set(viewer, () => {
+      wideViewport.removeEventListener('change', onViewportChange)
+      compactIndicatorViewport.removeEventListener('change', onViewportChange)
+      portraitViewport.removeEventListener('change', onViewportChange)
+      coarsePointerViewport.removeEventListener('change', onViewportChange)
+      prefersReducedMotion.removeEventListener('change', onViewportChange)
+      window.removeEventListener('resize', onViewportChange)
+      window.visualViewport?.removeEventListener('resize', onVisualViewportResize)
+      document.removeEventListener('perusal-score-view-mode-change', onModePreferenceChange)
+      viewer.removeEventListener('keydown', onBookletKeydown)
+      document.removeEventListener('keydown', onDocKeydown)
+      if (pageJumpDropdown) {
+        pageJumpDropdown.removeEventListener('shared-dropdown-change', onPageJumpChange)
+      }
+      if (resizeSyncFrame) {
+        window.cancelAnimationFrame(resizeSyncFrame)
+        resizeSyncFrame = 0
+      }
+      destroyPageFlip(false)
+    })
+  }
+
+  // Destroy page-flip instances and remove document-level listeners before each navigation swap
+  document.addEventListener('astro:before-swap', () => {
+    viewerCleanups.forEach((cleanup) => cleanup())
+    viewerCleanups.clear()
+  })
+
+  const initAllScoreViewers = (): void => {
+    document.querySelectorAll<HTMLElement>('[data-score-viewer]').forEach(initScoreViewer)
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAllScoreViewers, { once: true })
+  } else {
+    initAllScoreViewers()
+  }
+
+  // Re-initialize on every page load (including View Transitions navigations)
+  document.addEventListener('astro:page-load', initAllScoreViewers)
+</script>
+
+<style is:global>
+  /* ── Navigation controls ─────────────────────────────────────────── */
+
+  .score-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-s);
+  }
+
+  .score-nav-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25em;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+    cursor: pointer;
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    background: var(--bg);
+    padding: 0.5em 0.75em;
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--ink);
+    font-size: var(--font-size--1);
+    font-family: inherit;
+  }
+
+  .score-nav-btn:hover:not(:disabled) {
+    border-color: var(--ink-soft);
+    background: var(--bg-soft);
+  }
+
+  .score-nav-btn:focus-visible {
+    outline: 2px dashed var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  .score-nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .score-nav-icon {
+    flex-shrink: 0;
+    width: 1.25em;
+    height: 1.25em;
+  }
+
+  .score-page-indicator {
+    min-width: 10ch;
+    color: var(--ink-soft);
+    font-size: var(--font-size--1);
+    text-align: center;
+  }
+
+  /* ── Booklet container ───────────────────────────────────────────── */
+
+  /* No-JS fallback: all pages visible in a scrollable column */
+  .score-booklet {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .score-booklet:focus-visible {
+    outline: 2px dashed var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  /* ── Score pages ─────────────────────────────────────────────────── */
+
+  .score-page {
+    position: relative;
+    background: var(--score-page-paper, #f8f8f6);
+    line-height: 0;
+  }
+
+  .score-page img {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+    -webkit-user-drag: none;
+  }
+
+  /* Transparent overlay to intercept clicks/right-clicks on images */
+  .score-page::after {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    content: '';
+  }
+
+  .score-page-padding {
+    background: #10161d;
+  }
+
+  .score-page-padding::after {
+    display: none;
+  }
+
+  .score-page-padding-sheet {
+    display: block;
+    background: #10161d;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── Spread mode (JS, no page-flip) ──────────────────────────────── */
+
+  [data-score-mode='spread'] .score-booklet {
+    display: grid;
+    gap: 2px;
+  }
+
+  [data-score-mode='spread'][data-score-layout='double'] .score-booklet {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  [data-score-mode='spread'][data-score-layout='single'] .score-booklet {
+    grid-template-columns: 1fr;
+  }
+
+  [data-score-mode='spread'] .score-page {
+    display: none;
+  }
+
+  [data-score-mode='spread'] .score-page[data-visible] {
+    display: block;
+  }
+
+  [data-score-mode='spread'][data-score-static-layout='single'] .score-booklet {
+    grid-template-columns: max-content;
+    justify-content: center;
+  }
+
+  [data-score-mode='spread'][data-score-static-layout='double'][data-score-layout='double'] .score-booklet {
+    grid-template-columns: max-content max-content;
+    justify-content: center;
+  }
+
+  [data-score-mode='spread'][data-score-static-layout='single'] .score-page,
+  [data-score-mode='spread'][data-score-static-layout='double'][data-score-layout='double'] .score-page {
+    background: transparent;
+  }
+
+  [data-score-mode='spread'][data-score-layout='single'] .score-page::after {
+    display: none;
+  }
+
+  [data-score-mode='spread'][data-score-layout='single'] .score-page img {
+    pointer-events: auto;
+  }
+
+  /* ── Flip mode (StPageFlip active) ───────────────────────────────── */
+
+  /* Allow PageFlip to receive touch/pointer events directly */
+  [data-score-mode='flip'] .score-page::after {
+    pointer-events: none;
+  }
+
+  [data-score-mode='flip'] .score-booklet {
+    display: block;
+    position: relative;
+  }
+
+  /* ── Notice ──────────────────────────────────────────────────────── */
+
+  .perusal-score-notice {
+    margin-top: var(--space-xs);
+    margin-bottom: 0;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-size: var(--font-size--1);
+  }
+
+  /* ── Print protection ────────────────────────────────────────────── */
+
+  @media print {
+    .score-booklet,
+    .score-nav {
+      display: none !important;
+    }
+
+    .score-viewer::after {
+      display: block;
+      border: 2px dashed var(--line);
+      padding: var(--space-l);
+      content: var(--perusal-print-message, 'Printing of perusal scores is not permitted.');
+      color: var(--ink-soft);
+      font-size: var(--font-size-1);
+      text-align: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .score-nav-btn {
+      transition: none;
+    }
+  }
+</style>

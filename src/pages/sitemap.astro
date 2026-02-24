@@ -1,0 +1,95 @@
+---
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
+import { getCollection } from 'astro:content'
+import { getSiteConfig } from '@/utils/source-config'
+
+const siteConfig = getSiteConfig()
+const works = await getCollection('works')
+
+const staticPages = [
+  {
+    title: 'Home',
+    url: '/',
+    description: `Welcome — explore compositions, recordings, and more from ${siteConfig.composerName}.`,
+  },
+  {
+    title: 'Works',
+    url: '/works/',
+    description: 'A collection of select compositions',
+  },
+  {
+    title: 'Works tags',
+    url: '/works/browse/',
+    description: 'Browse all available works tags grouped by category.',
+  },
+  {
+    title: 'Contact',
+    url: '/contact/',
+    description: 'Get in touch for sample scores, questions, feedback, or collaboration opportunities.',
+  },
+  {
+    title: 'Accessibility statement',
+    url: '/accessibility-statement/',
+    description: 'Our commitment to accessibility and information about the accessibility features of this website.',
+  },
+]
+---
+
+<SiteLayout
+  title="Sitemap"
+  description="Complete site map showing all pages, works, and sections available on this website."
+>
+  <ImmersivePageHeader
+    title="Sitemap"
+    subtitle="A comprehensive overview of all pages and content available on this website, organized for easy navigation."
+  />
+
+  <section style="margin-top: var(--space-l);">
+    <div class="container">
+      <h2 style="margin-bottom: var(--space-s);">Main pages</h2>
+      <div class="sitemap-grid">
+        {
+          staticPages.map((page) => (
+            <article class="sitemap-card">
+              <h3>
+                <a href={page.url}>{page.title}</a>
+              </h3>
+              <p>{page.description}</p>
+              <p style="font-size: 0.82rem;">
+                URL: <code>{page.url}</code>
+              </p>
+            </article>
+          ))
+        }
+      </div>
+
+      <div style="margin-top: var(--space-xl);">
+        <h2>Works</h2>
+        <p style="margin-bottom: var(--space-s); color: var(--ink-soft);">
+          Explore {works.length} select works
+        </p>
+        <div class="sitemap-grid">
+          {
+            works.map((project) => (
+              <article class="sitemap-card">
+                <h3>
+                  <a href={`/works/${project.id}/`}>{project.data.title}</a>
+                </h3>
+                <p>{project.data.description}</p>
+                <div style="font-size: 0.82rem;">
+                  <p style="margin-bottom: 0.25rem;">
+                    Instrumentation: <span style="font-weight: 500;">{project.data.instrumentation.join(', ')}</span>
+                  </p>
+                  <p>
+                    URL: <code>/works/{project.id}/</code>
+                  </p>
+                </div>
+              </article>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+</SiteLayout>

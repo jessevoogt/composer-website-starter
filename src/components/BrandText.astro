@@ -1,0 +1,74 @@
+---
+/**
+ * BrandText — Generic text-based site logo.
+ *
+ * Renders the composer's name as a simple styled text link.
+ * Used when no image logo is configured.
+ */
+
+interface Props {
+  firstName: string
+  lastName: string
+  composerName: string
+  isHomepage?: boolean
+}
+
+const { firstName, lastName, composerName, isHomepage = false } = Astro.props
+---
+
+<a
+  href="/"
+  class:list={['brand', 'brand-text-mode', isHomepage && 'brand-home-text']}
+  aria-label={`${composerName} home`}
+>
+  <span class="brand-text-name" aria-hidden="true">
+    <span class="brand-text-first">{firstName}</span>
+    <span class="brand-text-last">{lastName}</span>
+  </span>
+</a>
+
+<style>
+  .brand.brand-text-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition:
+      color 220ms ease,
+      opacity 220ms ease;
+    color: var(--ink);
+    font-size: 0.96rem;
+    line-height: 1;
+    letter-spacing: 0.19em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .brand.brand-text-mode:hover,
+  .brand.brand-text-mode:focus-visible {
+    color: var(--accent, var(--ink));
+  }
+
+  .brand-text-name {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .brand-text-first,
+  .brand-text-last {
+    display: block;
+    font-weight: 700;
+    font-family: var(--font-heading);
+  }
+
+  .brand-text-first {
+    font-size: 1.1rem;
+  }
+
+  .brand-text-last {
+    font-size: 1.1rem;
+  }
+</style>

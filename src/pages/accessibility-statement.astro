@@ -1,0 +1,68 @@
+---
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
+import { getSiteConfig } from '@/utils/source-config'
+
+const siteConfig = getSiteConfig()
+const siteDomain = siteConfig.siteUrl ? new URL(siteConfig.siteUrl).hostname : 'this website'
+---
+
+<SiteLayout title="Accessibility statement">
+  <ImmersivePageHeader
+    title="Accessibility statement"
+    subtitle="This document outlines the accessibility features and support provided by our website."
+  />
+  <section class="container" style="margin-top: var(--space-l);">
+    <div class="space-content">
+      <h2>Introduction</h2>
+      <p>
+        This accessibility statement applies to <strong>{siteDomain}</strong>. At <strong>{siteDomain}</strong>,
+        we are committed to ensuring digital accessibility for people of all abilities. We believe that everyone should
+        have equal access to information and functionality on the web, regardless of physical or technological
+        limitations. Accessibility is a core value in our commitment to providing an inclusive user experience.
+      </p>
+
+      <h2>WCAG compliance</h2>
+      <p>
+        Our website is designed to conform to the Web Content Accessibility Guidelines (WCAG) 2.2, Level AA. These
+        guidelines explain how to make web content more accessible to people with a wide array of disabilities,
+        including visual, auditory, physical, speech, cognitive, language, learning, and neurological disabilities.
+      </p>
+
+      <h2>Current status</h2>
+      <p>
+        Our website has been internally reviewed for accessibility, and the following accessibility features have been
+        implemented:
+      </p>
+      <ul>
+        <li>Proper HTML language attributes for screen readers and assistive technologies</li>
+        <li>Keyboard navigability for all interactive elements</li>
+        <li>Sufficient color contrast for text and visual elements</li>
+        <li>Logical focus order for keyboard navigation</li>
+        <li>Proper form error identification and suggestions</li>
+        <li>Skip links to bypass repetitive navigation</li>
+        <li>Responsive design that works across different devices and screen sizes</li>
+        <li>Text alternatives for non-text content</li>
+        <li>ARIA attributes where appropriate to enhance accessibility</li>
+      </ul>
+
+      <h2>Feedback process</h2>
+      <p>
+        We welcome your feedback on the accessibility of our website. If you encounter any barriers or have suggestions
+        for improvement, please help us by providing the following information:
+      </p>
+      <ul>
+        <li><strong>URL:</strong> The web address of the content where you experienced the issue</li>
+        <li><strong>Description:</strong> A clear description of the problem</li>
+        <li><strong>Contact details:</strong> Your name and email address</li>
+      </ul>
+      <p>Please contact through the <a href="/contact">contact page</a>.</p>
+
+      <h2>Publication information</h2>
+      <p>
+        This accessibility statement was prepared on <strong>February 19, 2026</strong> and last updated on <strong>February 19, 2026</strong>.
+        The website was last tested on <strong>February 19, 2026</strong> against WCAG 2.2 AA guidelines.
+      </p>
+    </div>
+  </section>
+</SiteLayout>

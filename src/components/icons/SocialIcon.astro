@@ -1,0 +1,18 @@
+---
+import InstagramIcon from './InstagramIcon.astro'
+import FacebookIcon from './FacebookIcon.astro'
+import SoundCloudIcon from './SoundCloudIcon.astro'
+import YouTubeIcon from './YouTubeIcon.astro'
+import type { SocialPlatform } from '@/utils/source-config'
+
+interface Props {
+  icon: SocialPlatform
+}
+
+const { icon } = Astro.props
+---
+
+{icon === 'facebook' && <FacebookIcon />}
+{icon === 'instagram' && <InstagramIcon />}
+{icon === 'soundcloud' && <SoundCloudIcon />}
+{icon === 'youtube' && <YouTubeIcon />}

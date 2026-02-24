@@ -1,0 +1,34 @@
+---
+import type { BrandConfig } from '@/utils/source-config'
+import BrandImage from '@components/BrandImage.astro'
+import BrandText from '@components/BrandText.astro'
+
+interface Props {
+  brandConfig: BrandConfig
+  composerName: string
+  isHomepage?: boolean
+}
+
+const { brandConfig, composerName, isHomepage = false } = Astro.props
+const hasLogoImage = brandConfig.logoImage.trim().length > 0
+---
+
+{
+  hasLogoImage ? (
+    <BrandImage
+      src={brandConfig.logoImage}
+      alt={brandConfig.logoImageAlt}
+      width={brandConfig.logoWidth}
+      height={brandConfig.logoHeight}
+      composerName={composerName}
+      isHomepage={isHomepage}
+    />
+  ) : (
+    <BrandText
+      firstName={brandConfig.firstName}
+      lastName={brandConfig.lastName}
+      composerName={composerName}
+      isHomepage={isHomepage}
+    />
+  )
+}

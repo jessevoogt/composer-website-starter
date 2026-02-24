@@ -1,0 +1,1221 @@
+---
+import '../styles/site.css'
+import {
+  getSiteConfig,
+  getAudioPlayerControls,
+  getThemeConfig,
+  getSocialLinks,
+  getNavigation,
+  getBrandConfig,
+  getHeroVariants,
+  getHeroConfig,
+} from '@/utils/source-config'
+import {
+  DEFAULT_THEME_FONT_BODY,
+  DEFAULT_THEME_FONT_HEADING,
+  getThemeGoogleFontsStylesheetHref,
+  normalizeThemeFontValue,
+  resolveImmersiveButtonLabelShifts,
+  resolveThemeFontFamily,
+} from '@/utils/theme-fonts'
+import SiteMeta from '@components/SiteMeta.astro'
+import GoogleAnalytics from '@components/GoogleAnalytics.astro'
+import SocialIcon from '@components/icons/SocialIcon.astro'
+import BrandRenderer from '@components/brand/BrandRenderer.astro'
+import ImmersiveBreadcrumbs from '@components/immersive/ImmersiveBreadcrumbs.astro'
+import WorksSearch from '@components/WorksSearch.astro'
+import { ClientRouter } from 'astro:transitions'
+import { getCollection } from 'astro:content'
+const navigationConfig = getNavigation()
+const primaryNavLinks = navigationConfig.menuItems.filter((item) => item.enabled).sort((a, b) => a.order - b.order)
+const socialLinks = getSocialLinks()
+const { footerLinks } = navigationConfig
+const brandConfig = getBrandConfig()
+import type { SearchableItem, SearchableWorkItem } from '../scripts/search-types'
+import { generatedPageSearchEntries } from '@data/generated-page-search-metadata'
+import { resolveNavHref } from '@/utils/resolve-nav-href'
+import prepareWorks from '@/utils/prepareWorks'
+import { buildSearchableTagItems, buildSearchableWorkItems } from '@/utils/search-items'
+import worksImages from '@/utils/works-images'
+import { flattenRecordingEntries } from '@/utils/immersive-helpers'
+import perusalScores from '@/utils/perusal-scores'
+import type { ClientRecordingEntry } from '../scripts/immersive/types'
+
+interface Props {
+  title?: string
+  description?: string
+  url?: URL | string
+  image?: string
+  imageAlt?: string
+  author?: string
+  isHomepage?: boolean
+  skipTargetId?: string
+  pageContentClass?: string
+  bodyClass?: string
+  customBreadcrumbLabels?: Record<string, string>
+  headerBreadcrumbItems?: Array<{ href?: string; label: string; currentPage?: boolean }>
+  replaceLastAutoBreadcrumbLabel?: string
+  pageHero?: {
+    pageKey: 'home' | 'contact' | 'works' | 'about'
+    id: string
+    src: string
+    position: string
+    filter: string
+  }
+}
+
+type ToolbarHeroPageKey = 'home' | 'contact' | 'works' | 'about' | 'preview'
+
+const siteConfig = getSiteConfig()
+const siteAudioPlayerControls = getAudioPlayerControls()
+const themeConfig = getThemeConfig()
+const DEFAULT_MAIN_NAV_FONT_SIZE_PX = 15
+const MIN_MAIN_NAV_FONT_SIZE_PX = 11
+const MAX_MAIN_NAV_FONT_SIZE_PX = 24
+const DEFAULT_INTERIOR_HERO_OVERLAY_OPACITY = 0.86
+
+const DEFAULT_THEME_COLORS = {
+  colorBackground: '#10161d',
+  colorBackgroundSoft: '#141b23',
+  colorText: '#ecf2f7',
+  colorTextMuted: '#aab8c4',
+  colorAccent: '#97c6de',
+  colorAccentStrong: '#d5edf9',
+  colorButton: '#89b9d3',
+  colorButtonText: '#08131d',
+} as const
+
+function normalizeHexColor(value: string | undefined, fallback: string): string {
+  const trimmed = typeof value === 'string' ? value.trim() : ''
+  if (!trimmed) return fallback
+
+  const match = trimmed.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+  if (!match) return fallback
+
+  const hex = match[1]
+  if (hex.length === 3) {
+    return `#${hex
+      .split('')
+      .map((char) => `${char}${char}`)
+      .join('')
+      .toLowerCase()}`
+  }
+
+  return `#${hex.toLowerCase()}`
+}
+
+function hexToRgbTuple(value: string): [number, number, number] {
+  const normalized = normalizeHexColor(value, '#000000').slice(1)
+  const red = Number.parseInt(normalized.slice(0, 2), 16)
+  const green = Number.parseInt(normalized.slice(2, 4), 16)
+  const blue = Number.parseInt(normalized.slice(4, 6), 16)
+  return [red, green, blue]
+}
+
+function clampUnit(value: number): number {
+  if (Number.isNaN(value)) return 0
+  if (value < 0) return 0
+  if (value > 1) return 1
+  return value
+}
+
+function resolveInteriorHeroOverlayOpacity(value: string | number | undefined, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return clampUnit(value)
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return fallback
+    const parsed = Number.parseFloat(trimmed)
+    if (Number.isFinite(parsed)) return clampUnit(parsed)
+  }
+
+  return fallback
+}
+
+function normalizeThemeConfigValue(value: string | number | undefined): string {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  if (typeof value === 'string') return value.trim()
+  return ''
+}
+
+function resolveMainNavFontSizePx(value: number | undefined, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  const rounded = Math.round(value)
+  return Math.min(MAX_MAIN_NAV_FONT_SIZE_PX, Math.max(MIN_MAIN_NAV_FONT_SIZE_PX, rounded))
+}
+
+function mixHex(baseHex: string, targetHex: string, amount: number): string {
+  const [baseRed, baseGreen, baseBlue] = hexToRgbTuple(baseHex)
+  const [targetRed, targetGreen, targetBlue] = hexToRgbTuple(targetHex)
+  const alpha = clampUnit(amount)
+
+  const red = Math.round(baseRed + (targetRed - baseRed) * alpha)
+  const green = Math.round(baseGreen + (targetGreen - baseGreen) * alpha)
+  const blue = Math.round(baseBlue + (targetBlue - baseBlue) * alpha)
+
+  const toHex = (channel: number): string => channel.toString(16).padStart(2, '0')
+  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`
+}
+
+const resolvedThemeColors = {
+  colorBackground: normalizeHexColor(themeConfig.colorBackground, DEFAULT_THEME_COLORS.colorBackground),
+  colorBackgroundSoft: normalizeHexColor(themeConfig.colorBackgroundSoft, DEFAULT_THEME_COLORS.colorBackgroundSoft),
+  colorText: normalizeHexColor(themeConfig.colorText, DEFAULT_THEME_COLORS.colorText),
+  colorTextMuted: normalizeHexColor(themeConfig.colorTextMuted, DEFAULT_THEME_COLORS.colorTextMuted),
+  colorAccent: normalizeHexColor(themeConfig.colorAccent, DEFAULT_THEME_COLORS.colorAccent),
+  colorAccentStrong: normalizeHexColor(themeConfig.colorAccentStrong, DEFAULT_THEME_COLORS.colorAccentStrong),
+  colorButton: normalizeHexColor(themeConfig.colorButton, DEFAULT_THEME_COLORS.colorButton),
+  colorButtonText: normalizeHexColor(themeConfig.colorButtonText, DEFAULT_THEME_COLORS.colorButtonText),
+}
+
+const [backgroundRed, backgroundGreen, backgroundBlue] = hexToRgbTuple(resolvedThemeColors.colorBackground)
+const [backgroundSoftRed, backgroundSoftGreen, backgroundSoftBlue] = hexToRgbTuple(resolvedThemeColors.colorBackgroundSoft)
+const [accentRed, accentGreen, accentBlue] = hexToRgbTuple(resolvedThemeColors.colorAccent)
+const [accentStrongRed, accentStrongGreen, accentStrongBlue] = hexToRgbTuple(resolvedThemeColors.colorAccentStrong)
+const [buttonRed, buttonGreen, buttonBlue] = hexToRgbTuple(resolvedThemeColors.colorButton)
+const interiorHeroOverlayOpacity = resolveInteriorHeroOverlayOpacity(
+  themeConfig.interiorHeroOverlayOpacity,
+  DEFAULT_INTERIOR_HERO_OVERLAY_OPACITY,
+)
+const resolvedThemeFontBody = normalizeThemeFontValue(themeConfig.fontBody, DEFAULT_THEME_FONT_BODY)
+const resolvedThemeFontHeading = normalizeThemeFontValue(themeConfig.fontHeading, DEFAULT_THEME_FONT_HEADING)
+const resolvedMainNavFontSizePx = resolveMainNavFontSizePx(
+  navigationConfig.mainNavFontSizePx,
+  DEFAULT_MAIN_NAV_FONT_SIZE_PX,
+)
+const immersiveButtonLabelShifts = resolveImmersiveButtonLabelShifts(
+  resolvedThemeFontHeading,
+  DEFAULT_THEME_FONT_HEADING,
+)
+const surfaceColor = mixHex(resolvedThemeColors.colorBackgroundSoft, resolvedThemeColors.colorText, 0.03)
+const surfaceSoftColor = mixHex(resolvedThemeColors.colorBackgroundSoft, resolvedThemeColors.colorText, 0.08)
+const lineColor = mixHex(resolvedThemeColors.colorBackgroundSoft, resolvedThemeColors.colorAccent, 0.2)
+const googleFontsStylesheetHref = getThemeGoogleFontsStylesheetHref([
+  { value: resolvedThemeFontBody, fallback: DEFAULT_THEME_FONT_BODY },
+  { value: resolvedThemeFontHeading, fallback: DEFAULT_THEME_FONT_HEADING },
+])
+
+const themeStyleVars = [
+  `--bg-r: ${backgroundRed}`,
+  `--bg-g: ${backgroundGreen}`,
+  `--bg-b: ${backgroundBlue}`,
+  `--bg-soft-r: ${backgroundSoftRed}`,
+  `--bg-soft-g: ${backgroundSoftGreen}`,
+  `--bg-soft-b: ${backgroundSoftBlue}`,
+  `--bg: ${resolvedThemeColors.colorBackground}`,
+  `--bg-soft: ${resolvedThemeColors.colorBackgroundSoft}`,
+  `--surface: ${surfaceColor}`,
+  `--surface-soft: ${surfaceSoftColor}`,
+  `--line: ${lineColor}`,
+  `--ink: ${resolvedThemeColors.colorText}`,
+  `--ink-soft: ${resolvedThemeColors.colorTextMuted}`,
+  `--accent: ${resolvedThemeColors.colorAccent}`,
+  `--accent-strong: ${resolvedThemeColors.colorAccentStrong}`,
+  `--button-bg: ${resolvedThemeColors.colorButton}`,
+  `--button-ink: ${resolvedThemeColors.colorButtonText}`,
+  `--accent-rgb: ${accentRed} ${accentGreen} ${accentBlue}`,
+  `--accent-strong-rgb: ${accentStrongRed} ${accentStrongGreen} ${accentStrongBlue}`,
+  `--button-rgb: ${buttonRed} ${buttonGreen} ${buttonBlue}`,
+  `--interior-hero-overlay-opacity: ${interiorHeroOverlayOpacity}`,
+  `--font-heading: ${resolveThemeFontFamily(resolvedThemeFontHeading, DEFAULT_THEME_FONT_HEADING)}`,
+  `--font-body: ${resolveThemeFontFamily(resolvedThemeFontBody, DEFAULT_THEME_FONT_BODY)}`,
+  `--main-nav-font-size: ${resolvedMainNavFontSizePx}px`,
+  `--immersive-btn-label-shift-standard: ${immersiveButtonLabelShifts.standard}`,
+  `--immersive-btn-label-shift-control: ${immersiveButtonLabelShifts.control}`,
+].join('; ')
+
+const rawThemeColors = {
+  colorBackground: normalizeThemeConfigValue(themeConfig.colorBackground),
+  colorBackgroundSoft: normalizeThemeConfigValue(themeConfig.colorBackgroundSoft),
+  colorText: normalizeThemeConfigValue(themeConfig.colorText),
+  colorTextMuted: normalizeThemeConfigValue(themeConfig.colorTextMuted),
+  colorAccent: normalizeThemeConfigValue(themeConfig.colorAccent),
+  colorAccentStrong: normalizeThemeConfigValue(themeConfig.colorAccentStrong),
+  colorButton: normalizeThemeConfigValue(themeConfig.colorButton),
+  colorButtonText: normalizeThemeConfigValue(themeConfig.colorButtonText),
+}
+
+const siteThemeData = JSON.stringify({
+  colors: resolvedThemeColors,
+  rawColors: rawThemeColors,
+  interiorHeroOverlayOpacity: normalizeThemeConfigValue(themeConfig.interiorHeroOverlayOpacity),
+  fontBody: resolvedThemeFontBody,
+  fontHeading: resolvedThemeFontHeading,
+})
+
+const {
+  title = siteConfig.siteTitle,
+  description = siteConfig.siteDescription,
+  url = Astro.site,
+  image = '/social-preview-image.png',
+  imageAlt = `${siteConfig.composerName} social preview image`,
+  author = siteConfig.composerName,
+  isHomepage = false,
+  skipTargetId = 'main-content',
+  pageContentClass,
+  bodyClass,
+  customBreadcrumbLabels,
+  headerBreadcrumbItems: customHeaderBreadcrumbItems,
+  replaceLastAutoBreadcrumbLabel,
+  pageHero,
+} = Astro.props
+
+const year = new Date().getFullYear()
+const currentPath = Astro.url.pathname
+const pathSegments = currentPath.split('/').filter(Boolean)
+const showHeaderBreadcrumbs =
+  !isHomepage &&
+  (currentPath !== '/' || Boolean(customHeaderBreadcrumbItems?.length) || Boolean(replaceLastAutoBreadcrumbLabel))
+const worksCollection = await getCollection('works')
+const { works: worksWithImages, uniqueTags } = prepareWorks(worksCollection)
+
+function resolveImagePath(value: string | undefined): string {
+  if (!value) return ''
+  const normalized = value.trim().toLowerCase()
+  const matched = worksImages.find((image) => image.path.toLowerCase() === normalized)
+  return matched ? matched.data.src : value
+}
+
+const defaultFallbackImage = { src: '', alt: 'Recording image', position: '50% 50%' }
+const allRecordingEntries = flattenRecordingEntries(
+  worksWithImages,
+  resolveImagePath,
+  defaultFallbackImage,
+  perusalScores,
+)
+
+const featuredRecordings = allRecordingEntries.filter((entry) => entry.mp3)
+const fallbackRecording = allRecordingEntries.find((entry) => entry.mp3) ?? null
+
+const featuredPlayerRecordings: ClientRecordingEntry[] =
+  featuredRecordings.length > 0 ? featuredRecordings : fallbackRecording ? [fallbackRecording] : []
+
+const serializedFeaturedPlayerRecordings = JSON.stringify(featuredPlayerRecordings)
+const serializedSiteAudioPlayerControls = JSON.stringify(siteAudioPlayerControls)
+const candidateWorkIdForInitialRecording =
+  pathSegments.length === 2 && pathSegments[0] === 'works' ? pathSegments[1] : undefined
+const workIdForInitialRecording =
+  candidateWorkIdForInitialRecording && worksWithImages.some((work) => work.id === candidateWorkIdForInitialRecording)
+    ? candidateWorkIdForInitialRecording
+    : undefined
+const initialWorkRecording = workIdForInitialRecording
+  ? featuredPlayerRecordings.find((entry) => entry.workId === workIdForInitialRecording)
+  : undefined
+const initialFeaturedRecordingKey = initialWorkRecording?.key
+const defaultFeaturedAudioSrc =
+  initialWorkRecording?.mp3 ?? featuredPlayerRecordings[0]?.mp3 ?? '/audio/featured-track.mp3'
+
+const searchableWorkItems: SearchableWorkItem[] = buildSearchableWorkItems(worksWithImages)
+const searchableTagItems = buildSearchableTagItems(uniqueTags)
+const searchableMusicItems: SearchableItem[] = [...searchableWorkItems, ...searchableTagItems]
+const searchableItems: SearchableItem[] = [...searchableMusicItems, ...generatedPageSearchEntries]
+const serializedMusicSearchItems = JSON.stringify(searchableMusicItems)
+const serializedSearchItems = JSON.stringify(searchableItems)
+
+type BreadcrumbItem = { href?: string; label: string; currentPage?: boolean }
+
+const formatSegmentLabel = (segment: string): string => {
+  if (customBreadcrumbLabels?.[segment]) {
+    return customBreadcrumbLabels[segment]
+  }
+  return decodeURIComponent(segment)
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+const autoHeaderBreadcrumbItems: BreadcrumbItem[] = []
+
+if (showHeaderBreadcrumbs) {
+  autoHeaderBreadcrumbItems.push({ href: '/', label: 'Home' })
+  pathSegments.forEach((segment, index) => {
+    const url = `/${pathSegments.slice(0, index + 1).join('/')}/`
+    const isLast = index === pathSegments.length - 1
+    const isNumericPageSegment = /^\d+$/.test(segment)
+
+    autoHeaderBreadcrumbItems.push({
+      href: isLast ? undefined : url,
+      label: isNumericPageSegment ? `Page ${segment}` : formatSegmentLabel(segment),
+      currentPage: isLast,
+    })
+  })
+}
+
+const knownWorkIdSet = new Set(worksWithImages.map((work) => work.id))
+const knownTagSlugSet = new Set(uniqueTags.map((tag) => tag.slug))
+const knownBreadcrumbPathSet = new Set(
+  [
+    ...generatedPageSearchEntries.map((entry) => entry.href),
+    ...primaryNavLinks.map((link) => link.href),
+    ...worksWithImages.map((work) => `/works/${work.id}/`),
+    ...worksWithImages
+      .filter((work) => Boolean(perusalScores[work.id]))
+      .map((work) => `/works/${work.id}/perusal-score/`),
+    ...uniqueTags.map((tag) => `/works/browse/${tag.slug}/`),
+  ].map((path) => normalizePath(path)),
+)
+
+function normalizePath(path: string): string {
+  if (!path) return '/'
+  let normalized = path.startsWith('/') ? path : `/${path}`
+  normalized = normalized.replace(/\/+/g, '/')
+  if (normalized !== '/' && !normalized.endsWith('/')) normalized += '/'
+  return normalized
+}
+
+function isKnownBreadcrumbPath(path: string): boolean {
+  const normalized = normalizePath(path)
+  if (knownBreadcrumbPathSet.has(normalized)) return true
+
+  const workDetailMatch = normalized.match(/^\/works\/([^/]+)\/$/)
+  if (workDetailMatch) {
+    return knownWorkIdSet.has(workDetailMatch[1])
+  }
+
+  const perusalMatch = normalized.match(/^\/works\/([^/]+)\/perusal-score\/$/)
+  if (perusalMatch) {
+    const workId = perusalMatch[1]
+    return knownWorkIdSet.has(workId) && Boolean(perusalScores[workId])
+  }
+
+  const tagPaginationMatch = normalized.match(/^\/works\/browse\/([^/]+)\/(\d+)\/$/)
+  if (tagPaginationMatch) {
+    const [, tagSlug, page] = tagPaginationMatch
+    return knownTagSlugSet.has(tagSlug) && Number(page) >= 1
+  }
+
+  return false
+}
+
+function buildValidAutoBreadcrumbPrefixItems(): BreadcrumbItem[] {
+  const validPrefixItems: BreadcrumbItem[] = [{ href: '/', label: 'Home' }]
+
+  for (let index = 0; index < pathSegments.length; index += 1) {
+    const segment = pathSegments[index]
+    const url = `/${pathSegments.slice(0, index + 1).join('/')}/`
+    if (!isKnownBreadcrumbPath(url)) break
+
+    const isNumericPageSegment = /^\d+$/.test(segment)
+    validPrefixItems.push({
+      href: url,
+      label: isNumericPageSegment ? `Page ${segment}` : formatSegmentLabel(segment),
+    })
+  }
+
+  return validPrefixItems
+}
+
+const notFoundBreadcrumbItems =
+  replaceLastAutoBreadcrumbLabel && replaceLastAutoBreadcrumbLabel.trim().length > 0
+    ? [
+        ...buildValidAutoBreadcrumbPrefixItems().map((item) => ({ ...item, currentPage: false })),
+        { label: replaceLastAutoBreadcrumbLabel.trim(), currentPage: true },
+      ]
+    : null
+
+const resolvedHeaderBreadcrumbItems =
+  customHeaderBreadcrumbItems && customHeaderBreadcrumbItems.length > 0
+    ? customHeaderBreadcrumbItems
+    : notFoundBreadcrumbItems && notFoundBreadcrumbItems.length > 0
+      ? notFoundBreadcrumbItems
+      : autoHeaderBreadcrumbItems
+const hasHeaderBreadcrumbs = showHeaderBreadcrumbs && resolvedHeaderBreadcrumbItems.length > 1
+
+const pageHeroStyle =
+  pageHero && pageHero.src
+    ? [
+        `--page-hero-image: url('${pageHero.src}')`,
+        `--page-hero-position: ${pageHero.position || '50% 50%'}`,
+        `--page-hero-filter: ${pageHero.filter || 'none'}`,
+      ].join('; ')
+    : undefined
+
+function resolveToolbarHeroPageKey(pathname: string): ToolbarHeroPageKey {
+  const normalizedPath = pathname.endsWith('/') ? pathname : `${pathname}/`
+  if (normalizedPath === '/') return 'home'
+  if (normalizedPath.startsWith('/contact/')) return 'contact'
+  if (normalizedPath.startsWith('/works/')) return 'works'
+  if (normalizedPath.startsWith('/about/')) return 'about'
+  return 'preview'
+}
+
+const heroVariantEventName = 'jv:immersive:hero-variant:set'
+const toolbarHeroPageKey = resolveToolbarHeroPageKey(currentPath)
+const isDevMode = import.meta.env.DEV
+const heroVariantsForToolbar = isDevMode ? getHeroVariants() : []
+const heroConfigForToolbar = getHeroConfig()
+const fallbackHeroSrcForToolbar =
+  heroVariantsForToolbar.find((variant) => variant.id === heroConfigForToolbar.fallbackHeroId)?.src ??
+  heroVariantsForToolbar[0]?.src ??
+  ''
+const siteHeroSwitcherPageData = JSON.stringify({
+  pageKey: toolbarHeroPageKey,
+  heroVariants: heroVariantsForToolbar,
+  fallbackHeroSrc: fallbackHeroSrcForToolbar,
+  defaultHeroFilter: heroConfigForToolbar.defaultFilter,
+  heroVariantEventName,
+  devMode: isDevMode,
+})
+---
+
+<html
+  lang="en"
+  dir="ltr"
+  style={themeStyleVars}
+  data-page={isHomepage ? 'home' : undefined}
+  data-has-header-breadcrumbs={hasHeaderBreadcrumbs ? 'true' : undefined}
+>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    {
+      googleFontsStylesheetHref && (
+        <>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+          <link rel="stylesheet" href={googleFontsStylesheetHref} />
+        </>
+      )
+    }
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=7" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
+    <link rel="shortcut icon" href="/favicon.ico?v=7" />
+    <meta name="apple-mobile-web-app-title" content={siteConfig.composerName} />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <SiteMeta
+      title={title}
+      description={description}
+      url={String(url)}
+      image={image}
+      imageAlt={imageAlt}
+      author={author}
+    />
+    <GoogleAnalytics />
+    <ClientRouter />
+    <noscript>
+      <style>
+        html[data-page='home'] [data-brand-link] {
+          visibility: visible !important;
+        }
+      </style>
+    </noscript>
+  </head>
+  <body data-page={isHomepage ? 'home' : undefined} class:list={[bodyClass]}>
+    <a class="skip-link" href={`#${skipTargetId}`}>Skip to main content</a>
+
+    <header class="site-header" aria-label="Site header">
+      <div class="brand-slot">
+        <BrandRenderer brandConfig={brandConfig} composerName={siteConfig.composerName} isHomepage={isHomepage} />
+      </div>
+
+      <nav class="desktop-nav" aria-label="Primary navigation">
+        <ul>
+          {
+            primaryNavLinks.map((link) => {
+              const href = resolveNavHref(link, currentPath)
+              const isCurrent = !link.anchorTarget && currentPath.startsWith(link.href)
+              return (
+                <li>
+                  <a href={href} aria-current={isCurrent ? 'page' : undefined}>
+                    {link.label}
+                  </a>
+                </li>
+              )
+            })
+          }
+        </ul>
+      </nav>
+
+      <button
+        type="button"
+        class="menu-search-toggle"
+        data-works-search-modal-toggle
+        data-mobile-header-search-toggle
+        aria-controls="works-search-modal mobile-menu-modal"
+        aria-expanded="false"
+        aria-label="Open search"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+          <circle cx="11" cy="11" r="6.5"></circle>
+          <path d="M16.2 16.2L21 21"></path>
+        </svg>
+      </button>
+
+      <div class="menu-toggle-slot" data-menu-toggle-slot>
+        <button
+          type="button"
+          class="menu-toggle"
+          data-menu-toggle
+          aria-controls="mobile-menu-modal"
+          aria-expanded="false"
+          aria-label="Open menu"
+        >
+          <span class="sr-only">Menu</span>
+          <span class="menu-toggle-icon" aria-hidden="true">
+            <span class="menu-toggle-line menu-toggle-line-top"></span>
+            <span class="menu-toggle-line menu-toggle-line-middle"></span>
+            <span class="menu-toggle-line menu-toggle-line-bottom"></span>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    {
+      hasHeaderBreadcrumbs && (
+        <div class="site-header-breadcrumbs">
+          <ImmersiveBreadcrumbs items={resolvedHeaderBreadcrumbItems} />
+        </div>
+      )
+    }
+
+    <script is:inline id="site-search-data" type="application/json" set:html={serializedSearchItems} />
+    <script is:inline id="music-search-data" type="application/json" set:html={serializedMusicSearchItems} />
+    <script is:inline id="site-theme-config-data" type="application/json" set:html={siteThemeData} />
+    <script is:inline id="site-hero-switcher-page-data" type="application/json" set:html={siteHeroSwitcherPageData} />
+
+    <dialog class="mobile-menu-modal" id="mobile-menu-modal" aria-label="Mobile navigation menu">
+      <nav class="mobile-menu-nav" data-mobile-menu-nav aria-label="Mobile navigation" tabindex="-1">
+        <ul>
+          {
+            primaryNavLinks.map((link) => {
+              const href = resolveNavHref(link, currentPath)
+              return (
+                <li>
+                  <a class="mobile-menu-link" href={href}>
+                    {link.label}
+                  </a>
+                </li>
+              )
+            })
+          }
+          <li class="mobile-menu-social">
+            {
+              socialLinks.map((link) => (
+                <a href={link.url} rel="noreferrer noopener" target="_blank" aria-label={link.platform}>
+                  <SocialIcon icon={link.platform} />
+                  <span class="sr-only">{link.platform}</span>
+                </a>
+              ))
+            }
+          </li>
+        </ul>
+      </nav>
+
+      <section class="mobile-menu-search" data-mobile-menu-search aria-label="Search" hidden>
+        <div data-mobile-menu-search-scope="site">
+          <WorksSearch
+            mode="site"
+            dataScriptId="site-search-data"
+            idPrefix="mobile-menu-search-site"
+            placeholder="Search..."
+            autofocus={false}
+            showInitialResults={true}
+            initialResultsLimit={10}
+          />
+        </div>
+        <div data-mobile-menu-search-scope="music" hidden aria-hidden="true">
+          <WorksSearch
+            mode="site"
+            dataScriptId="music-search-data"
+            idPrefix="mobile-menu-search-music"
+            label="Search works"
+            placeholder="Enter keywords..."
+            autofocus={false}
+            showInitialResults={true}
+            initialResultsLimit={10}
+          />
+        </div>
+      </section>
+    </dialog>
+
+    <dialog class="works-search-modal" id="works-search-modal" aria-label="Search">
+      <div class="works-search-modal-panel" tabindex="-1">
+        <button type="button" class="works-search-modal-close" data-works-search-modal-close aria-label="Close search">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="M6 6L18 18"></path>
+            <path d="M18 6L6 18"></path>
+          </svg>
+        </button>
+        <div data-works-search-modal-scope="site">
+          <WorksSearch
+            mode="site"
+            dataScriptId="site-search-data"
+            idPrefix="menu-search-site"
+            autofocus={false}
+            showInitialResults={true}
+            initialResultsLimit={10}
+          />
+        </div>
+        <div data-works-search-modal-scope="music" hidden aria-hidden="true">
+          <WorksSearch
+            mode="site"
+            dataScriptId="music-search-data"
+            idPrefix="menu-search-music"
+            label="Search works"
+            placeholder="Enter keywords..."
+            autofocus={false}
+            showInitialResults={true}
+            initialResultsLimit={10}
+          />
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="youtube-lightbox" id="youtube-lightbox" aria-label="YouTube video">
+      <div class="youtube-lightbox-panel" tabindex="-1">
+        <button type="button" class="youtube-lightbox-close" data-youtube-lightbox-close aria-label="Close video">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+            <path d="M6 6L18 18"></path>
+            <path d="M18 6L6 18"></path>
+          </svg>
+        </button>
+        <div class="youtube-lightbox-embed" data-youtube-lightbox-embed></div>
+      </div>
+    </dialog>
+
+    {
+      isHomepage ? (
+        <main id="main-content" transition:animate="fade">
+          <slot />
+        </main>
+      ) : (
+        <main
+          id="main-content"
+          class:list={[
+            'page-content',
+            hasHeaderBreadcrumbs && 'page-content-with-header-breadcrumbs',
+            pageHero && 'page-content-with-hero',
+            pageContentClass,
+          ]}
+          style={pageHeroStyle}
+          data-page-hero-id={pageHero?.id || undefined}
+          data-page-hero-page={pageHero?.pageKey || toolbarHeroPageKey}
+          transition:animate="fade"
+        >
+          <slot />
+        </main>
+      )
+    }
+
+    <footer class="site-footer">
+      <p>&copy; {year} {siteConfig.copyrightHolder}</p>
+      <div class="footer-links">
+        {footerLinks.map((link) => <a href={link.href}>{link.label}</a>)}
+      </div>
+    </footer>
+
+    <div data-featured-player-persist transition:persist>
+      <div data-featured-player-dock>
+        <div class="featured-player-shell" data-featured-player-shell hidden>
+          <div class="featured-player-ui" role="group" aria-label="Featured recording controls">
+            <button
+              type="button"
+              class="featured-control featured-control-bounce featured-control-nav featured-control-prev"
+              data-featured-prev
+              aria-label="Previous featured recording"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m16.3 4.9-8.6 7.1 8.6 7.1"></path>
+              </svg>
+              <span class="sr-only">Play previous featured recording</span>
+            </button>
+            <button
+              type="button"
+              class="featured-control featured-control-bounce featured-control-play"
+              data-featured-toggle
+              aria-label="Pause featured recording"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path class="icon-play" d="M7 5.1L19 12L7 18.9V5.1Z" fill="currentColor" stroke="none"></path>
+                <path class="icon-pause" d="M8.4 5.7V18.3M15.6 5.7V18.3"></path>
+              </svg>
+              <span class="sr-only">Toggle featured recording playback</span>
+            </button>
+            <button
+              type="button"
+              class="featured-control featured-control-bounce featured-control-nav featured-control-next"
+              data-featured-next
+              aria-label="Next featured recording"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m7.7 4.9 8.6 7.1-8.6 7.1"></path>
+              </svg>
+              <span class="sr-only">Play next featured recording</span>
+            </button>
+            <label class="sr-only" for="featured-track-seek">Seek featured recording</label>
+            <input
+              id="featured-track-seek"
+              class="featured-seek"
+              type="range"
+              min="0"
+              max="100"
+              step="0.1"
+              value="0"
+              data-featured-seek
+            />
+            <button
+              type="button"
+              class="featured-control featured-control-mute"
+              data-featured-mute
+              aria-label="Mute featured recording"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4.5 10.1h4L13.7 6v12l-5.2-4.1h-4z"></path>
+                <path class="icon-sound-on" d="M16.6 9.1a4.4 4.4 0 0 1 0 5.8"></path>
+                <path class="icon-sound-on" d="M18.8 7.1a7.1 7.1 0 0 1 0 9.8"></path>
+                <path class="icon-sound-off" d="M16.2 9.2l4.2 5.6"></path>
+                <path class="icon-sound-off" d="M20.4 9.2l-4.2 5.6"></path>
+              </svg>
+              <span class="sr-only">Toggle featured recording mute</span>
+            </button>
+            <span class="featured-time featured-time-current" data-featured-time-current aria-live="off">0:00</span>
+            <span class="featured-time featured-time-total" data-featured-time-total aria-live="off">--:--</span>
+          </div>
+        </div>
+      </div>
+      <script
+        is:inline
+        type="application/json"
+        data-featured-recordings-data
+        set:html={serializedFeaturedPlayerRecordings}
+      />
+      <script
+        is:inline
+        type="application/json"
+        data-audio-player-controls
+        set:html={serializedSiteAudioPlayerControls}
+      />
+      <audio
+        id="featured-track-player"
+        preload="none"
+        data-featured-player
+        data-featured-recording-key={initialFeaturedRecordingKey || undefined}
+      >
+        <source src={defaultFeaturedAudioSrc} type="audio/mpeg" data-featured-source />
+        Your browser does not support the audio element.
+      </audio>
+      <div class="fixed-player-bar" data-fixed-player-bar hidden aria-label="Now playing" role="region">
+        <div class="fixed-player-bar-inner">
+          <div class="fixed-player-bar-meta">
+            <div class="fixed-player-bar-main-controls" role="group" aria-label="Playback controls">
+              <button
+                type="button"
+                class="featured-control featured-control-bounce featured-control-nav featured-control-prev fixed-player-bar-top-control fixed-player-bar-top-prev"
+                data-fixed-bar-prev
+                aria-label="Previous featured recording"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m16.3 4.9-8.6 7.1 8.6 7.1"></path>
+                </svg>
+                <span class="sr-only">Play previous featured recording</span>
+              </button>
+              <button
+                type="button"
+                class="featured-control featured-control-bounce featured-control-play fixed-player-bar-top-control fixed-player-bar-top-play"
+                data-fixed-bar-toggle
+                aria-label="Pause featured recording"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path class="icon-play" d="M7 5.1L19 12L7 18.9V5.1Z" fill="currentColor" stroke="none"></path>
+                  <path class="icon-pause" d="M8.4 5.7V18.3M15.6 5.7V18.3"></path>
+                </svg>
+                <span class="sr-only">Toggle featured recording playback</span>
+              </button>
+              <button
+                type="button"
+                class="featured-control featured-control-bounce featured-control-nav featured-control-next fixed-player-bar-top-control fixed-player-bar-top-next"
+                data-fixed-bar-next
+                aria-label="Next featured recording"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m7.7 4.9 8.6 7.1-8.6 7.1"></path>
+                </svg>
+                <span class="sr-only">Play next featured recording</span>
+              </button>
+            </div>
+            <div class="fixed-player-bar-marquee-slot">
+              <span class="fixed-player-bar-marquee" data-fixed-bar-marquee>
+                <span class="fixed-player-bar-marquee-content" data-fixed-bar-marquee-content></span>
+              </span>
+            </div>
+            <a
+              href="/works/"
+              class="featured-control featured-control-bounce fixed-player-bar-info"
+              data-fixed-bar-link-icon
+              aria-label="More details for featured work"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.9"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="8.8"></circle>
+                <path d="M12 11.2v5"></path>
+                <path d="M12 7.8h.01"></path>
+              </svg>
+              <span class="sr-only">More details for featured work</span>
+            </a>
+            <div class="fixed-player-bar-volume-control">
+              <button
+                type="button"
+                class="featured-control featured-control-mute fixed-player-bar-mute"
+                data-fixed-bar-mute
+                aria-label="Mute featured recording"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4.5 10.1h4L13.7 6v12l-5.2-4.1h-4z"></path>
+                  <path class="icon-sound-on" d="M16.6 9.1a4.4 4.4 0 0 1 0 5.8"></path>
+                  <path class="icon-sound-on" d="M18.8 7.1a7.1 7.1 0 0 1 0 9.8"></path>
+                  <path class="icon-sound-off" d="M16.2 9.2l4.2 5.6"></path>
+                  <path class="icon-sound-off" d="M20.4 9.2l-4.2 5.6"></path>
+                </svg>
+                <span class="sr-only">Toggle featured recording mute</span>
+              </button>
+              <div class="fixed-player-bar-volume-panel">
+                <label class="sr-only" for="fixed-bar-volume">Featured recording volume</label>
+                <input
+                  id="fixed-bar-volume"
+                  class="fixed-player-bar-volume"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="100"
+                  data-fixed-bar-volume
+                  aria-label="Featured recording volume"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="fixed-player-bar-controls">
+            <!-- shell gets appended here via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <slot name="body-overlays" />
+    <slot name="body-scripts" />
+    <ul class="social-strip" aria-label="Social links">
+      {
+        socialLinks.map((link) => (
+          <li>
+            <a href={link.url} rel="noreferrer noopener" target="_blank" aria-label={link.platform}>
+              <SocialIcon icon={link.platform} />
+              <span class="sr-only">{link.platform}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <script src="../scripts/works-search.ts"></script>
+    <script src="../scripts/works-search-modal.ts"></script>
+    <script src="../scripts/external-link-icons.ts"></script>
+    <script src="../scripts/youtube-lightbox.ts"></script>
+    <script src="../scripts/immersive/menu-standalone.ts"></script>
+    <script src="../scripts/immersive/index.ts"></script>
+    <script src="../scripts/focus-policy-global.ts"></script>
+
+    <script is:inline>
+      document.addEventListener('astro:page-load', () => {
+        document.querySelectorAll('a[href*="/perusal-score/"]').forEach((link) => {
+          link.setAttribute('data-astro-reload', '')
+        })
+
+        const skipLink = document.querySelector('.skip-link')
+        if (skipLink instanceof HTMLAnchorElement && skipLink.dataset.skipBound !== 'true') {
+          skipLink.dataset.skipBound = 'true'
+
+          const onSkipClick = (event) => {
+            const href = skipLink.getAttribute('href')
+            if (!href || !href.startsWith('#')) return
+
+            const target = document.querySelector(href)
+            if (!(target instanceof HTMLElement)) return
+
+            event.preventDefault()
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            if (!target.hasAttribute('tabindex')) {
+              target.setAttribute('tabindex', '-1')
+            }
+            focusElement(target)
+            target.scrollIntoView({ block: 'start', behavior: prefersReducedMotion ? 'auto' : 'smooth' })
+            history.replaceState(null, '', href)
+          }
+
+          skipLink.addEventListener('click', onSkipClick)
+        }
+
+        const contactHash = '#contact'
+        const normalizePathname = (pathname) => pathname.replace(/\/+$/, '') || '/'
+        const focusElement = (element) => {
+          if (!(element instanceof HTMLElement)) return
+          const focusWithPolicy = window.__siteFocusPolicy?.focusElement
+          if (typeof focusWithPolicy === 'function') {
+            focusWithPolicy(element, { preventScroll: true })
+            return
+          }
+          element.focus({ preventScroll: true })
+        }
+        const focusTextInput = (element) => {
+          if (!(element instanceof HTMLElement)) return
+          const focusWithPolicy = window.__siteFocusPolicy?.focusTextInput
+          if (typeof focusWithPolicy === 'function') {
+            focusWithPolicy(element, { preventScroll: true })
+            return
+          }
+          element.focus({ preventScroll: true })
+        }
+        const shouldAutoFocusTextInput = () =>
+          window.__siteFocusPolicy?.canAutoFocusTextInput?.() ??
+          (!window.matchMedia('(pointer: coarse)').matches && !window.matchMedia('(hover: none)').matches)
+        const queueContactFocusAfterScroll = () => {
+          if (!shouldAutoFocusTextInput()) return
+          window.setTimeout(() => {
+            const contactSection = document.querySelector(contactHash)
+            if (!(contactSection instanceof HTMLElement)) return
+
+            const firstInput = contactSection.querySelector('input, textarea, select')
+            if (!(firstInput instanceof HTMLElement)) return
+
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            if (prefersReducedMotion) {
+              focusTextInput(firstInput)
+              return
+            }
+
+            let stableFrames = 0
+            let lastX = window.scrollX
+            let lastY = window.scrollY
+            const stableFramesRequired = 8
+            const maxWaitMs = 2400
+            const startTime = performance.now()
+
+            const waitForScrollEnd = () => {
+              const deltaX = Math.abs(window.scrollX - lastX)
+              const deltaY = Math.abs(window.scrollY - lastY)
+              if (deltaX < 1 && deltaY < 1) {
+                stableFrames += 1
+              } else {
+                stableFrames = 0
+              }
+
+              lastX = window.scrollX
+              lastY = window.scrollY
+
+              if (stableFrames >= stableFramesRequired || performance.now() - startTime >= maxWaitMs) {
+                focusTextInput(firstInput)
+                return
+              }
+
+              window.requestAnimationFrame(waitForScrollEnd)
+            }
+
+            window.requestAnimationFrame(waitForScrollEnd)
+          }, 80)
+        }
+        const focusDedicatedContactNameField = () => {
+          if (!shouldAutoFocusTextInput()) return
+          if (normalizePathname(window.location.pathname) !== '/contact') return
+
+          const nameField = document.getElementById('contact-name')
+          if (!(nameField instanceof HTMLInputElement)) return
+          const hasMeaningfulFocus = () => {
+            const activeElement = document.activeElement
+            return (
+              activeElement instanceof HTMLElement &&
+              activeElement !== document.body &&
+              activeElement !== document.documentElement
+            )
+          }
+
+          if (hasMeaningfulFocus() && document.activeElement !== nameField) return
+
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              if (hasMeaningfulFocus() && document.activeElement !== nameField) return
+              focusTextInput(nameField)
+            })
+          })
+        }
+
+        const bindContactHashFocusLinks = () => {
+          const contactLinks = document.querySelectorAll('a[href*="#contact"]')
+          contactLinks.forEach((link) => {
+            if (!(link instanceof HTMLAnchorElement)) return
+            if (link.dataset.contactFocusBound === 'true') return
+            link.dataset.contactFocusBound = 'true'
+
+            link.addEventListener('click', () => {
+              let linkUrl
+              try {
+                linkUrl = new URL(link.href, window.location.href)
+              } catch {
+                return
+              }
+
+              const isSamePageLink =
+                linkUrl.hash === contactHash &&
+                normalizePathname(linkUrl.pathname) === normalizePathname(window.location.pathname)
+              if (!isSamePageLink) return
+
+              queueContactFocusAfterScroll()
+            })
+          })
+        }
+
+        bindContactHashFocusLinks()
+        focusDedicatedContactNameField()
+
+        if (window.location.hash === contactHash) {
+          queueContactFocusAfterScroll()
+        }
+      })
+    </script>
+
+    <script is:inline>
+      ;(() => {
+        if (window.__devToolbarCanvasRepairBound) return
+        window.__devToolbarCanvasRepairBound = true
+
+        const findCanvasForApp = (shadowRoot, appId) =>
+          Array.from(shadowRoot.querySelectorAll('astro-dev-toolbar-app-canvas')).find(
+            (canvas) => canvas instanceof HTMLElement && canvas.dataset.appId === appId,
+          ) ?? null
+
+        const ensureDevToolbarCanvases = () => {
+          const toolbar = document.querySelector('astro-dev-toolbar')
+          if (!(toolbar instanceof HTMLElement)) return
+          const shadowRoot = toolbar.shadowRoot
+          if (!shadowRoot) return
+
+          const apps = Array.isArray(toolbar.apps) ? toolbar.apps : []
+          if (apps.length === 0) return
+
+          let recreatedCanvas = false
+
+          for (const app of apps) {
+            const appId = typeof app?.id === 'string' ? app.id : ''
+            if (!appId) continue
+
+            if (!findCanvasForApp(shadowRoot, appId)) {
+              const appCanvas = document.createElement('astro-dev-toolbar-app-canvas')
+              appCanvas.dataset.appId = appId
+              shadowRoot.append(appCanvas)
+              recreatedCanvas = true
+            }
+          }
+
+          if (!recreatedCanvas) return
+
+          const initApp = typeof toolbar.initApp === 'function' ? toolbar.initApp.bind(toolbar) : null
+          const setAppStatus = typeof toolbar.setAppStatus === 'function' ? toolbar.setAppStatus.bind(toolbar) : null
+
+          if (initApp) {
+            for (const app of apps) {
+              try {
+                initApp(app)
+              } catch {}
+            }
+          }
+
+          if (setAppStatus) {
+            for (const app of apps) {
+              try {
+                setAppStatus(app, Boolean(app?.active))
+              } catch {}
+            }
+          }
+        }
+
+        const scheduleRepair = () => {
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              ensureDevToolbarCanvases()
+            })
+          })
+        }
+
+        document.addEventListener('astro:after-swap', scheduleRepair)
+        document.addEventListener('astro:page-load', scheduleRepair)
+        scheduleRepair()
+      })()
+    </script>
+
+  </body>
+</html>

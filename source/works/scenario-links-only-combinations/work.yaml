@@ -1,0 +1,55 @@
+title: "Scenario: Links-Only Recording Combinations"
+subtitle: external links with no local media files
+description: |
+  Demonstrates recordings that rely on external links only.
+  Includes one single recording entry and one multi-movement recording entry.
+thumbnail:
+  alt: Placeholder cover image for links-only recording combinations.
+  crop: ''
+completionDate: '2025-11-02'
+duration: ca. 8'
+difficulty: Intermediate
+tags:
+  - Scenario
+  - Links Only
+  - Starter
+instrumentation:
+  - flute
+  - clarinet
+  - piano
+searchKeywords:
+  - links only
+  - youtube only
+  - scenario
+selected: false
+recordings:
+  - folder: studio-session-2025
+    performers:
+      - Dr. Teeth, piano
+    date: '2025-10-18'
+    duration: 3' 48"
+    youtubeUrl: https://example.com/scenario-links-only-combinations/studio-session
+    featuredRecording: true
+    notes: External video link only (no local photo/audio).
+    movements: []
+  - folder: live-series-2026
+    performers:
+      - Janice, flute
+      - Scooter, clarinet
+      - Dr. Teeth, piano
+    ensemble: Dr. Teeth, Floyd Pepper, Zoot, Janice, and Animal
+    date: '2026-01-12'
+    notes: Multi-movement links only (movement folders exist, no media inside).
+    movements:
+      - label: I. Pulse
+        youtubeUrl: https://example.com/scenario-links-only-combinations/live-series/pulse
+        duration: 2' 14"
+        featuredRecording: false
+      - label: II. Glass
+        youtubeUrl: https://example.com/scenario-links-only-combinations/live-series/glass
+        duration: 2' 01"
+        featuredRecording: false
+sheetMusic:
+  - label: Study score (PDF)
+    url: https://example.com/scenario-links-only-combinations/study-score
+performances: []

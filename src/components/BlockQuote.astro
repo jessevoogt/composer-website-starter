@@ -1,0 +1,56 @@
+---
+import { Icon } from 'astro-icon/components'
+
+interface Props {
+  /**
+   * The quote content that will be displayed
+   */
+  children: unknown
+  /**
+   * The name of the person who said the quote
+   */
+  author?: string
+}
+
+const { author } = Astro.props
+---
+
+<blockquote class="blockquote">
+  <div>
+    <Icon aria-hidden="true" name="lucide:quote" size="2rem" />
+    <slot />
+    <Icon aria-hidden="true" name="lucide:quote" size="2rem" />
+  </div>
+  {author && <cite>{author}</cite>}
+</blockquote>
+
+<style>
+  .blockquote {
+    border-left: 4px solid var(--accent);
+    padding-left: 1rem;
+    font-size: var(--font-size-2);
+    color: var(--ink);
+  }
+
+  .blockquote :global(p) {
+    display: inline;
+  }
+
+  .blockquote :global(svg) {
+    display: inline;
+    color: var(--accent);
+    margin-block-start: calc(var(--space-s) * -1);
+  }
+
+  .blockquote :global(svg:first-child) {
+    scale: -1 1;
+  }
+
+  .blockquote cite {
+    display: block;
+    margin-block-start: var(--space-s);
+    font-size: var(--font-size-1);
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+</style>

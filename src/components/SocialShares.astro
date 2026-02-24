@@ -1,0 +1,550 @@
+---
+import { getSharingConfig, type ShareOption } from '@/utils/source-config'
+
+/**
+ * SocialShares Component
+ *
+ * @description A component for sharing content on social media platforms
+ */
+interface Props {
+  /**
+   * The URL to share
+   * @default Current page URL
+   */
+  url?: string
+  /**
+   * Enabled share options, in display order.
+   * @default Reads from source/site/sharing.yaml
+   */
+  enabledShares?: ShareOption[]
+}
+
+const sharingConfig = getSharingConfig()
+
+const { url = Astro.url.href, enabledShares = sharingConfig.enabledShares } = Astro.props
+
+const enabledShareSet = new Set<ShareOption>(enabledShares)
+const resolvedFacebookAppId = [import.meta.env.PUBLIC_FACEBOOK_APP_ID, import.meta.env.PUBLIC_FB_APP_ID]
+  .map((value) => (typeof value === 'string' ? value.trim() : ''))
+  .find((value) => value.length > 0)
+
+function getFacebookShareHref(shareUrl: string): string {
+  if (!resolvedFacebookAppId) {
+    return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+  }
+
+  const encodedAppId = encodeURIComponent(resolvedFacebookAppId)
+  const encodedHref = encodeURIComponent(shareUrl)
+  const encodedRedirectUri = encodeURIComponent(shareUrl)
+  return `https://www.facebook.com/dialog/share?app_id=${encodedAppId}&display=popup&href=${encodedHref}&redirect_uri=${encodedRedirectUri}`
+}
+
+function isShareEnabled(share: ShareOption): boolean {
+  return enabledShareSet.has(share)
+}
+---
+
+<div data-social-shares-root data-social-shares-mode="platforms">
+<ul class="social-shares-list">
+  {
+    isShareEnabled('facebook') && (
+      <li class="social-shares-item">
+        <a
+          href={getFacebookShareHref(url)}
+          class="immersive-btn immersive-btn-control social-shares-link"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-social-share-link
+          data-social-platform="facebook"
+          data-share-url={url}
+          aria-label="Share on Facebook"
+        >
+          <span class="immersive-btn-label">
+            <span class="social-shares-icon social-shares-icon-facebook" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+                <path
+                  d="M13.3 20.9V13.1H15.9L16.3 10.1H13.3V8.2C13.3 7.3 13.6 6.7 14.9 6.7H16.4V4.1C16.1 4 15.1 4 14 4C11.6 4 10 5.5 10 8.2V10.1H7.6V13.1H10V20.9H13.3Z"
+                  fill="currentColor"
+                ></path>
+              </svg>
+            </span>
+            <span class="social-shares-text">Facebook</span>
+          </span>
+        </a>
+      </li>
+    )
+  }
+  {
+    isShareEnabled('twitter') && (
+      <li class="social-shares-item">
+        <a
+          href={`https://x.com/share?url=${encodeURIComponent(url)}`}
+          class="immersive-btn immersive-btn-control social-shares-link"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-social-share-link
+          data-social-platform="twitter"
+          data-share-url={url}
+          aria-label="Share on Twitter, opens in a new tab"
+        >
+          <span class="immersive-btn-label">
+            <span class="social-shares-icon social-shares-icon-x" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+                <path
+                  d="M17.3 4H20.2L13.8 11.3L21 20H15.5L11.2 15L6.8 20H3.9L10.8 12.2L4 4H9.6L13.5 8.6L17.3 4ZM16.3 18.2H17.9L8.7 5.7H7.1L16.3 18.2Z"
+                  fill="currentColor"
+                ></path>
+              </svg>
+            </span>
+            <span class="social-shares-text">Twitter</span>
+          </span>
+        </a>
+      </li>
+    )
+  }
+  {
+    isShareEnabled('threads') && (
+      <li class="social-shares-item">
+        <a
+          href={`https://www.threads.net/intent/post?text=${encodeURIComponent(url)}`}
+          class="immersive-btn immersive-btn-control social-shares-link"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-social-share-link
+          data-social-platform="threads"
+          data-share-url={url}
+          aria-label="Share on Threads, opens in a new tab"
+        >
+          <span class="immersive-btn-label">
+            <span class="social-shares-icon social-shares-icon-threads" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="7.2" stroke="currentColor" stroke-width="2"></circle>
+                <path
+                  d="M9.1 12.2C9.1 10.5 10.3 9.2 12 9.2C13.7 9.2 14.9 10.4 14.9 12.2C14.9 13.8 14.1 14.9 13.1 14.9C12.4 14.9 12 14.5 12 13.8V11.6"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+                <circle cx="12" cy="12.2" r="1.1" fill="currentColor"></circle>
+              </svg>
+            </span>
+            <span class="social-shares-text">Threads</span>
+          </span>
+        </a>
+      </li>
+    )
+  }
+  {
+    isShareEnabled('bluesky') && (
+      <li class="social-shares-item">
+        <a
+          href={`https://bsky.app/intent/compose?text=${encodeURIComponent(url)}`}
+          class="immersive-btn immersive-btn-control social-shares-link"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-social-share-link
+          data-social-platform="bluesky"
+          data-share-url={url}
+          aria-label="Share on Bluesky, opens in a new tab"
+        >
+          <span class="immersive-btn-label">
+            <span class="social-shares-icon social-shares-icon-bluesky" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 13.6C14.4 10.4 16.4 8.8 17.8 9C19 9.2 19.6 10.3 19.2 11.4C18.6 13.4 16.5 14.4 14.1 14.2C15.7 14.7 16.7 15.7 16.5 16.9C16.2 18.2 14.8 18.9 13.5 18.4C12.4 18 11.5 16.9 10.8 15.4C10 16.9 9.2 18 8 18.4C6.7 18.9 5.3 18.2 5 16.9C4.8 15.7 5.8 14.7 7.4 14.2C5 14.4 2.9 13.4 2.3 11.4C1.9 10.3 2.5 9.2 3.7 9C5.1 8.8 7.1 10.4 9.5 13.6"
+                  fill="currentColor"
+                ></path>
+              </svg>
+            </span>
+            <span class="social-shares-text">Bluesky</span>
+          </span>
+        </a>
+      </li>
+    )
+  }
+  {
+    isShareEnabled('email') && (
+      <li class="social-shares-item">
+        <a
+          href={`mailto:?subject=${encodeURIComponent('Check this out')}&body=${encodeURIComponent(url)}`}
+          class="immersive-btn immersive-btn-control social-shares-link"
+          data-social-share-link
+          data-social-platform="email"
+          data-share-url={url}
+          aria-label="Share via email"
+        >
+          <span class="immersive-btn-label">
+            <span class="social-shares-icon social-shares-icon-email" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+                <rect x="3.5" y="5.5" width="17" height="13" rx="2.2" stroke="currentColor" stroke-width="1.8"></rect>
+                <path d="M4.5 7L12 12.6L19.5 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+              </svg>
+            </span>
+            <span class="social-shares-text">Email</span>
+          </span>
+        </a>
+      </li>
+    )
+  }
+  {
+    isShareEnabled('copy-link') && (
+      <li class="social-shares-item">
+        <button
+          type="button"
+          class="immersive-btn immersive-btn-control social-shares-link"
+          data-social-copy-link
+          data-share-url={url}
+          aria-label="Copy link to clipboard"
+        >
+          <span class="immersive-btn-label">
+            <span class="social-shares-icon social-shares-icon-copy" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+                <rect x="9" y="7" width="10.5" height="12.5" rx="2" stroke="currentColor" stroke-width="1.8"></rect>
+                <rect x="4.5" y="4.5" width="10.5" height="12.5" rx="2" stroke="currentColor" stroke-width="1.8"></rect>
+              </svg>
+            </span>
+            <span class="social-shares-text" data-copy-link-label>Copy Link</span>
+          </span>
+        </button>
+      </li>
+    )
+  }
+  {
+    isShareEnabled('linkedin') && (
+      <li class="social-shares-item">
+        <a
+          href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`}
+          class="immersive-btn immersive-btn-control social-shares-link"
+          target="_blank"
+          rel="noreferrer noopener"
+          data-social-share-link
+          data-social-platform="linkedin"
+          data-share-url={url}
+          aria-label="Share on LinkedIn, opens in a new tab"
+        >
+          <span class="immersive-btn-label">
+            <span class="social-shares-icon social-shares-icon-linkedin" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+                <path d="M6.5 8.4A1.5 1.5 0 1 0 6.5 5.4A1.5 1.5 0 0 0 6.5 8.4Z" fill="currentColor"></path>
+                <path d="M5.2 9.8H7.8V19H5.2V9.8Z" fill="currentColor"></path>
+                <path d="M9.3 9.8H11.8V11.1C12.2 10.3 13.2 9.6 14.7 9.6C17.8 9.6 18.4 11.6 18.4 14.3V19H15.7V14.9C15.7 13.9 15.7 12.7 14.3 12.7C12.9 12.7 12.7 13.7 12.7 14.8V19H9.3V9.8Z" fill="currentColor"></path>
+              </svg>
+            </span>
+            <span class="social-shares-text">LinkedIn</span>
+          </span>
+        </a>
+      </li>
+    )
+  }
+</ul>
+
+<div class="social-shares-native">
+  <button
+    type="button"
+    class="immersive-btn immersive-btn-control social-shares-link"
+    data-social-native-share
+    data-share-url={url}
+    aria-label="Share this page"
+  >
+    <span class="immersive-btn-label">
+      <span class="social-shares-icon social-shares-icon-share" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true">
+          <path
+            d="M12 3.8L15.8 7.6L14.5 8.9L12.9 7.3V14.6H11.1V7.3L9.5 8.9L8.2 7.6L12 3.8Z"
+            fill="currentColor"
+          ></path>
+          <path
+            d="M7 11.2H5.8C5.1 11.2 4.5 11.8 4.5 12.5V18C4.5 18.7 5.1 19.3 5.8 19.3H18.2C18.9 19.3 19.5 18.7 19.5 18V12.5C19.5 11.8 18.9 11.2 18.2 11.2H17V13H17.7V17.5H6.3V13H7V11.2Z"
+            fill="currentColor"
+          ></path>
+        </svg>
+      </span>
+      <span class="social-shares-text">Share...</span>
+    </span>
+  </button>
+</div>
+{isShareEnabled('copy-link') && <p class="sr-only" aria-live="polite" aria-atomic="true" data-copy-link-status></p>}
+</div>
+
+<script>
+  interface SocialSharesWindow extends Window {
+    __socialSharesBound?: boolean
+  }
+
+  const IOS_DEVICE_REGEX = /iPad|iPhone|iPod/i
+  const ANDROID_DEVICE_REGEX = /Android/i
+
+  function isIOSDevice(): boolean {
+    const ua = navigator.userAgent
+    const isTouchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+    return IOS_DEVICE_REGEX.test(ua) || isTouchMac
+  }
+
+  function isAndroidDevice(): boolean {
+    return ANDROID_DEVICE_REGEX.test(navigator.userAgent)
+  }
+
+  function canUseNativeMobileShare(): boolean {
+    return (isIOSDevice() || isAndroidDevice()) && typeof navigator.share === 'function'
+  }
+
+  async function shareWithNativeSheet(shareUrl: string): Promise<boolean> {
+    if (typeof navigator.share !== 'function') return false
+    const pageTitle = document.title.trim()
+    const sharePayload: ShareData = { url: shareUrl }
+    if (pageTitle) {
+      sharePayload.title = pageTitle
+      sharePayload.text = pageTitle
+    }
+    try {
+      if (typeof navigator.canShare === 'function' && !navigator.canShare(sharePayload)) {
+        await navigator.share({ url: shareUrl })
+      } else {
+        await navigator.share(sharePayload)
+      }
+      return true
+    } catch (error) {
+      // User cancelled sharing. Treat as handled to avoid fallback navigation.
+      if (error instanceof DOMException && error.name === 'AbortError') return true
+      return false
+    }
+  }
+
+  async function handleIOSFacebookShare(link: HTMLAnchorElement): Promise<void> {
+    const shareUrl = link.dataset.shareUrl || link.href
+
+    // Prefer the OS-native share sheet on iOS to avoid browser/app handoff issues.
+    if (await shareWithNativeSheet(shareUrl)) return
+
+    // Fall back to same-tab navigation on iOS instead of target=_blank.
+    window.location.assign(link.href)
+  }
+
+  async function handleNativeShare(button: HTMLButtonElement): Promise<void> {
+    const shareUrl = button.dataset.shareUrl
+    if (!shareUrl) return
+    await shareWithNativeSheet(shareUrl)
+  }
+
+  async function copyLinkToClipboard(linkUrl: string): Promise<boolean> {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(linkUrl)
+        return true
+      } catch {
+        // Fall through to legacy approach.
+      }
+    }
+
+    try {
+      const fallbackInput = document.createElement('textarea')
+      fallbackInput.value = linkUrl
+      fallbackInput.setAttribute('readonly', '')
+      fallbackInput.style.position = 'fixed'
+      fallbackInput.style.opacity = '0'
+      fallbackInput.style.pointerEvents = 'none'
+      document.body.appendChild(fallbackInput)
+      fallbackInput.select()
+      fallbackInput.setSelectionRange(0, fallbackInput.value.length)
+      const didCopy = document.execCommand('copy')
+      fallbackInput.remove()
+      return didCopy
+    } catch {
+      return false
+    }
+  }
+
+  function setCopyLinkLabel(button: HTMLButtonElement, label: string): void {
+    const labelNode = button.querySelector<HTMLElement>('[data-copy-link-label]')
+    if (labelNode) {
+      labelNode.textContent = label
+    }
+  }
+
+  async function handleCopyLink(button: HTMLButtonElement, statusNode: HTMLElement | null): Promise<void> {
+    const linkUrl = button.dataset.shareUrl
+    if (!linkUrl) return
+
+    const didCopy = await copyLinkToClipboard(linkUrl)
+    if (didCopy) {
+      setCopyLinkLabel(button, 'Copied')
+      if (statusNode) {
+        statusNode.textContent = 'Link copied to clipboard.'
+      }
+      const existingResetTimer = Number(button.dataset.copyResetTimerId || '0')
+      if (existingResetTimer) {
+        window.clearTimeout(existingResetTimer)
+      }
+      const resetTimer = window.setTimeout(() => {
+        setCopyLinkLabel(button, 'Copy Link')
+        button.dataset.copyResetTimerId = ''
+      }, 1800)
+      button.dataset.copyResetTimerId = String(resetTimer)
+      return
+    }
+
+    if (statusNode) {
+      statusNode.textContent = 'Unable to copy link automatically.'
+    }
+  }
+
+  function bindSocialShares(): void {
+    const root = document.querySelector<HTMLElement>('[data-social-shares-root]')
+    if (!root || root.dataset.socialSharesBound === 'true') return
+
+    root.dataset.socialSharesBound = 'true'
+    root.dataset.socialSharesMode = canUseNativeMobileShare() ? 'native' : 'platforms'
+
+    const copyStatusNode = root.querySelector<HTMLElement>('[data-copy-link-status]')
+    root.addEventListener('click', (event) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+
+      const copyButton = target.closest<HTMLButtonElement>('[data-social-copy-link]')
+      if (copyButton) {
+        event.preventDefault()
+        void handleCopyLink(copyButton, copyStatusNode)
+        return
+      }
+
+      const nativeShareButton = target.closest<HTMLButtonElement>('[data-social-native-share]')
+      if (nativeShareButton) {
+        event.preventDefault()
+        void handleNativeShare(nativeShareButton)
+        return
+      }
+
+      const link = target.closest<HTMLAnchorElement>('[data-social-share-link]')
+      if (!link) return
+
+      const platform = link.dataset.socialPlatform
+      if (platform === 'facebook' && isIOSDevice()) {
+        event.preventDefault()
+        void handleIOSFacebookShare(link)
+        return
+      }
+
+      // Let browser/native platform handle social share links via standard HTTPS URLs.
+    })
+  }
+
+  const socialSharesWindow = window as SocialSharesWindow
+  if (!socialSharesWindow.__socialSharesBound) {
+    socialSharesWindow.__socialSharesBound = true
+    document.addEventListener('astro:page-load', bindSocialShares)
+  }
+  bindSocialShares()
+</script>
+
+<style>
+  .social-shares-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    align-items: stretch;
+  }
+
+  .social-shares-native {
+    display: none;
+  }
+
+  .social-shares-item {
+    display: flex;
+  }
+
+  .social-shares-link {
+    --immersive-btn-label-shift: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-block-size: 2.5rem;
+  }
+
+  .social-shares-link .immersive-btn-label {
+    display: inline-flex;
+    gap: 0.38rem;
+    align-items: center;
+    top: 0;
+  }
+
+  .social-shares-text {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+  }
+
+  .social-shares-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    flex: 0 0 auto;
+  }
+
+  .social-shares-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  [data-social-shares-mode='native'] .social-shares-list {
+    display: none;
+  }
+
+  [data-social-shares-mode='native'] .social-shares-native {
+    display: inline-flex;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .social-shares-link:hover .social-shares-icon,
+    .social-shares-link:focus-visible .social-shares-icon {
+      animation: social-share-icon-bump 240ms ease-out;
+    }
+  }
+
+  @keyframes social-share-icon-bump {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+
+    45% {
+      transform: translateY(-0.14rem) scale(1.08);
+    }
+
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .social-shares-list {
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: flex-start;
+      padding-top: 0.35rem;
+    }
+
+    .social-shares-link {
+      min-inline-size: 8.75rem;
+      justify-content: center;
+    }
+  }
+
+  @media (min-width: 40.01rem) {
+    .social-shares-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: stretch;
+    }
+
+    .social-shares-item {
+      min-width: 0;
+    }
+  }
+</style>

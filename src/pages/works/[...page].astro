@@ -1,0 +1,131 @@
+---
+import { getSiteConfig, getWorksPage } from '@/utils/source-config'
+import PerusalOnlyRedirect from '@components/PerusalOnlyRedirect.astro'
+const isPerusalOnlyMode = getSiteConfig().perusalScoreOnlyMode
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
+import ImmersiveCard from '@components/immersive/ImmersiveCard.astro'
+import ImmersivePagination from '@components/immersive/ImmersivePagination.astro'
+import WorksSearch from '@components/WorksSearch.astro'
+import { getCollection } from 'astro:content'
+import type { GetStaticPaths, Page } from 'astro'
+import type { CollectionEntry } from 'astro:content'
+import type { SearchableItem } from '../../scripts/search-types'
+
+import prepareWorks from '@/utils/prepareWorks'
+import { buildSearchableTagItems, buildSearchableWorkItems } from '@/utils/search-items'
+import { buildHeroSwitcherPageData, resolvePageHero } from '@/utils/page-hero'
+
+const worksPage = getWorksPage()
+const worksTitle = worksPage.title
+const worksDescription = worksPage.introText
+const worksSubtitle = worksPage.hideIntroText ? undefined : worksDescription
+const workLabelSingular = worksPage.workLabelSingular
+const workLabelPlural = worksPage.workLabelPlural
+const heroVariantEventName = 'jv:immersive:hero-variant:set'
+const isDevMode = import.meta.env.DEV
+const resolvedHero = resolvePageHero(worksPage.preferredHeroId, { allowEmptyPreferredHero: true })
+const pageHero = resolvedHero.pageHero
+const heroSwitcherPageData = buildHeroSwitcherPageData('works', resolvedHero, isDevMode, heroVariantEventName)
+
+function toTitleCaseLabel(value: string): string {
+  if (!value) return value
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+}
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const works = await getCollection('works')
+  const { works: worksWithImages, uniqueTags } = prepareWorks(works)
+
+  const searchableItems: SearchableItem[] = [
+    ...buildSearchableWorkItems(worksWithImages),
+    ...buildSearchableTagItems(uniqueTags),
+  ]
+
+  return paginate(worksWithImages, {
+    pageSize: 6,
+    props: { searchableItems },
+  })
+}) satisfies GetStaticPaths
+
+interface Props {
+  page: Page<CollectionEntry<'works'> & { featuredImage: ReturnType<typeof prepareWorks>['works'][number]['featuredImage'] }>
+  searchableItems: SearchableItem[]
+}
+
+const { page, searchableItems } = Astro.props
+const workLabelSingularTitle = toTitleCaseLabel(workLabelSingular)
+const workLabelPluralTitle = toTitleCaseLabel(workLabelPlural)
+const totalWorkLabel = page.total === 1 ? workLabelSingular : workLabelPlural
+---
+
+{isPerusalOnlyMode ? (
+  <PerusalOnlyRedirect />
+) : (
+<SiteLayout
+  title={worksTitle}
+  description={worksDescription}
+  pageContentClass="page-content-works"
+  pageHero={
+    pageHero
+      ? {
+          pageKey: 'works',
+          id: pageHero.id,
+          src: pageHero.src,
+          position: pageHero.position,
+          filter: pageHero.filter,
+        }
+      : undefined
+  }
+>
+  <ImmersivePageHeader title={worksTitle} subtitle={worksSubtitle} class="works-page-header">
+    <div class="works-page-header-search">
+      <WorksSearch
+        mode="site"
+        items={searchableItems}
+        label={worksPage.searchLabel}
+        placeholder={worksPage.searchPlaceholder}
+      />
+    </div>
+  </ImmersivePageHeader>
+  <section>
+    <div class="container">
+      <p class="works-listing-summary">
+        <em>{workLabelSingularTitle} {page.start + 1} through {page.end + 1} of {page.total} total {totalWorkLabel}</em>
+      </p>
+      <ul class="work-card-grid works-listing-grid">
+        {
+          page.data.map((work) => (
+            <ImmersiveCard
+              url={'/works/' + work.id + '/'}
+              title={work.data.title}
+              headingLevel="h2"
+              footer={'Instrumentation: ' + work.data.instrumentation.join(', ')}
+              imageData={work.featuredImage}
+              imageAlt={work.data.thumbnail?.alt ?? ''}
+            >
+              {work.data.description}
+            </ImmersiveCard>
+          ))
+        }
+      </ul>
+      {
+        page && page.lastPage > 1 && (
+          <div style="margin-top: var(--space-xl); display: grid; place-content: center;">
+            <ImmersivePagination
+              firstPage={page.url.prev ? '/works/' : null}
+              previousPage={page.url.prev ? page.url.prev : null}
+              nextPage={page.url.next ? page.url.next : null}
+              lastPage={page.url.next ? `/works/${page.lastPage}/` : null}
+              currentPage={`${page.currentPage}`}
+              totalPages={`${page.lastPage}`}
+              ariaLabel={`${workLabelPluralTitle} pagination`}
+            />
+          </div>
+        )
+      }
+    </div>
+  </section>
+  <script is:inline id="hero-switcher-page-data" type="application/json" set:html={heroSwitcherPageData} />
+</SiteLayout>
+)}

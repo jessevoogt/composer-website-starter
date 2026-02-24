@@ -1,0 +1,72 @@
+---
+import Recording from './Recording.astro'
+import type { RecordingType } from '../content.config'
+
+interface Props {
+  recordings: RecordingType[]
+  workId?: string
+  workTitle?: string
+  composer?: string
+  thumbnail?: { src: string; alt: string }
+  singleLinkHeadingLevel?: 'h2' | 'h3'
+  creditTagLinks?: Record<string, string>
+}
+
+const {
+  recordings = [],
+  workId = '',
+  workTitle = '',
+  composer = '',
+  thumbnail,
+  singleLinkHeadingLevel = 'h3',
+  creditTagLinks = {},
+} = Astro.props as Props
+---
+
+<div class="recording-list">
+  {recordings.length > 0 ? (
+    <div class="recording-list-items">
+      {recordings.map((r, i) => (
+        <div class="recording-item">
+          <Recording
+            recording={r}
+            workId={workId}
+            workTitle={workTitle}
+            composer={composer}
+            recordingIndex={i}
+            thumbnail={thumbnail}
+            singleLinkHeadingLevel={singleLinkHeadingLevel}
+            creditTagLinks={creditTagLinks}
+          />
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div>No recordings available.</div>
+  )}
+</div>
+
+<style is:global>
+  .recording-list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    margin-top: var(--space-m);
+    margin-bottom: var(--space-m);
+  }
+
+  .recording-list .recording-item {
+    margin-top: 0;
+    padding-inline: var(--space-s);
+  }
+
+  .recording-list .recording-list-items > .recording-item:nth-child(odd) {
+    background: color-mix(in srgb, var(--surface-soft) 38%, transparent);
+  }
+
+  @media (max-width: 39.99rem) {
+    .recording-list {
+      margin-inline: calc(var(--content-gutter) * -1);
+    }
+  }
+</style>

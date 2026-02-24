@@ -1,0 +1,21 @@
+---
+/**
+ * PerusalOnlyRedirect — renders a meta-refresh redirect to the homepage.
+ *
+ * Used by non-perusal pages when the site is in perusal-score-only mode.
+ * Since Astro SSG can't do server-side redirects, this outputs a minimal
+ * HTML page that immediately redirects the browser.
+ */
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0;url=/" />
+    <link rel="canonical" href="/" />
+    <title>Redirecting…</title>
+  </head>
+  <body>
+    <p>Redirecting to <a href="/">homepage</a>…</p>
+  </body>
+</html>

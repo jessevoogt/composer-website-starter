@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 220" role="img" aria-labelledby="title desc">
+  <title id="title">FirstName LastName logo</title>
+  <desc id="desc">Simple monogram and wordmark logo for the site header.</desc>
+
+  <defs>
+    <linearGradient id="logo-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9be0ff" />
+      <stop offset="100%" stop-color="#7dd3ff" />
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(18 30)">
+    <rect x="0" y="0" width="156" height="156" rx="30" fill="none" stroke="url(#logo-accent)" stroke-width="10" />
+    <rect x="38" y="34" width="16" height="88" fill="#e6f6ff" />
+    <rect x="38" y="34" width="62" height="14" fill="#e6f6ff" />
+    <rect x="38" y="68" width="48" height="12" fill="#9be0ff" />
+    <rect x="98" y="34" width="16" height="88" fill="#7dd3ff" />
+    <rect x="98" y="108" width="42" height="14" fill="#7dd3ff" />
+  </g>
+
+  <g transform="translate(194 0)">
+    <text
+      x="0"
+      y="94"
+      fill="#e6f6ff"
+      font-size="66"
+      font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+      font-weight="700"
+      letter-spacing="1.2"
+    >
+      FirstName
+    </text>
+    <text
+      x="0"
+      y="168"
+      fill="#7dd3ff"
+      font-size="74"
+      font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+      font-weight="700"
+      letter-spacing="1.6"
+    >
+      LastName
+    </text>
+  </g>
+</svg>

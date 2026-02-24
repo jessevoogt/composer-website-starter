@@ -1,0 +1,698 @@
+---
+interface DropdownOption {
+  value: string
+  label: string
+  shortLabel?: string
+  icon?: 'single-page' | 'double-page'
+}
+
+interface Props {
+  id: string
+  label: string
+  options: DropdownOption[]
+  value?: string
+  class?: string
+  buttonClass?: string
+  menuClass?: string
+  optionClass?: string
+  align?: 'start' | 'end'
+}
+
+const {
+  id,
+  label,
+  options,
+  value,
+  class: className = '',
+  buttonClass = '',
+  menuClass = '',
+  optionClass = '',
+  align = 'end',
+  ...rest
+} = Astro.props
+
+function isDropdownIcon(value: unknown): value is DropdownOption['icon'] {
+  return value === 'single-page' || value === 'double-page'
+}
+
+const safeOptions = options.filter(
+  (candidate): candidate is DropdownOption =>
+    !!candidate &&
+    typeof candidate === 'object' &&
+    typeof candidate.value === 'string' &&
+    typeof candidate.label === 'string' &&
+    (candidate.shortLabel === undefined || typeof candidate.shortLabel === 'string') &&
+    (candidate.icon === undefined || isDropdownIcon(candidate.icon)),
+)
+
+const fallbackValue = safeOptions[0]?.value ?? ''
+const selectedValue = safeOptions.some((option) => option.value === value) ? value ?? fallbackValue : fallbackValue
+const selectedLabel = safeOptions.find((option) => option.value === selectedValue)?.label ?? ''
+const selectedShortLabel = safeOptions.find((option) => option.value === selectedValue)?.shortLabel?.trim() ?? ''
+const selectedIcon = safeOptions.find((option) => option.value === selectedValue)?.icon ?? ''
+const hasIconOptions = safeOptions.some((option) => !!option.icon)
+const triggerLabel = selectedLabel || label
+const triggerId = `${id}-trigger`
+const menuId = `${id}-menu`
+---
+
+<div
+  id={id}
+  class={['shared-dropdown', className].filter(Boolean).join(' ')}
+  data-shared-dropdown
+  data-dropdown-value={selectedValue}
+  data-dropdown-icon={selectedIcon || undefined}
+  data-dropdown-align={align}
+  {...rest}
+>
+  <button
+    id={triggerId}
+    type="button"
+    class={['shared-dropdown-trigger', buttonClass].filter(Boolean).join(' ')}
+    data-dropdown-trigger
+    aria-haspopup="menu"
+    aria-expanded="false"
+    aria-controls={menuId}
+    aria-label={label}
+    disabled={safeOptions.length === 0}
+  >
+    {
+      hasIconOptions && (
+        <span class="shared-dropdown-selected-icon" aria-hidden="true">
+          <svg
+            data-dropdown-icon-key="single-page"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path>
+          </svg>
+          <svg
+            data-dropdown-icon-key="double-page"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+          </svg>
+        </span>
+      )
+    }
+    <span
+      class="shared-dropdown-trigger-label"
+      data-dropdown-trigger-label
+      data-dropdown-short-label={selectedShortLabel || undefined}
+    >
+      {triggerLabel}
+    </span>
+    <svg
+      class="shared-dropdown-trigger-icon"
+      viewBox="0 0 12 8"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M1 1.5 6 6.5 11 1.5"></path>
+    </svg>
+  </button>
+
+  <ul
+    id={menuId}
+    class={['shared-dropdown-menu', menuClass].filter(Boolean).join(' ')}
+    data-dropdown-menu
+    role="menu"
+    aria-labelledby={triggerId}
+    hidden
+  >
+    {
+      safeOptions.map((option) => (
+        <li role="none">
+          <button
+            type="button"
+            role="menuitemradio"
+            class={['shared-dropdown-option', optionClass].filter(Boolean).join(' ')}
+            data-dropdown-option
+            data-dropdown-value={option.value}
+            data-dropdown-short-label={option.shortLabel?.trim() || undefined}
+            data-dropdown-icon={option.icon ?? undefined}
+            data-dropdown-active="false"
+            aria-checked={option.value === selectedValue ? 'true' : 'false'}
+            tabindex={option.value === selectedValue ? '0' : '-1'}
+          >
+            {
+              option.icon && (
+                <span class="shared-dropdown-option-icon" aria-hidden="true">
+                  {option.icon === 'single-page' && (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path>
+                    </svg>
+                  )}
+                  {option.icon === 'double-page' && (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                  )}
+                </span>
+              )
+            }
+            <span class="shared-dropdown-option-label" data-dropdown-option-label>{option.label}</span>
+          </button>
+        </li>
+      ))
+    }
+  </ul>
+
+  <input type="hidden" data-dropdown-input value={selectedValue} />
+</div>
+
+<script>
+  type DropdownState = {
+    cleanupMap: Map<HTMLElement, () => void>
+    bootstrapped: boolean
+    refresh: (dropdown: HTMLElement) => void
+  }
+
+  type DropdownWindow = Window & {
+    __sharedDropdownState?: DropdownState
+  }
+
+  type DropdownChangeDetail = {
+    value: string
+    label: string
+    dropdown: HTMLElement
+  }
+
+  const dropdownWindow = window as DropdownWindow
+  const dropdownState =
+    dropdownWindow.__sharedDropdownState ??
+    (dropdownWindow.__sharedDropdownState = {
+      cleanupMap: new Map<HTMLElement, () => void>(),
+      bootstrapped: false,
+      refresh: () => {},
+    })
+
+  const toSafeIndex = (index: number, length: number): number => {
+    if (!Number.isFinite(index) || length <= 0) return 0
+    const rounded = Math.floor(index)
+    if (rounded < 0) return 0
+    if (rounded >= length) return length - 1
+    return rounded
+  }
+
+  const getOptionLabel = (option: HTMLButtonElement): string => {
+    const explicitLabel = option.querySelector<HTMLElement>('[data-dropdown-option-label]')?.textContent?.trim() ?? ''
+    if (explicitLabel) return explicitLabel
+    return option.textContent?.trim() ?? ''
+  }
+
+  function initDropdown(dropdown: HTMLElement): void {
+    const existingCleanup = dropdownState.cleanupMap.get(dropdown)
+    if (existingCleanup) {
+      existingCleanup()
+      dropdownState.cleanupMap.delete(dropdown)
+    }
+
+    const trigger = dropdown.querySelector<HTMLButtonElement>('[data-dropdown-trigger]')
+    const menu = dropdown.querySelector<HTMLElement>('[data-dropdown-menu]')
+    const optionButtons = Array.from(dropdown.querySelectorAll<HTMLButtonElement>('[data-dropdown-option]')).filter(
+      (option) => {
+        if (option.hidden) return false
+        const optionRow = option.closest('li')
+        return !(optionRow instanceof HTMLElement) || !optionRow.hidden
+      },
+    )
+    const input = dropdown.querySelector<HTMLInputElement>('[data-dropdown-input]')
+    const triggerLabel = dropdown.querySelector<HTMLElement>('[data-dropdown-trigger-label]')
+    const baseAriaLabel = trigger?.getAttribute('aria-label') ?? ''
+
+    if (!trigger || !menu || optionButtons.length === 0) return
+
+    let isOpen = false
+    let selectedIndex = optionButtons.findIndex(
+      (option) => option.dataset.dropdownValue === (dropdown.dataset.dropdownValue ?? ''),
+    )
+    selectedIndex = selectedIndex >= 0 ? selectedIndex : 0
+    let activeIndex = selectedIndex
+
+    const syncActiveOptionUi = (): void => {
+      optionButtons.forEach((option, optionIndex) => {
+        const isActive = isOpen && optionIndex === activeIndex
+        option.dataset.dropdownActive = isActive ? 'true' : 'false'
+      })
+    }
+
+    const syncSelectedOptionUi = (): void => {
+      const activeOption = optionButtons[selectedIndex]
+      if (!activeOption) return
+
+      const selectedValue = activeOption.dataset.dropdownValue ?? ''
+      const selectedLabel = getOptionLabel(activeOption)
+      const selectedShortLabel = activeOption.dataset.dropdownShortLabel?.trim() ?? ''
+      const selectedIcon = activeOption.dataset.dropdownIcon?.trim() ?? ''
+
+      optionButtons.forEach((option, optionIndex) => {
+        const isSelected = optionIndex === selectedIndex
+        option.setAttribute('aria-checked', isSelected ? 'true' : 'false')
+        option.tabIndex = isSelected ? 0 : -1
+      })
+
+      dropdown.dataset.dropdownValue = selectedValue
+      if (selectedIcon) {
+        dropdown.dataset.dropdownIcon = selectedIcon
+      } else {
+        delete dropdown.dataset.dropdownIcon
+      }
+      if (input) input.value = selectedValue
+      if (triggerLabel) {
+        triggerLabel.textContent = selectedLabel
+        if (selectedShortLabel) {
+          triggerLabel.dataset.dropdownShortLabel = selectedShortLabel
+        } else {
+          delete triggerLabel.dataset.dropdownShortLabel
+        }
+      }
+      trigger.setAttribute('aria-label', baseAriaLabel ? `${baseAriaLabel}: ${selectedLabel}` : selectedLabel)
+    }
+
+    const emitChange = (): void => {
+      const activeOption = optionButtons[selectedIndex]
+      if (!activeOption) return
+      const selectedValue = activeOption.dataset.dropdownValue ?? ''
+      const selectedLabel = getOptionLabel(activeOption)
+      dropdown.dispatchEvent(
+        new CustomEvent<DropdownChangeDetail>('shared-dropdown-change', {
+          bubbles: true,
+          detail: {
+            value: selectedValue,
+            label: selectedLabel,
+            dropdown,
+          },
+        }),
+      )
+    }
+
+    const setOpenState = (open: boolean): void => {
+      if (isOpen === open) return
+      isOpen = open
+      if (open) {
+        activeIndex = selectedIndex
+      }
+      syncActiveOptionUi()
+      trigger.setAttribute('aria-expanded', open ? 'true' : 'false')
+      dropdown.dataset.dropdownOpen = open ? 'true' : 'false'
+      menu.hidden = !open
+    }
+
+    const focusOptionAtIndex = (index: number): void => {
+      const nextIndex = toSafeIndex(index, optionButtons.length)
+      activeIndex = nextIndex
+      syncActiveOptionUi()
+      optionButtons[nextIndex]?.focus()
+    }
+
+    const closeMenu = (restoreFocus: boolean): void => {
+      setOpenState(false)
+      if (restoreFocus) {
+        trigger.focus()
+      }
+    }
+
+    const openMenu = (): void => {
+      setOpenState(true)
+      focusOptionAtIndex(selectedIndex)
+    }
+
+    const selectOption = (optionIndex: number): void => {
+      const nextIndex = toSafeIndex(optionIndex, optionButtons.length)
+      if (nextIndex === selectedIndex) {
+        closeMenu(true)
+        return
+      }
+      selectedIndex = nextIndex
+      activeIndex = nextIndex
+      syncSelectedOptionUi()
+      emitChange()
+      closeMenu(true)
+    }
+
+    const onTriggerClick = (): void => {
+      if (isOpen) {
+        closeMenu(false)
+      } else {
+        openMenu()
+      }
+    }
+
+    const onTriggerKeydown = (event: KeyboardEvent): void => {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        openMenu()
+        return
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setOpenState(true)
+        focusOptionAtIndex(optionButtons.length - 1)
+        return
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        if (isOpen) {
+          closeMenu(false)
+        } else {
+          openMenu()
+        }
+      }
+    }
+
+    const onMenuClick = (event: Event): void => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const option = target.closest<HTMLButtonElement>('[data-dropdown-option]')
+      if (!option) return
+      const optionIndex = optionButtons.indexOf(option)
+      if (optionIndex < 0) return
+      event.preventDefault()
+      selectOption(optionIndex)
+    }
+
+    const onMenuKeydown = (event: KeyboardEvent): void => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const option = target.closest<HTMLButtonElement>('[data-dropdown-option]')
+      if (!option) return
+      const optionIndex = optionButtons.indexOf(option)
+      if (optionIndex < 0) return
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        focusOptionAtIndex((optionIndex + 1) % optionButtons.length)
+        return
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        const prevIndex = optionIndex === 0 ? optionButtons.length - 1 : optionIndex - 1
+        focusOptionAtIndex(prevIndex)
+        return
+      }
+
+      if (event.key === 'Home') {
+        event.preventDefault()
+        focusOptionAtIndex(0)
+        return
+      }
+
+      if (event.key === 'End') {
+        event.preventDefault()
+        focusOptionAtIndex(optionButtons.length - 1)
+        return
+      }
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        selectOption(optionIndex)
+        return
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeMenu(true)
+        return
+      }
+
+      if (event.key === 'Tab') {
+        closeMenu(false)
+      }
+    }
+
+    const onMenuFocusIn = (event: FocusEvent): void => {
+      if (!isOpen) return
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const option = target.closest<HTMLButtonElement>('[data-dropdown-option]')
+      if (!option) return
+      const optionIndex = optionButtons.indexOf(option)
+      if (optionIndex < 0) return
+      activeIndex = optionIndex
+      syncActiveOptionUi()
+    }
+
+    const onDocumentPointerDown = (event: Event): void => {
+      if (!isOpen) return
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (dropdown.contains(target)) return
+      closeMenu(false)
+    }
+
+    const onDocumentFocusIn = (event: FocusEvent): void => {
+      if (!isOpen) return
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (dropdown.contains(target)) return
+      closeMenu(false)
+    }
+
+    syncSelectedOptionUi()
+    setOpenState(false)
+
+    trigger.addEventListener('click', onTriggerClick)
+    trigger.addEventListener('keydown', onTriggerKeydown)
+    menu.addEventListener('click', onMenuClick)
+    menu.addEventListener('keydown', onMenuKeydown)
+    menu.addEventListener('focusin', onMenuFocusIn)
+    document.addEventListener('pointerdown', onDocumentPointerDown)
+    document.addEventListener('focusin', onDocumentFocusIn)
+
+    dropdownState.cleanupMap.set(dropdown, () => {
+      trigger.removeEventListener('click', onTriggerClick)
+      trigger.removeEventListener('keydown', onTriggerKeydown)
+      menu.removeEventListener('click', onMenuClick)
+      menu.removeEventListener('keydown', onMenuKeydown)
+      menu.removeEventListener('focusin', onMenuFocusIn)
+      document.removeEventListener('pointerdown', onDocumentPointerDown)
+      document.removeEventListener('focusin', onDocumentFocusIn)
+      dropdown.dataset.dropdownOpen = 'false'
+      trigger.setAttribute('aria-expanded', 'false')
+      menu.hidden = true
+    })
+  }
+
+  dropdownState.refresh = (dropdown: HTMLElement): void => {
+    initDropdown(dropdown)
+  }
+
+  const initAllDropdowns = (): void => {
+    document.querySelectorAll<HTMLElement>('[data-shared-dropdown]').forEach((dropdown) => initDropdown(dropdown))
+  }
+
+  const teardownAllDropdowns = (): void => {
+    dropdownState.cleanupMap.forEach((cleanup) => cleanup())
+    dropdownState.cleanupMap.clear()
+  }
+
+  if (!dropdownState.bootstrapped) {
+    dropdownState.bootstrapped = true
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initAllDropdowns, { once: true })
+    } else {
+      initAllDropdowns()
+    }
+
+    document.addEventListener('astro:page-load', initAllDropdowns)
+    document.addEventListener('astro:before-swap', teardownAllDropdowns)
+  }
+</script>
+
+<style>
+  .shared-dropdown {
+    position: relative;
+    display: inline-flex;
+    min-width: 0;
+  }
+
+  .shared-dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.38rem;
+    max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--bg);
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .shared-dropdown-trigger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .shared-dropdown-trigger-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .shared-dropdown-selected-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.98rem;
+    height: 0.98rem;
+    flex: 0 0 auto;
+  }
+
+  .shared-dropdown-selected-icon svg {
+    display: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  .shared-dropdown[data-dropdown-icon='single-page'] .shared-dropdown-selected-icon [data-dropdown-icon-key='single-page'],
+  .shared-dropdown[data-dropdown-icon='double-page'] .shared-dropdown-selected-icon [data-dropdown-icon-key='double-page'] {
+    display: block;
+  }
+
+  .shared-dropdown-trigger-icon {
+    flex-shrink: 0;
+    width: 0.74rem;
+    height: 0.5rem;
+    transition: transform 170ms ease;
+  }
+
+  .shared-dropdown[data-dropdown-open='true'] .shared-dropdown-trigger-icon {
+    transform: rotate(180deg);
+  }
+
+  .shared-dropdown-menu {
+    position: absolute;
+    inset-block-start: calc(100% + 0.28rem);
+    inset-inline-end: 0;
+    z-index: 40;
+    min-width: max(100%, 9.5rem);
+    max-height: min(16rem, 68vh);
+    margin: 0;
+    padding: 0.24rem;
+    list-style: none;
+    border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+    background: color-mix(in srgb, var(--bg) 95%, #000 5%);
+    box-shadow: 0 12px 24px rgb(0 0 0 / 0.3);
+    overflow: auto;
+  }
+
+  .shared-dropdown[data-dropdown-align='start'] .shared-dropdown-menu {
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+  }
+
+  .shared-dropdown-option {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.36rem 0.44rem;
+    border: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    line-height: 1.2;
+    transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+  }
+
+  .shared-dropdown-option-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.96rem;
+    height: 0.96rem;
+    margin-inline-end: 0.42rem;
+    vertical-align: middle;
+    flex: 0 0 auto;
+  }
+
+  .shared-dropdown-option-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .shared-dropdown-option-label {
+    vertical-align: middle;
+  }
+
+  .shared-dropdown-option[aria-checked='true'] {
+    background: color-mix(in srgb, var(--bg-soft) 78%, var(--accent) 22%);
+    border-color: color-mix(in srgb, var(--accent-strong) 38%, var(--line) 62%);
+    box-shadow: inset 0.18rem 0 0 color-mix(in srgb, var(--accent-strong) 84%, #fff 16%);
+  }
+
+  .shared-dropdown-option:hover {
+    background: color-mix(in srgb, var(--bg-soft) 84%, #fff 16%);
+    border-color: color-mix(in srgb, var(--line) 76%, var(--ink-soft) 24%);
+  }
+
+  .shared-dropdown-option[data-dropdown-active='true'] {
+    background: color-mix(in srgb, var(--focus-ring-color) 20%, var(--bg-soft) 80%);
+    border-color: color-mix(in srgb, var(--focus-ring-color) 70%, var(--line) 30%);
+    box-shadow:
+      inset 0.2rem 0 0 color-mix(in srgb, var(--focus-ring-color) 84%, #fff 16%),
+      0 0 0 1px color-mix(in srgb, var(--focus-ring-color) 45%, transparent);
+  }
+
+  .shared-dropdown-option:focus-visible {
+    outline: 2px dashed var(--focus-ring-color);
+    outline-offset: -2px;
+  }
+
+  .shared-dropdown-option[aria-checked='true'][data-dropdown-active='true'] {
+    background: color-mix(in srgb, var(--focus-ring-color) 24%, var(--bg-soft) 76%);
+    border-color: color-mix(in srgb, var(--focus-ring-color) 62%, var(--accent-strong) 38%);
+  }
+
+  @media (forced-colors: active) {
+    .shared-dropdown-option[aria-checked='true'] {
+      border-color: SelectedItem;
+      box-shadow: inset 2px 0 0 SelectedItem;
+    }
+
+    .shared-dropdown-option[data-dropdown-active='true'] {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+      border-color: Highlight;
+      box-shadow: inset 2px 0 0 Highlight;
+    }
+  }
+</style>

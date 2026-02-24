@@ -1,0 +1,53 @@
+---
+interface Props {
+  /** Accept a full YouTube URL or a bare video id */
+  link?: string | null
+  /** Optional explicit id */
+  id?: string | null
+  title: string
+  ratio?: string
+}
+
+const { link, id, ratio = '16:9', title } = Astro.props as Props
+
+if (!link && !id) {
+  throw new Error('YouTubeEmbed component requires either a link or an id prop.')
+}
+
+const aspectRatios: Record<string, string> = {
+  '1:1': '1',
+  '4:3': '4/3',
+  '16:9': '16/9',
+  '21:9': '21/9',
+}
+
+function getVideoUrl(url: string): string {
+  const youtubeRegex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+  const youtubeMatch = url.match(youtubeRegex)
+
+  if (youtubeMatch && youtubeMatch[2].length === 11) {
+    const videoId = youtubeMatch[2]
+    const params = new URLSearchParams({
+      feature: 'oembed',
+    })
+    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`
+  }
+  return url
+}
+
+const src = id ? `https://www.youtube.com/watch?v=${id}` : link!
+const videoUrl = getVideoUrl(src)
+const aspectRatio = aspectRatios[ratio] ?? '16/9'
+---
+
+<div class="video-wrapper" style={`inline-size: 100%;`}>
+  <iframe
+    src={videoUrl}
+    title={title}
+    loading="lazy"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen
+    style={`aspect-ratio: ${aspectRatio}; border: 0; inline-size: 100%; block-size: 100%; border-radius: 0; overflow: hidden;`}
+  ></iframe>
+</div>

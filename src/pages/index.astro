@@ -1,0 +1,568 @@
+---
+import { getSiteConfig as checkPerusalMode } from '@/utils/source-config'
+import PerusalOnlyIndex from '@components/PerusalOnlyIndex.astro'
+const isPerusalOnlyMode = checkPerusalMode().perusalScoreOnlyMode
+// In perusal-only mode, render a minimal page — skip all the heavyweight imports
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ContactForm from '@components/ContactForm.astro'
+import { getCollection } from 'astro:content'
+import { Image } from 'astro:assets'
+import prepareWorks from '@/utils/prepareWorks'
+import worksImages from '@/utils/works-images'
+import {
+  getSiteConfig,
+  getHomePage,
+  getContactPage,
+  getHeroVariants,
+  getHeroConfig,
+  type HeroVariant,
+} from '@/utils/source-config'
+
+type ImageData = typeof worksImages[number]['data']
+import { asDate, flattenRecordingEntries } from '@/utils/immersive-helpers'
+import perusalScores from '@/utils/perusal-scores'
+import type { ClientRecordingEntry } from '../scripts/immersive/types'
+
+const siteConfig = getSiteConfig()
+const homePage = getHomePage()
+const contactPage = getContactPage()
+const heroVariants = getHeroVariants()
+const heroConfig = getHeroConfig()
+
+const heroTagline = homePage.heroTagline
+const contactIntro = homePage.contactIntro || contactPage.introText
+const contactEmailLeadText = homePage.contactEmailLeadText || contactPage.contactEmailLeadText
+const contactEmailLinkText = contactPage.contactEmailLinkText || siteConfig.email
+const isHeroSectionVisible = !homePage.hideHeroSection
+const isFeaturedRecordingSectionVisible = !homePage.hideFeaturedRecordingSection
+const isSelectWorksSectionVisible = !homePage.hideSelectWorksSection
+const isContactSectionVisible = !homePage.hideContactSection
+const hideHeroTitle = homePage.hideHeroTitle
+const hideHeroSubtitle = homePage.hideHeroSubtitle
+const showHeroIdentityLine = !hideHeroTitle || !hideHeroSubtitle
+const featuredSectionTitle = homePage.featuredSectionTitle
+const featuredMoreDetailsText = homePage.featuredMoreDetailsText
+const homeContactFormProps = {
+  nameLabel: contactPage.contactFormNameLabel,
+  namePlaceholder: contactPage.contactFormNamePlaceholder,
+  emailLabel: contactPage.contactFormEmailLabel,
+  emailPlaceholder: contactPage.contactFormEmailPlaceholder,
+  messageLabel: contactPage.contactFormMessageLabel,
+  messagePlaceholder: contactPage.contactFormMessagePlaceholder,
+  submitText: contactPage.contactFormSubmitText,
+}
+const defaultListenImage = {
+  src: heroVariants.find((v) => v.id === 'manuscript')?.src ?? heroVariants[0]?.src ?? '',
+  alt: heroVariants.find((v) => v.id === 'manuscript')?.alt ?? '',
+  position: heroVariants.find((v) => v.id === 'manuscript')?.position ?? '50% 50%',
+}
+const defaultHeroFilter = heroConfig.defaultFilter
+const fallbackHeroSrc = heroVariants.find((v) => v.id === heroConfig.fallbackHeroId)?.src ?? heroVariants[0]?.src ?? ''
+const CONTACT_FORM_ENABLED = contactPage.contactFormEnabled
+
+const isDevMode = import.meta.env.DEV
+const heroVariantEventName = 'jv:immersive:hero-variant:set'
+
+const preferredHeroId = homePage.preferredHeroId || heroConfig.preferredHeroId
+const preferredHeroIndex = heroVariants.findIndex((variant) => variant.id === preferredHeroId)
+const defaultHeroIndex = preferredHeroIndex >= 0 ? preferredHeroIndex : 0
+const heroImage: HeroVariant = heroVariants[defaultHeroIndex] ?? heroVariants[0]!
+
+function clampPercent(value: number, min: number, max: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback
+  return Math.min(max, Math.max(min, Math.round(value)))
+}
+
+function resolveImagePath(value: string | undefined): string {
+  if (!value) return ''
+  const normalized = value.trim().toLowerCase()
+  const matched = worksImages.find((image) => image.path.toLowerCase() === normalized)
+  return matched ? matched.data.src : value
+}
+
+function resolveImageData(value: string | undefined): ImageData | null {
+  if (!value) return null
+  const normalized = value.trim().toLowerCase()
+  const matched = worksImages.find((image) => image.path.toLowerCase() === normalized)
+  return matched ? matched.data : null
+}
+
+const worksCollection = await getCollection('works')
+const { works: worksWithImages } = prepareWorks(worksCollection)
+
+const recordingEntries: ClientRecordingEntry[] = flattenRecordingEntries(
+  worksWithImages,
+  resolveImagePath,
+  defaultListenImage,
+  perusalScores,
+)
+
+const fallbackFeaturedRecording: ClientRecordingEntry =
+  recordingEntries.find((entry) => entry.workId === 'crepusculaire' && entry.mp3) ??
+  recordingEntries.find((entry) => entry.mp3) ?? {
+    key: 'fallback-0',
+    workId: 'fallback',
+    workHref: '/works/',
+    title: 'Featured Recording',
+    performer: 'Performer to be announced',
+    instrumentation: '',
+    date: 'Date unavailable',
+    imageSrc: defaultListenImage.src,
+    imageAlt: defaultListenImage.alt,
+    imagePosition: defaultListenImage.position,
+    mp3: '/audio/featured-track.mp3',
+    featured: false,
+  }
+
+const featuredRecordingPool = recordingEntries.filter((entry) => entry.featured && entry.mp3)
+const initialFeaturedRecording = featuredRecordingPool[0] ?? fallbackFeaturedRecording
+
+const listenImage = {
+  src: initialFeaturedRecording.imageSrc,
+  alt: initialFeaturedRecording.imageAlt,
+  position: initialFeaturedRecording.imagePosition,
+}
+
+const listenNowText = homePage.listenNowText.trim() || 'Listen Now'
+const searchMusicText = homePage.searchMusicText.trim() || 'Search Music'
+const hasSearchMusicAction = !homePage.hideSearchMusicButton
+const heroPrimaryActionHref = isFeaturedRecordingSectionVisible
+  ? '#listen'
+  : isSelectWorksSectionVisible
+    ? '#works-title'
+    : isContactSectionVisible
+      ? '#contact'
+      : '#home-content-start'
+const heroImageColumnSide = homePage.heroImageColumnSide === 'right' ? 'right' : 'left'
+const heroImageColumnWidthPercent = clampPercent(homePage.heroImageColumnWidthPercent, 25, 75, 41)
+const featuredPlayerImageColumnSide = homePage.featuredPlayerImageColumnSide === 'left' ? 'left' : 'right'
+const featuredPlayerImageColumnWidthPercent = clampPercent(homePage.featuredPlayerImageColumnWidthPercent, 30, 75, 58)
+const isHeroImageRight = heroImageColumnSide === 'right'
+const isFeaturedImageLeft = featuredPlayerImageColumnSide === 'left'
+const featuredPlayerImageWidthRatio = featuredPlayerImageColumnWidthPercent / 100
+const featuredPlayerImageGutterAdjust = Number((2 * featuredPlayerImageWidthRatio - 1).toFixed(4))
+const immersiveRootStyle = [
+  `--hero-image-filter: ${heroImage.filter}`,
+  `--hero-image-column-width: ${heroImageColumnWidthPercent}%`,
+  `--featured-image-column-width: ${featuredPlayerImageColumnWidthPercent}%`,
+  `--featured-image-column-gutter-adjust: ${featuredPlayerImageGutterAdjust}`,
+].join('; ')
+
+const imageCredits = {
+  hero: heroImage.credit,
+  listen: 'Featured recording image from work/recording metadata.',
+}
+const heroVariantsForClient = isDevMode ? heroVariants : []
+
+const selectWorksLabel = homePage.selectWorksLabel.trim()
+const hasVisibleSelectWorksLabel = selectWorksLabel.length > 0
+const selectWorksA11yLabel = hasVisibleSelectWorksLabel ? selectWorksLabel : 'Select Works'
+const selectWorksMaxItems =
+  typeof homePage.selectWorksMaxItems === 'number' && homePage.selectWorksMaxItems > 0
+    ? homePage.selectWorksMaxItems
+    : null
+
+const selectedPool = worksWithImages.filter((work) => work.data.selected)
+const selectedWorksSource = homePage.selectWorksShowAll
+  ? worksWithImages
+  : selectedPool.length > 0
+    ? selectedPool
+    : worksWithImages
+
+const orderedSelectedWorks = [...selectedWorksSource]
+  .sort((left, right) => {
+    const leftOrder = typeof left.data.selectedOrder === 'number' ? left.data.selectedOrder : Number.MAX_SAFE_INTEGER
+    const rightOrder = typeof right.data.selectedOrder === 'number' ? right.data.selectedOrder : Number.MAX_SAFE_INTEGER
+
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder
+    }
+
+    return asDate(right.data.completionDate) - asDate(left.data.completionDate)
+  })
+const limitedSelectedWorks = typeof selectWorksMaxItems === 'number'
+  ? orderedSelectedWorks.slice(0, selectWorksMaxItems)
+  : orderedSelectedWorks
+
+const selectedWorks = limitedSelectedWorks
+  .map((work) => ({
+    workId: work.id,
+    title: work.data.title,
+    detail: work.data.instrumentation.length > 0 ? work.data.instrumentation.join(', ') : 'Composition',
+    href: `/works/${work.id}/`,
+    image: work.featuredImage?.src ?? work.data.thumbnail?.src ?? '',
+    imageData: work.featuredImage ?? resolveImageData(work.data.thumbnail?.src),
+    imageAlt: work.data.thumbnail?.alt ?? `${work.data.title} artwork`,
+  }))
+
+const homeSkipTargetId = isHeroSectionVisible
+  ? 'home-title'
+  : isFeaturedRecordingSectionVisible
+    ? 'listen-title'
+    : isSelectWorksSectionVisible
+      ? 'works-title'
+      : isContactSectionVisible
+        ? 'contact-title'
+        : 'home-content-start'
+
+const pageData = JSON.stringify({
+  imageCredits,
+  heroVariants: heroVariantsForClient,
+  fallbackHeroSrc,
+  defaultHeroFilter,
+  featuredRecordingPool,
+  fallbackFeaturedRecording,
+  devMode: isDevMode,
+  heroVariantEventName,
+  selectWorksBehavior: {
+    randomize: homePage.selectWorksRandomize,
+    removeFeaturedWorkFromList: homePage.selectWorksExcludeFeaturedWork,
+  },
+})
+---
+
+{isPerusalOnlyMode ? (
+  <PerusalOnlyIndex />
+) : (
+<SiteLayout
+  title={homePage.metaTitle || `${siteConfig.composerName} — ${homePage.heroSubtitle}`}
+  description={homePage.metaDescription || siteConfig.siteDescription}
+  isHomepage={true}
+  skipTargetId={homeSkipTargetId}
+>
+  <div
+    class="immersive-home"
+    data-immersive-root
+    data-active-hero={heroImage.id}
+    data-page-hero-page="home"
+    data-hero-image-side={heroImageColumnSide}
+    style={immersiveRootStyle}
+  >
+    <div id="home-content-start" tabindex="-1" class="sr-only">Homepage content</div>
+    <div class="stage-backdrop" aria-hidden="true">
+      <img
+        class="stage-backdrop-image"
+        src={heroImage.src}
+        alt=""
+        loading="eager"
+        decoding="async"
+        width="1200"
+        height="1700"
+        style={`object-position: ${heroImage.position};`}
+      />
+      <div class="stage-backdrop-scrim"></div>
+    </div>
+
+    {isHeroSectionVisible ? (
+      <section class="masthead" data-parallax-hero aria-labelledby="home-title">
+        {!isHeroImageRight ? <div class="image-column"></div> : null}
+        <div class="content-column">
+          <div class="hero-content" data-parallax-copy>
+            {showHeroIdentityLine ? (
+              <h1 id="home-title" tabindex="-1" class="hero-idline intro-item" style="--intro-delay: 90ms">
+                {!hideHeroTitle ? <span>{homePage.heroTitle}</span> : null}
+                {!hideHeroTitle && !hideHeroSubtitle ? <span aria-hidden="true">&bull;</span> : null}
+                {!hideHeroSubtitle ? <span>{homePage.heroSubtitle}</span> : null}
+              </h1>
+            ) : (
+              <span id="home-title" tabindex="-1" aria-hidden="true"></span>
+            )}
+            <p class="hero-tagline intro-item" style="--intro-delay: 180ms">{heroTagline}</p>
+            <div class="hero-actions intro-item" style="--intro-delay: 320ms">
+              <a href={heroPrimaryActionHref} class="immersive-btn immersive-btn-primary hero-action-listen-btn">
+                <span class="immersive-btn-label">{listenNowText}</span>
+                <span class="hero-action-icon hero-action-icon-listen" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 12a8 8 0 0 1 16 0"></path>
+                    <path d="M4.5 12h1.4c0.6 0 1.1 0.5 1.1 1.1V19c0 0.6-0.5 1.1-1.1 1.1H4.5A1.5 1.5 0 0 1 3 18.6v-5.1A1.5 1.5 0 0 1 4.5 12Z"></path>
+                    <path d="M19.5 12h-1.4c-0.6 0-1.1 0.5-1.1 1.1V19c0 0.6 0.5 1.1 1.1 1.1h1.4a1.5 1.5 0 0 0 1.5-1.5v-5.1a1.5 1.5 0 0 0-1.5-1.5Z"></path>
+                  </svg>
+                </span>
+                <span class="hero-action-scroll-tip" aria-hidden="true">
+                  <svg viewBox="0 0 14 12" fill="none">
+                    <path class="hero-action-scroll-tip-fill" d="M1 1L7 11L13 1Z"></path>
+                    <path class="hero-action-scroll-tip-stroke" d="M1 1L7 11L13 1"></path>
+                  </svg>
+                </span>
+              </a>
+              {
+                hasSearchMusicAction ? (
+                  <button
+                    type="button"
+                    class="immersive-btn immersive-btn-inline hero-action-search-btn"
+                    data-works-search-modal-toggle
+                    data-works-search-scope="music"
+                    aria-controls="works-search-modal mobile-menu-modal"
+                    aria-expanded="false"
+                    aria-label={`Open ${searchMusicText}`}
+                  >
+                    <span class="hero-action-search-label immersive-btn-label">{searchMusicText}</span>
+                    <span class="hero-action-icon hero-action-icon-search" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <circle cx="11" cy="11" r="6.5"></circle>
+                        <path d="M16.2 16.2L21 21"></path>
+                      </svg>
+                    </span>
+                  </button>
+                ) : null
+              }
+            </div>
+          </div>
+        </div>
+        {isHeroImageRight ? <div class="image-column"></div> : null}
+      </section>
+    ) : null}
+
+    {isFeaturedRecordingSectionVisible ? (
+    <section class="section listen-section" id="listen" aria-labelledby="listen-title" data-featured-image-side={featuredPlayerImageColumnSide}>
+      {isFeaturedImageLeft ? (
+        <figure class="listen-bleed" data-parallax-listen style={`--listen-image-position: ${listenImage.position};`}>
+          <img src={listenImage.src} alt={listenImage.alt} loading="lazy" decoding="async" width="900" height="620" data-featured-image />
+          <button type="button" class="listen-bleed-trigger" data-listen-trigger aria-controls="featured-track-player" aria-label="Play featured recording">
+            <span class="listen-bleed-trigger-inner" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+              </svg>
+            </span>
+            <span class="sr-only">Play featured recording</span>
+          </button>
+          <button type="button" class="listen-bleed-pause" data-bleed-pause hidden aria-label="Pause featured recording">
+            <span class="listen-bleed-pause-inner" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path class="icon-bleed-play" d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+                <path class="icon-bleed-pause" d="M9.4 7.4V16.6M14.6 7.4V16.6"></path>
+              </svg>
+            </span>
+            <span class="sr-only">Toggle featured recording playback</span>
+          </button>
+          <button
+            type="button"
+            class="listen-bleed-nav listen-bleed-nav-prev"
+            data-listen-prev
+            hidden
+            aria-label="Previous featured recording"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 6-6 6 6 6"></path>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="listen-bleed-nav listen-bleed-nav-next"
+            data-listen-next
+            hidden
+            aria-label="Next featured recording"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m9 6 6 6-6 6"></path>
+            </svg>
+          </button>
+        </figure>
+      ) : null}
+
+      <div class="listen-text-column">
+        <div class="section-grid">
+          <div>
+            <h2
+              id="listen-title"
+              data-featured-section-title
+              data-featured-section-default-title={featuredSectionTitle}
+              data-featured-section-active-title="Currently Playing"
+              data-featured-default-recording-key={initialFeaturedRecording.key}
+            >
+              {featuredSectionTitle}
+            </h2>
+            <p
+              class="featured-recording-meta"
+              data-featured-meta
+              data-featured-meta-instrumentation={initialFeaturedRecording.instrumentation}
+            >
+              <span data-featured-meta-title>{initialFeaturedRecording.title}</span>
+              <span data-featured-meta-performer>{initialFeaturedRecording.performer}</span>
+              <span data-featured-meta-date>{initialFeaturedRecording.date}</span>
+            </p>
+            <p class="featured-recording-action">
+              <a href={initialFeaturedRecording.workHref} class="immersive-btn immersive-btn-primary featured-work-link" data-featured-work-link>
+                <span class="immersive-btn-label">{featuredMoreDetailsText}</span>
+                <span class="featured-work-link-arrow" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h13"></path>
+                    <path d="m13 6 6 6-6 6"></path>
+                  </svg>
+                </span>
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+      {!isFeaturedImageLeft ? (
+        <figure class="listen-bleed" data-parallax-listen style={`--listen-image-position: ${listenImage.position};`}>
+          <img src={listenImage.src} alt={listenImage.alt} loading="lazy" decoding="async" width="900" height="620" data-featured-image />
+          <button type="button" class="listen-bleed-trigger" data-listen-trigger aria-controls="featured-track-player" aria-label="Play featured recording">
+            <span class="listen-bleed-trigger-inner" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+              </svg>
+            </span>
+            <span class="sr-only">Play featured recording</span>
+          </button>
+          <button type="button" class="listen-bleed-pause" data-bleed-pause hidden aria-label="Pause featured recording">
+            <span class="listen-bleed-pause-inner" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path class="icon-bleed-play" d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+                <path class="icon-bleed-pause" d="M9.4 7.4V16.6M14.6 7.4V16.6"></path>
+              </svg>
+            </span>
+            <span class="sr-only">Toggle featured recording playback</span>
+          </button>
+          <button
+            type="button"
+            class="listen-bleed-nav listen-bleed-nav-prev"
+            data-listen-prev
+            hidden
+            aria-label="Previous featured recording"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m15 6-6 6 6 6"></path>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="listen-bleed-nav listen-bleed-nav-next"
+            data-listen-next
+            hidden
+            aria-label="Next featured recording"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m9 6 6 6-6 6"></path>
+            </svg>
+          </button>
+        </figure>
+      ) : null}
+    </section>
+    ) : null}
+
+    {isSelectWorksSectionVisible ? (
+    <section class="section section-solid" aria-labelledby="works-title">
+      <div class="work-carousel" data-selected-carousel>
+        <div class="work-carousel-header">
+          <h2 id="works-title" class={hasVisibleSelectWorksLabel ? undefined : 'sr-only'}>
+            {hasVisibleSelectWorksLabel ? selectWorksLabel : 'Select Works'}
+          </h2>
+          <div class="work-carousel-controls" aria-label={`${selectWorksA11yLabel} carousel controls`}>
+            <button
+              type="button"
+              class="immersive-btn immersive-btn-control work-carousel-btn work-carousel-btn-prev"
+              data-carousel-prev
+              aria-label={`Scroll ${selectWorksA11yLabel} left`}
+            >
+              <span class="work-carousel-btn-icon work-carousel-btn-icon-prev" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m15 6-6 6 6 6"></path>
+                </svg>
+              </span>
+              <span class="immersive-btn-label">Prev</span>
+            </button>
+            <button
+              type="button"
+              class="immersive-btn immersive-btn-control work-carousel-btn work-carousel-btn-next"
+              data-carousel-next
+              aria-label={`Scroll ${selectWorksA11yLabel} right`}
+            >
+              <span class="immersive-btn-label">Next</span>
+              <span class="work-carousel-btn-icon work-carousel-btn-icon-next" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m9 6 6 6-6 6"></path>
+                </svg>
+              </span>
+            </button>
+          </div>
+        </div>
+        <p class="work-carousel-swipe-hint" aria-hidden="true">
+          <span>Swipe to see more</span>
+          <span class="work-carousel-swipe-hint-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12h16"></path>
+              <path d="m13 7 5 5-5 5"></path>
+            </svg>
+          </span>
+        </p>
+        <div
+          class="work-carousel-frame"
+          data-carousel-frame
+          tabindex="0"
+          aria-label={`${selectWorksA11yLabel} list. Swipe or scroll horizontally, or use left and right arrow keys.`}
+        >
+          <ul class="work-grid work-carousel-track" aria-label={selectWorksA11yLabel}>
+            {
+              selectedWorks.map((work) => (
+                <li class="work-card" data-work-id={work.workId}>
+                  <a class="work-card-link" href={work.href}>
+                    <span class="work-media">
+                      {
+                        work.imageData ? (
+                          <Image
+                            src={work.imageData}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            widths={[370, 500, 740]}
+                            sizes="(max-width: 37.5rem) 100vw, (max-width: 78rem) 50vw, (max-width: 120rem) 33vw, 25vw"
+                            format="webp"
+                            quality={75}
+                          />
+                        ) : work.image ? (
+                          <img src={work.image} alt="" loading="lazy" decoding="async" width="740" height="470" />
+                        ) : (
+                          <span class="work-media-fallback" aria-hidden="true"></span>
+                        )
+                      }
+                    </span>
+                    <span class="work-card-body">
+                      <h3>{work.title}</h3>
+                      <p class="work-card-description">{work.detail}</p>
+                    </span>
+                    <span class="work-card-more" aria-hidden="true">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M4 12h16"></path>
+                        <path d="m13 7 5 5-5 5"></path>
+                      </svg>
+                    </span>
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </section>
+    ) : null}
+
+    {isContactSectionVisible ? (
+    <section class="section section-solid" id="contact" aria-labelledby="contact-title">
+      <h2 id="contact-title">Contact</h2>
+      <p class="contact-intro">{contactIntro}</p>
+      {CONTACT_FORM_ENABLED ? (
+        <ContactForm {...homeContactFormProps} />
+      ) : (
+        <>
+          {contactEmailLeadText ? <p>{contactEmailLeadText}</p> : null}
+          <p class="contact-email">
+            <a href={`mailto:${siteConfig.email}`} data-obfuscation="1">{contactEmailLinkText}</a>
+          </p>
+        </>
+      )}
+    </section>
+    ) : null}
+  </div>
+
+  <script is:inline id="immersive-page-data" type="application/json" set:html={pageData} />
+</SiteLayout>
+)}

@@ -1,0 +1,79 @@
+---
+interface Props {
+  idPrefix?: string
+  autofocusName?: boolean
+  nameLabel?: string
+  namePlaceholder?: string
+  emailLabel?: string
+  emailPlaceholder?: string
+  messageLabel?: string
+  messagePlaceholder?: string
+  submitText?: string
+}
+
+const {
+  idPrefix = 'immersive',
+  autofocusName = false,
+  nameLabel = 'Name',
+  namePlaceholder = 'What should I call you?',
+  emailLabel = 'Email',
+  emailPlaceholder = 'you@domain.com',
+  messageLabel = 'Message',
+  messagePlaceholder = 'Enter your message here...',
+  submitText = 'Send',
+} = Astro.props
+const nameFieldId = `${idPrefix}-name`
+const emailFieldId = `${idPrefix}-email`
+const messageFieldId = `${idPrefix}-request`
+---
+
+<form class="contact-form" action="#" method="post">
+  <div class="contact-field">
+    <input
+      id={nameFieldId}
+      name="name"
+      type="text"
+      autocomplete="name"
+      placeholder={namePlaceholder}
+      maxlength={120}
+      required
+      autofocus={autofocusName ? true : undefined}
+    />
+    <label for={nameFieldId}>{nameLabel}</label>
+  </div>
+
+  <div class="contact-field">
+    <input
+      id={emailFieldId}
+      name="email"
+      type="email"
+      autocomplete="email"
+      placeholder={emailPlaceholder}
+      maxlength={254}
+      required
+    />
+    <label for={emailFieldId}>{emailLabel}</label>
+  </div>
+
+  <div class="contact-field contact-field-message">
+    <textarea
+      id={messageFieldId}
+      name="request"
+      rows={5}
+      placeholder={messagePlaceholder}
+      maxlength={4000}
+      required
+    ></textarea>
+    <label for={messageFieldId}>{messageLabel}</label>
+  </div>
+
+  <button type="submit" class="immersive-btn immersive-btn-primary contact-submit-btn">
+    <span class="immersive-btn-label">{submitText}</span>
+    <span class="contact-submit-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.5 6.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"></path>
+        <path d="m4 7 8 6 8-6"></path>
+      </svg>
+    </span>
+  </button>
+</form>

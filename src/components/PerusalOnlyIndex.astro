@@ -1,0 +1,139 @@
+---
+/**
+ * PerusalOnlyIndex — minimal index page for perusal-score-only mode.
+ *
+ * When the site runs in perusal-score-only mode (configured in Keystatic),
+ * this replaces the full homepage with a simple, accessible listing of all
+ * works that have perusal scores available.
+ */
+
+import PerusalLayout from '@layouts/PerusalLayout.astro'
+import { getSiteConfig } from '@/utils/source-config'
+import { getCollection } from 'astro:content'
+import prepareWorks from '@/utils/prepareWorks'
+import perusalScores from '@/utils/perusal-scores'
+
+const siteConfig = getSiteConfig()
+const worksCollection = await getCollection('works')
+const { works } = prepareWorks(worksCollection)
+
+const worksWithScores = works
+  .filter((work) => Boolean(perusalScores[work.id]))
+  .map((work) => ({
+    id: work.id,
+    title: work.data.title,
+    composer: work.data.composer || siteConfig.composerName,
+    pageCount: perusalScores[work.id] ?? 0,
+  }))
+---
+
+<PerusalLayout
+  title={`Perusal Scores — ${siteConfig.composerName}`}
+  description={`Browse perusal scores by ${siteConfig.composerName}.`}
+>
+  <div class="perusal-only-index">
+    <header class="perusal-only-header">
+      <h1>{siteConfig.composerName}</h1>
+      <p class="perusal-only-subtitle">Perusal Scores</p>
+    </header>
+
+    {worksWithScores.length > 0 ? (
+      <ul class="perusal-only-list" role="list">
+        {worksWithScores.map((work) => (
+          <li>
+            <a href={`/works/${work.id}/perusal-score/`}>
+              <span class="perusal-only-work-title">{work.title}</span>
+              <span class="perusal-only-work-pages">{work.pageCount} {work.pageCount === 1 ? 'page' : 'pages'}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="perusal-only-empty">No perusal scores available yet.</p>
+    )}
+
+    {siteConfig.email && (
+      <footer class="perusal-only-footer">
+        <p>
+          Contact: <a href={`mailto:${siteConfig.email}`}>{siteConfig.email}</a>
+        </p>
+      </footer>
+    )}
+  </div>
+</PerusalLayout>
+
+<style>
+  .perusal-only-index {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: var(--space-l, 2rem) var(--space-m, 1rem);
+  }
+
+  .perusal-only-header {
+    text-align: center;
+    margin-bottom: var(--space-l, 2rem);
+  }
+
+  .perusal-only-header h1 {
+    font-size: var(--font-size-xl, 1.75rem);
+    margin: 0;
+  }
+
+  .perusal-only-subtitle {
+    font-size: var(--font-size-m, 1rem);
+    color: var(--ink-muted, #666);
+    margin-top: var(--space-2xs, 0.25rem);
+  }
+
+  .perusal-only-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .perusal-only-list li + li {
+    border-top: 1px solid var(--border, #e0e0e0);
+  }
+
+  .perusal-only-list a {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: var(--space-s, 0.75rem) 0;
+    text-decoration: none;
+    color: var(--ink, currentColor);
+    transition: color 180ms ease;
+  }
+
+  .perusal-only-list a:hover,
+  .perusal-only-list a:focus-visible {
+    color: var(--accent, #0070f3);
+  }
+
+  .perusal-only-work-title {
+    font-weight: 600;
+  }
+
+  .perusal-only-work-pages {
+    font-size: var(--font-size-s, 0.875rem);
+    color: var(--ink-muted, #666);
+    white-space: nowrap;
+    margin-left: var(--space-s, 0.75rem);
+  }
+
+  .perusal-only-empty {
+    text-align: center;
+    color: var(--ink-muted, #666);
+  }
+
+  .perusal-only-footer {
+    margin-top: var(--space-xl, 3rem);
+    text-align: center;
+    font-size: var(--font-size-s, 0.875rem);
+    color: var(--ink-muted, #666);
+  }
+
+  .perusal-only-footer a {
+    color: var(--accent, #0070f3);
+  }
+</style>

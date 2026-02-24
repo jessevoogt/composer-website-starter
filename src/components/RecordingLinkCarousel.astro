@@ -1,0 +1,643 @@
+---
+import worksImages from '@/utils/works-images'
+import { getRecordingLinkLabel } from '@/utils/recording-links'
+import type { RecordingType, RecordingLinkType, RecordingImageType } from '../content.config'
+
+interface Props {
+  recording: RecordingType
+  workId?: string
+  workTitle?: string
+  composer?: string
+  recordingIndex?: number
+  thumbnail?: { src: string; alt: string }
+  showSingleLinkLabel?: boolean
+}
+
+const { recording, workId = '', workTitle = '', composer = '', recordingIndex = 0, thumbnail, showSingleLinkLabel = true } = Astro.props as Props
+
+function buildVideoTitle(): string {
+  const ensemble = recording.ensemble?.trim() ?? ''
+  const performerLabel = recording.performers.map((performer) => performer.trim()).filter(Boolean).join(', ')
+  const parts = [workTitle, composer, ensemble || performerLabel].filter(Boolean)
+  return parts.length > 0 ? parts.join(' — ') : 'YouTube video'
+}
+
+function resolveImageSrc(src: string | undefined): string {
+  if (!src) return ''
+  const normalized = src.trim().toLowerCase()
+  const matched = worksImages.find((image) => image.path.toLowerCase() === normalized)
+  return matched ? matched.data.src : src
+}
+
+function getHref(link: RecordingLinkType) {
+  return typeof link === 'string' ? link : link.url
+}
+
+function getMp3(link: RecordingLinkType) {
+  return typeof link === 'string' ? undefined : link.mp3
+}
+
+function getImage(link: RecordingLinkType): (RecordingImageType & { resolvedSrc: string }) | undefined {
+  if (typeof link === 'string') return undefined
+  const raw = link.image ?? recording.image ?? (thumbnail ? { src: thumbnail.src, alt: thumbnail.alt } : undefined)
+  if (!raw) return undefined
+  return { ...raw, resolvedSrc: resolveImageSrc(raw.src) }
+}
+
+function isYouTubeLink(href: string | undefined) {
+  if (!href) return false
+  try {
+    const u = new URL(href)
+    return u.hostname.includes('youtube.com') || u.hostname.includes('youtu.be')
+  } catch {
+    return String(href).includes('youtube') || String(href).includes('youtu.be')
+  }
+}
+
+function buildRecordingKey(linkIndex: number): string {
+  return `${workId}-${recordingIndex}-${linkIndex}`
+}
+
+const carouselId = `recording-carousel-${workId}-${recordingIndex}`
+const hasMultipleLinks = recording.links.length > 1
+---
+
+{hasMultipleLinks ? (
+  <div
+    class="recording-link-carousel"
+    data-recording-link-carousel={carouselId}
+    data-carousel-work-id={workId || undefined}
+    data-carousel-recording-index={String(recordingIndex)}
+  >
+    <div class="recording-link-carousel-header">
+      <div class="recording-link-carousel-controls" aria-label="Recording links carousel controls">
+        <button
+          type="button"
+          class="immersive-btn immersive-btn-control recording-link-carousel-btn recording-link-carousel-btn-prev"
+          data-carousel-prev
+          aria-label="Previous recording link"
+        >
+          <span class="recording-link-carousel-btn-icon recording-link-carousel-btn-icon-prev" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m15 6-6 6 6 6"></path>
+            </svg>
+          </span>
+          <span class="immersive-btn-label">Prev</span>
+        </button>
+        <button
+          type="button"
+          class="immersive-btn immersive-btn-control recording-link-carousel-btn recording-link-carousel-btn-next"
+          data-carousel-next
+          aria-label="Next recording link"
+        >
+          <span class="immersive-btn-label">Next</span>
+          <span class="recording-link-carousel-btn-icon recording-link-carousel-btn-icon-next" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m9 6 6 6-6 6"></path>
+            </svg>
+          </span>
+        </button>
+      </div>
+    </div>
+    <p class="recording-link-carousel-swipe-hint" aria-hidden="true">
+      <span>Swipe to see more</span>
+      <span class="recording-link-carousel-swipe-hint-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 12h16"></path>
+          <path d="m13 7 5 5-5 5"></path>
+        </svg>
+      </span>
+    </p>
+    <div
+      class="recording-link-carousel-frame"
+      data-carousel-frame
+      tabindex="0"
+      aria-label="Recording links carousel. Swipe or scroll horizontally, or use left and right arrow keys."
+    >
+      <div class="recording-link-carousel-track">
+        {recording.links.map((link: RecordingLinkType, linkIndex: number) => {
+          const href = getHref(link)
+          const mp3 = getMp3(link)
+          const image = getImage(link)
+          const label = getRecordingLinkLabel(link)
+          const youtubeUrl = isYouTubeLink(href) ? href : undefined
+          const recordingKey = buildRecordingKey(linkIndex)
+
+          return (
+            <div class="recording-link-carousel-item" data-carousel-item>
+              {/* Priority 1: mp3 + image → image with play/pause overlay */}
+              {mp3 && image ? (
+                <div>
+                  {label ? <div style="margin-bottom: 0.5rem;"><strong>{label}</strong></div> : null}
+                  <figure class="recording-play-figure" data-recording-figure>
+                    <img
+                      src={image.resolvedSrc}
+                      alt={image.alt || ''}
+                      loading="lazy"
+                      decoding="async"
+                      class="recording-play-image"
+                      style={image.position ? `object-position: ${image.position};` : undefined}
+                    />
+                    <button
+                      type="button"
+                      class="recording-play-btn"
+                      data-recording-play={recordingKey}
+                      data-recording-mp3={mp3}
+                      aria-label="Play recording"
+                    >
+                      <span class="recording-play-btn-inner" aria-hidden="true">
+                        <svg class="recording-play-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+                        </svg>
+                        <svg class="recording-play-icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M9.4 7.4V16.6M14.6 7.4V16.6"></path>
+                        </svg>
+                      </span>
+                      <span class="sr-only">Play recording</span>
+                    </button>
+                  </figure>
+                  {youtubeUrl ? (
+                    <p class="recording-youtube-link" style="margin-top: 0.5rem;">
+                      <a
+                        href={youtubeUrl}
+                        data-youtube-lightbox-trigger
+                        data-youtube-lightbox-url={youtubeUrl}
+                        data-youtube-lightbox-title={buildVideoTitle()}
+                        aria-label="Watch on YouTube"
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+                          <path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z" />
+                        </svg>
+                        <span>Watch on YouTube</span>
+                      </a>
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Priority 2: YouTube only (no mp3) + image → image opens lightbox */}
+              {!mp3 && youtubeUrl && image ? (
+                <div>
+                  {label ? <div style="margin-bottom: 0.5rem;"><strong>{label}</strong></div> : null}
+                  <figure class="recording-play-figure">
+                    <img
+                      src={image.resolvedSrc}
+                      alt={image.alt || ''}
+                      loading="lazy"
+                      decoding="async"
+                      class="recording-play-image"
+                      style={image.position ? `object-position: ${image.position};` : undefined}
+                    />
+                    <a
+                      href={youtubeUrl}
+                      class="recording-play-btn"
+                      data-youtube-lightbox-trigger
+                      data-youtube-lightbox-url={youtubeUrl}
+                      data-youtube-lightbox-title={buildVideoTitle()}
+                      aria-label="Watch on YouTube"
+                    >
+                      <span class="recording-play-btn-inner" aria-hidden="true">
+                        <svg class="recording-play-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+                        </svg>
+                      </span>
+                      <span class="sr-only">Watch on YouTube</span>
+                    </a>
+                  </figure>
+                </div>
+              ) : null}
+
+              {/* Priority 3: YouTube only (no mp3) + no image → text lightbox link */}
+              {!mp3 && youtubeUrl && !image ? (
+                <div>
+                  {label ? <div style="margin-bottom: 0.5rem;"><strong>{label}</strong></div> : null}
+                  <p class="recording-youtube-link">
+                    <a
+                      href={youtubeUrl}
+                      data-youtube-lightbox-trigger
+                      data-youtube-lightbox-url={youtubeUrl}
+                      data-youtube-lightbox-title={buildVideoTitle()}
+                      aria-label="Watch on YouTube"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+                        <path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z" />
+                      </svg>
+                      <span>Watch on YouTube</span>
+                    </a>
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Priority 4: other URL → plain link */}
+              {!mp3 && !youtubeUrl && href ? (
+                <div>
+                  {label ? <div style="margin-bottom: 0.5rem;"><strong>{label}</strong></div> : null}
+                  <div>
+                    <strong>Link:</strong>
+                    <a href={href} target="_blank" rel="noreferrer noopener">{href}</a>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  </div>
+) : (
+  /* Single link: display directly */
+  <div class="recording-link-display">
+    {recording.links.length > 0 ? (() => {
+      const link = recording.links[0]
+      const href = getHref(link)
+      const mp3 = getMp3(link)
+      const image = getImage(link)
+      const label = getRecordingLinkLabel(link)
+      const displayLabel = showSingleLinkLabel ? label : undefined
+      const youtubeUrl = isYouTubeLink(href) ? href : undefined
+      const recordingKey = buildRecordingKey(0)
+
+      return (
+        <>
+          {/* Priority 1: mp3 + image → image with play/pause overlay */}
+          {mp3 && image ? (
+            <div class="recording-link-display-item">
+              {displayLabel ? <div><strong>{displayLabel}</strong></div> : null}
+              <figure class="recording-play-figure" data-recording-figure>
+                <img
+                  src={image.resolvedSrc}
+                  alt={image.alt || ''}
+                  loading="lazy"
+                  decoding="async"
+                  class="recording-play-image"
+                  style={image.position ? `object-position: ${image.position};` : undefined}
+                />
+                <button
+                  type="button"
+                  class="recording-play-btn"
+                  data-recording-play={recordingKey}
+                  data-recording-mp3={mp3}
+                  aria-label="Play recording"
+                >
+                  <span class="recording-play-btn-inner" aria-hidden="true">
+                    <svg class="recording-play-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+                    </svg>
+                    <svg class="recording-play-icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M9.4 7.4V16.6M14.6 7.4V16.6"></path>
+                    </svg>
+                  </span>
+                  <span class="sr-only">Play recording</span>
+                </button>
+              </figure>
+              {youtubeUrl ? (
+                <p class="recording-youtube-link">
+                  <a
+                    href={youtubeUrl}
+                    data-youtube-lightbox-trigger
+                    data-youtube-lightbox-url={youtubeUrl}
+                    data-youtube-lightbox-title={buildVideoTitle()}
+                    aria-label="Watch on YouTube"
+                  >
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+                      <path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z" />
+                    </svg>
+                    <span>Watch on YouTube</span>
+                  </a>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Priority 2: YouTube only (no mp3) + image → image opens lightbox */}
+          {!mp3 && youtubeUrl && image ? (
+            <div class="recording-link-display-item">
+              {displayLabel ? <div><strong>{displayLabel}</strong></div> : null}
+              <figure class="recording-play-figure">
+                <img
+                  src={image.resolvedSrc}
+                  alt={image.alt || ''}
+                  loading="lazy"
+                  decoding="async"
+                  class="recording-play-image"
+                  style={image.position ? `object-position: ${image.position};` : undefined}
+                />
+                <a
+                  href={youtubeUrl}
+                  class="recording-play-btn"
+                  data-youtube-lightbox-trigger
+                  data-youtube-lightbox-url={youtubeUrl}
+                  data-youtube-lightbox-title={buildVideoTitle()}
+                  aria-label="Watch on YouTube"
+                >
+                  <span class="recording-play-btn-inner" aria-hidden="true">
+                    <svg class="recording-play-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+                    </svg>
+                  </span>
+                  <span class="sr-only">Watch on YouTube</span>
+                </a>
+              </figure>
+            </div>
+          ) : null}
+
+          {/* Priority 3: YouTube only (no mp3) + no image → text lightbox link */}
+          {!mp3 && youtubeUrl && !image ? (
+            <div class="recording-link-display-item">
+              {displayLabel ? <div><strong>{displayLabel}</strong></div> : null}
+              <p class="recording-youtube-link">
+                <a
+                  href={youtubeUrl}
+                  data-youtube-lightbox-trigger
+                  data-youtube-lightbox-url={youtubeUrl}
+                  data-youtube-lightbox-title={buildVideoTitle()}
+                  aria-label="Watch on YouTube"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+                    <path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z" />
+                  </svg>
+                  <span>Watch on YouTube</span>
+                </a>
+              </p>
+            </div>
+          ) : null}
+
+          {/* Priority 4: other URL → plain link */}
+          {!mp3 && !youtubeUrl && href ? (
+            <div class="recording-link-display-item">
+              {displayLabel ? <div><strong>{displayLabel}</strong></div> : null}
+              <div>
+                <strong>Link:</strong>
+                <a href={href} target="_blank" rel="noreferrer noopener">{href}</a>
+              </div>
+            </div>
+          ) : null}
+        </>
+      )
+    })() : null}
+  </div>
+)}
+
+<script>
+  interface RecordingCarouselWindow extends Omit<Window, 'gtag'> {
+    gtag?: (...args: unknown[]) => void
+  }
+
+  function trackRecordingCarouselClick(carousel: HTMLElement, direction: 'prev' | 'next'): void {
+    const analyticsWindow = window as RecordingCarouselWindow
+    if (typeof analyticsWindow.gtag !== 'function') return
+
+    try {
+      analyticsWindow.gtag('event', 'work_detail_carousel_click', {
+        direction,
+        carousel_id: carousel.dataset.recordingLinkCarousel ?? '',
+        work_id: carousel.dataset.carouselWorkId ?? '',
+        recording_index: carousel.dataset.carouselRecordingIndex ?? '',
+      })
+    } catch {
+      // Never allow analytics failures to affect UX.
+    }
+  }
+
+  function initRecordingLinkCarousels(): void {
+    document.querySelectorAll<HTMLElement>('[data-recording-link-carousel]').forEach((carousel) => {
+      const carouselFrame = carousel.querySelector<HTMLElement>('[data-carousel-frame]')
+      const carouselPrev = carousel.querySelector<HTMLButtonElement>('[data-carousel-prev]')
+      const carouselNext = carousel.querySelector<HTMLButtonElement>('[data-carousel-next]')
+
+      if (!carouselFrame || !carouselPrev || !carouselNext) return
+
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const scrollStep = (): number => Math.max(carouselFrame.clientWidth - 2, 1)
+
+      function updateCarouselState(): void {
+        const maxScrollLeft = Math.max(0, carouselFrame!.scrollWidth - carouselFrame!.clientWidth)
+        const hasOverflow = maxScrollLeft > 2
+        const atStart = carouselFrame!.scrollLeft <= 1
+        const atEnd = carouselFrame!.scrollLeft >= maxScrollLeft - 1
+
+        carousel!.classList.toggle('has-overflow', hasOverflow)
+        carousel!.classList.toggle('at-end', hasOverflow && atEnd)
+        carouselPrev!.disabled = !hasOverflow || atStart
+        carouselNext!.disabled = !hasOverflow || atEnd
+      }
+
+      function scrollCarousel(direction: -1 | 1): void {
+        carouselFrame!.scrollBy({
+          left: scrollStep() * direction,
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        })
+      }
+
+      const onCarouselPrev = (): void => {
+        scrollCarousel(-1)
+        trackRecordingCarouselClick(carousel, 'prev')
+      }
+
+      const onCarouselNext = (): void => {
+        scrollCarousel(1)
+        trackRecordingCarouselClick(carousel, 'next')
+      }
+
+      const onCarouselKeydown = (event: KeyboardEvent): void => {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault()
+          scrollCarousel(-1)
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault()
+          scrollCarousel(1)
+        }
+      }
+
+      const onCarouselFrameScroll = (): void => updateCarouselState()
+      const onResize = (): void => updateCarouselState()
+
+      carouselPrev.addEventListener('click', onCarouselPrev)
+      carouselNext.addEventListener('click', onCarouselNext)
+      carouselFrame.addEventListener('scroll', onCarouselFrameScroll, { passive: true })
+      carouselFrame.addEventListener('keydown', onCarouselKeydown)
+      window.addEventListener('resize', onResize)
+
+      updateCarouselState()
+
+      // Cleanup
+      const cleanup = () => {
+        carouselPrev.removeEventListener('click', onCarouselPrev)
+        carouselNext.removeEventListener('click', onCarouselNext)
+        carouselFrame.removeEventListener('scroll', onCarouselFrameScroll)
+        carouselFrame.removeEventListener('keydown', onCarouselKeydown)
+        window.removeEventListener('resize', onResize)
+      }
+
+      document.addEventListener('astro:before-swap', cleanup, { once: true })
+    })
+  }
+
+  document.addEventListener('astro:page-load', () => {
+    initRecordingLinkCarousels()
+  })
+</script>
+
+<style is:global>
+  /* Recording Link Carousel */
+  .recording-link-carousel {
+    position: relative;
+    container-type: inline-size;
+    --recording-gap: 1rem;
+    --recording-columns: 1;
+    --recording-card-basis: 100%;
+  }
+
+  @media (min-width: 48rem) {
+    .recording-link-carousel {
+      --recording-columns: 2;
+      --recording-card-basis: calc((100% - var(--recording-gap)) / 2);
+    }
+  }
+
+  @media (min-width: 72rem) {
+    .recording-link-carousel {
+      --recording-columns: 3;
+      --recording-card-basis: calc((100% - (var(--recording-gap) * 2)) / 3);
+    }
+  }
+
+  .recording-link-carousel-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    margin-bottom: 0.85rem;
+  }
+
+  .recording-link-carousel-controls {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .recording-link-carousel:not(.has-overflow) .recording-link-carousel-controls {
+    display: none;
+  }
+
+  .recording-link-carousel-btn {
+    cursor: pointer;
+  }
+
+  .recording-link-carousel-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .recording-link-carousel-btn-icon {
+    display: inline-flex;
+    width: 1.2em;
+    height: 1.2em;
+  }
+
+  .recording-link-carousel-btn-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .recording-link-carousel-swipe-hint {
+    display: none;
+    align-items: center;
+    gap: 0.42rem;
+    margin: -0.2rem 0 0.6rem;
+    color: color-mix(in srgb, var(--ink-soft) 86%, transparent);
+    font: 600 0.72rem/1.2 var(--font-heading);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .recording-link-carousel-swipe-hint-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.95rem;
+    height: 0.95rem;
+    animation: recording-swipe-cue 1100ms ease-in-out infinite;
+  }
+
+  .recording-link-carousel-swipe-hint-icon svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(0deg);
+    transition: transform 220ms ease;
+  }
+
+  @keyframes recording-swipe-cue {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+
+    50% {
+      transform: translateX(0.2rem);
+    }
+  }
+
+  @keyframes recording-swipe-cue-back {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+
+    50% {
+      transform: translateX(-0.2rem);
+    }
+  }
+
+  .recording-link-carousel.at-end .recording-link-carousel-swipe-hint-icon {
+    animation-name: recording-swipe-cue-back;
+  }
+
+  .recording-link-carousel.at-end .recording-link-carousel-swipe-hint-icon svg {
+    transform: rotate(180deg);
+  }
+
+  .recording-link-carousel-frame {
+    padding-bottom: 0.3rem;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .recording-link-carousel-track {
+    display: flex;
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .recording-link-display-item {
+    margin: 0 0 1rem;
+  }
+
+  .recording-link-display-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .recording-link-carousel-item {
+    flex: 0 0 var(--recording-card-basis);
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  @media (max-width: 37.5rem) and (hover: none) and (pointer: coarse) {
+    .recording-link-carousel-controls {
+      display: none;
+    }
+
+    .recording-link-carousel.has-overflow .recording-link-carousel-swipe-hint {
+      display: inline-flex;
+    }
+  }
+</style>

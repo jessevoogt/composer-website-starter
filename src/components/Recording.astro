@@ -1,0 +1,285 @@
+---
+import FormattedDate from './FormattedDate.astro'
+import RecordingLinkCarousel from './RecordingLinkCarousel.astro'
+import type { RecordingType } from '../content.config'
+import { getRecordingLinkDuration, getRecordingLinkLabel } from '@/utils/recording-links'
+import { getPerformerCreditKey, normalizeCreditKey, splitPerformerCreditLabel } from '@/utils/credit-labels'
+
+interface Props {
+  recording: RecordingType
+  workId?: string
+  workTitle?: string
+  composer?: string
+  recordingIndex?: number
+  thumbnail?: { src: string; alt: string }
+  singleLinkHeadingLevel?: 'h2' | 'h3'
+  creditTagLinks?: Record<string, string>
+}
+
+const {
+  recording,
+  workId = '',
+  workTitle = '',
+  composer = '',
+  recordingIndex = 0,
+  thumbnail,
+  singleLinkHeadingLevel = 'h3',
+  creditTagLinks = {},
+} = Astro.props as Props
+const hasLinks = recording.links.length > 0
+const hasSingleLink = recording.links.length === 1
+const performers = recording.performers.map((performer) => performer.trim()).filter(Boolean)
+const hasPerformers = performers.length > 0
+const hasSinglePerformer = performers.length === 1
+const ensembleLabel = recording.ensemble?.trim() ?? ''
+const singleLink = hasSingleLink ? recording.links[0] : undefined
+const singleLinkHasExplicitLabel = Boolean(singleLink && typeof singleLink !== 'string' && singleLink.label?.trim())
+const singleLinkDuration = singleLink ? getRecordingLinkDuration(singleLink) : undefined
+const showNotesWithMeta = !recording.notes ? false : hasSingleLink || !hasLinks
+const explicitSingleLinkHeading = singleLink && singleLinkHasExplicitLabel ? getRecordingLinkLabel(singleLink) : undefined
+const performerLabel = performers.join(', ').trim()
+const creditLabel = ensembleLabel || performerLabel
+const titleLabel = workTitle.trim()
+const autoSingleLinkHeading =
+  creditLabel && titleLabel
+    ? `${creditLabel} performs “${titleLabel}”`
+    : creditLabel || titleLabel
+const singleLinkHeading = hasSingleLink ? (explicitSingleLinkHeading || autoSingleLinkHeading || 'Recording') : undefined
+const singleLinkHeadingId = hasSingleLink ? `recording-heading-${workId || 'work'}-${recordingIndex}` : undefined
+const SingleLinkHeadingTag = singleLinkHeadingLevel
+const normalizedCreditTagLinks = Object.fromEntries(
+  Object.entries(creditTagLinks).map(([label, href]) => [normalizeCreditKey(label), href]),
+)
+
+function resolveCreditTagHref(label: string, type: 'performer' | 'ensemble'): string | undefined {
+  const key = type === 'performer' ? getPerformerCreditKey(label) : normalizeCreditKey(label)
+  return normalizedCreditTagLinks[key]
+}
+
+const ensembleHref = ensembleLabel ? resolveCreditTagHref(ensembleLabel, 'ensemble') : undefined
+const performerEntries = performers.map((label) => {
+  const parts = splitPerformerCreditLabel(label)
+  return {
+    ...parts,
+    href: resolveCreditTagHref(label, 'performer'),
+  }
+})
+---
+
+<div class:list={['recording', { 'recording-single-link': hasSingleLink }]} role="group" aria-labelledby={singleLinkHeadingId}>
+  {hasSingleLink && singleLinkHeading ? (
+    <SingleLinkHeadingTag id={singleLinkHeadingId} class="recording-single-link-heading">{singleLinkHeading}</SingleLinkHeadingTag>
+  ) : null}
+
+  {hasSingleLink && hasLinks ? (
+    <div class:list={['recording-links', { 'recording-links-single': hasSingleLink }]}>
+      <RecordingLinkCarousel
+        recording={recording}
+        workId={workId}
+        workTitle={workTitle}
+        composer={composer}
+        recordingIndex={recordingIndex}
+        thumbnail={thumbnail}
+        showSingleLinkLabel={false}
+      />
+    </div>
+  ) : null}
+
+  <div class="recording-meta">
+    {ensembleLabel ? (
+      <div>
+        <strong>Ensemble:</strong> {ensembleHref ? <a href={ensembleHref}>{ensembleLabel}</a> : ensembleLabel}
+      </div>
+    ) : null}
+
+    {hasPerformers ? (
+      <div>
+        {hasSinglePerformer ? (
+          <>
+            <strong>Performer:</strong>{' '}
+            {performerEntries[0]?.href ? (
+              <>
+                <a href={performerEntries[0].href}>{performerEntries[0].name}</a>
+                {performerEntries[0].suffix}
+              </>
+            ) : (
+              performerEntries[0]?.label
+            )}
+          </>
+        ) : (
+          <>
+            <strong>Performers:</strong>
+            <ul class="performers-list">
+              {performerEntries.map((performer) => (
+                <li>
+                  {performer.href ? (
+                    <>
+                      <a href={performer.href}>{performer.name}</a>
+                      {performer.suffix}
+                    </>
+                  ) : (
+                    performer.label
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    ) : null}
+
+    {recording.date ? (
+      <div>
+        <strong>Recorded:</strong> <FormattedDate date={recording.date} />
+      </div>
+    ) : null}
+
+    {hasSingleLink && singleLinkDuration ? (
+      <div>
+        <strong>Duration:</strong> {singleLinkDuration}
+      </div>
+    ) : null}
+
+    {showNotesWithMeta ? (
+      <div>
+        <strong>Notes:</strong> {recording.notes}
+      </div>
+    ) : null}
+  </div>
+
+  {!hasSingleLink && hasLinks ? (
+    <div class:list={['recording-links', { 'recording-links-single': hasSingleLink }]}>
+      <RecordingLinkCarousel
+        recording={recording}
+        workId={workId}
+        workTitle={workTitle}
+        composer={composer}
+        recordingIndex={recordingIndex}
+        thumbnail={thumbnail}
+      />
+    </div>
+  ) : null}
+
+  {recording.notes && hasLinks && !hasSingleLink ? (
+    <div class="recording-notes">
+      <strong>Notes:</strong> {recording.notes}
+    </div>
+  ) : null}
+</div>
+
+<script>
+  function initRecordingPlayButtons(): void {
+    const buttons = document.querySelectorAll<HTMLButtonElement>('[data-recording-play]')
+    if (buttons.length === 0) return
+
+    const featuredPlayer = document.querySelector<HTMLAudioElement>('[data-featured-player]')
+    if (!featuredPlayer) return
+
+    function syncAllPlayButtons(): void {
+      const currentKey = featuredPlayer!.dataset.featuredRecordingKey?.trim() ?? ''
+      const isPlaying = !featuredPlayer!.paused && !featuredPlayer!.ended
+
+      document.querySelectorAll<HTMLButtonElement>('[data-recording-play]').forEach((btn) => {
+        const figure = btn.closest<HTMLElement>('[data-recording-figure]')
+        const btnKey = btn.getAttribute('data-recording-play') ?? ''
+        const isActive = btnKey === currentKey && isPlaying
+
+        if (figure) {
+          figure.classList.toggle('is-playing', isActive)
+        }
+        btn.setAttribute('aria-label', isActive ? 'Pause recording' : 'Play recording')
+      })
+    }
+
+    featuredPlayer.addEventListener('play', syncAllPlayButtons)
+    featuredPlayer.addEventListener('pause', syncAllPlayButtons)
+    featuredPlayer.addEventListener('ended', syncAllPlayButtons)
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const recordingKey = btn.getAttribute('data-recording-play') ?? ''
+        const currentKey = featuredPlayer.dataset.featuredRecordingKey?.trim() ?? ''
+
+        // If already playing this recording, toggle pause
+        if (recordingKey === currentKey && !featuredPlayer.paused && !featuredPlayer.ended) {
+          featuredPlayer.pause()
+          return
+        }
+
+        // Dispatch custom event to featured-player.ts which handles
+        // source loading, metadata sync, fixed bar, and playback
+        featuredPlayer.dispatchEvent(
+          new CustomEvent('featured-player:request-recording', {
+            detail: { key: recordingKey, play: true },
+          }),
+        )
+      })
+    })
+
+    // Initial sync in case player is already active
+    syncAllPlayButtons()
+
+    // Cleanup on page transition
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        featuredPlayer.removeEventListener('play', syncAllPlayButtons)
+        featuredPlayer.removeEventListener('pause', syncAllPlayButtons)
+        featuredPlayer.removeEventListener('ended', syncAllPlayButtons)
+      },
+      { once: true },
+    )
+  }
+
+  document.addEventListener('astro:page-load', initRecordingPlayButtons)
+</script>
+
+<style is:global>
+  .recording {
+    margin-top: 0.5rem;
+  }
+
+  .recording-meta > div + div {
+    margin-top: 0.25rem;
+  }
+
+  .performers-list { padding-left: 1rem; margin-bottom: 1rem }
+
+  .recording-links {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .recording-single-link-heading {
+    margin: 0 0 0.5rem;
+    font: 600 var(--font-size-0) / 1.3 var(--font-heading);
+  }
+
+  @media (min-width: 64rem), (min-width: 48rem) and (orientation: landscape) {
+  .recording-meta > div + div {
+    margin-top: 0.75rem;
+  }
+  .recording-links {
+    margin-bottom: 0;
+  }
+    .recording-single-link {
+      display: grid;
+      grid-template-columns: minmax(14rem, 40%) minmax(0, 1fr);
+      column-gap: clamp(1rem, 2.4vw, 2rem);
+      row-gap: clamp(0.5rem, 1.2vw, 1rem);
+      align-items: start;
+    }
+
+    .recording-single-link .recording-single-link-heading {
+      grid-column: 1 / -1;
+      margin-bottom: 0;
+      font-size: var(--font-size-1);
+      line-height: 1.25;
+    }
+
+    .recording-single-link .recording-links-single {
+      margin-top: 0;
+      min-width: 0;
+    }
+  }
+</style>

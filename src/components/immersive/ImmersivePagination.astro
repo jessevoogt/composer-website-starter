@@ -1,0 +1,71 @@
+---
+interface Props {
+  firstPage: string | null
+  previousPage: string | null
+  nextPage: string | null
+  lastPage: string | null
+  currentPage: string
+  totalPages: string
+  ariaLabel?: string
+}
+
+const {
+  firstPage,
+  previousPage,
+  nextPage,
+  lastPage,
+  currentPage,
+  totalPages,
+  ariaLabel = 'Pagination',
+} = Astro.props
+---
+
+<nav aria-label={ariaLabel} class="pagination">
+  {
+    firstPage ? (
+      <a href={firstPage} class="immersive-btn-control" aria-label="First page">
+        <span class="immersive-btn-label">First</span>
+      </a>
+    ) : (
+      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+        <span class="immersive-btn-label">First</span>
+      </span>
+    )
+  }
+  {
+    previousPage ? (
+      <a href={previousPage} class="immersive-btn-control" aria-label="Previous page">
+        <span class="immersive-btn-label">Prev</span>
+      </a>
+    ) : (
+      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+        <span class="immersive-btn-label">Prev</span>
+      </span>
+    )
+  }
+  <span class="pagination-info" aria-current="page">
+    {currentPage} / {totalPages}
+  </span>
+  {
+    nextPage ? (
+      <a href={nextPage} class="immersive-btn-control" aria-label="Next page">
+        <span class="immersive-btn-label">Next</span>
+      </a>
+    ) : (
+      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+        <span class="immersive-btn-label">Next</span>
+      </span>
+    )
+  }
+  {
+    lastPage ? (
+      <a href={lastPage} class="immersive-btn-control" aria-label="Last page">
+        <span class="immersive-btn-label">Last</span>
+      </a>
+    ) : (
+      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+        <span class="immersive-btn-label">Last</span>
+      </span>
+    )
+  }
+</nav>
