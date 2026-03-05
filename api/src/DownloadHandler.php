@@ -54,7 +54,11 @@ final class DownloadHandler
             $tokenWorkId = $payload['workId'];
 
             // Verify the full token (signature + expiry + work binding).
-            $result = Token::verify($token, $tokenWorkId, $secret);
+            try {
+                $result = Token::verify($token, $tokenWorkId, $secret);
+            } catch (\RuntimeException) {
+                return self::jsonError(500, 'Perusal token signing secret is not configured.');
+            }
             if (!$result['valid']) {
                 return self::jsonError(401, 'Token is invalid or expired.');
             }
@@ -168,6 +172,7 @@ final class DownloadHandler
         header('Content-Disposition: ' . $disposition);
         header('Content-Length: ' . $size);
         header('Cache-Control: no-store');
+        header('Referrer-Policy: no-referrer');
         header('X-Content-Type-Options: nosniff');
 
         // Flush output buffer to prevent memory issues with large files.

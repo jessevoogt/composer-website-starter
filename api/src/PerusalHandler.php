@@ -48,16 +48,25 @@ final class PerusalHandler
         }
 
         // Rate limiting.
+        $clientIp = self::resolveClientIp();
         $rateLimit = (int) ($_ENV['RATE_LIMIT_PERUSAL'] ?? 5);
-        if (!RateLimit::check('perusal', $email, $rateLimit, 3600)) {
+        $ipRateLimit = max($rateLimit * 6, 30);
+        if (
+            !RateLimit::check('perusal-email', $email, $rateLimit, 3600) ||
+            !RateLimit::check('perusal-ip', $clientIp, $ipRateLimit, 3600)
+        ) {
             return ['status' => 429, 'body' => ['success' => false, 'message' => 'Too many requests. Please try again later.']];
         }
 
         // Build token.
         $secret  = $_ENV['HMAC_SECRET'] ?? '';
         $expDays = (int) ($_ENV['TOKEN_EXP_DAYS'] ?? 90);
-        $payload = Token::makePayload($workId, $email, $firstName, $expDays);
-        $token   = Token::create($payload, $secret);
+        try {
+            $payload = Token::makePayload($workId, $email, $firstName, $expDays);
+            $token   = Token::create($payload, $secret);
+        } catch (\RuntimeException) {
+            return ['status' => 500, 'body' => ['success' => false, 'message' => 'Perusal token signing secret is not configured.']];
+        }
 
         // Build magic link.
         $frontendUrl = rtrim($_ENV['FRONTEND_URL'] ?? '', '/');
@@ -117,7 +126,11 @@ final class PerusalHandler
             return ['status' => 200, 'body' => ['valid' => false]];
         }
 
-        $result = Token::verify($token, $workId, $secret);
+        try {
+            $result = Token::verify($token, $workId, $secret);
+        } catch (\RuntimeException) {
+            return ['status' => 200, 'body' => ['valid' => false]];
+        }
 
         if ($result['valid']) {
             return ['status' => 200, 'body' => [
@@ -183,5 +196,14 @@ final class PerusalHandler
         }
 
         return $links;
+    }
+
+    /**
+     * Resolve a stable client IP identifier for rate limiting.
+     */
+    private static function resolveClientIp(): string
+    {
+        $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+        return $ip !== '' ? substr($ip, 0, 64) : 'unknown';
     }
 }

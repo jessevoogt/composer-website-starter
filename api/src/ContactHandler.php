@@ -55,8 +55,13 @@ final class ContactHandler
         }
 
         // Rate limiting.
+        $clientIp = self::resolveClientIp();
         $rateLimit = (int) ($_ENV['RATE_LIMIT_CONTACT'] ?? 3);
-        if (!RateLimit::check('contact', $email, $rateLimit, 3600)) {
+        $ipRateLimit = max($rateLimit * 6, 30);
+        if (
+            !RateLimit::check('contact-email', $email, $rateLimit, 3600) ||
+            !RateLimit::check('contact-ip', $clientIp, $ipRateLimit, 3600)
+        ) {
             return ['status' => 429, 'body' => ['success' => false, 'message' => 'Too many messages. Please try again later.']];
         }
 
@@ -82,5 +87,14 @@ final class ContactHandler
         }
 
         return ['status' => 200, 'body' => ['success' => true]];
+    }
+
+    /**
+     * Resolve a stable client IP identifier for rate limiting.
+     */
+    private static function resolveClientIp(): string
+    {
+        $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+        return $ip !== '' ? substr($ip, 0, 64) : 'unknown';
     }
 }

@@ -90,11 +90,17 @@ export async function verifyTokenClientSide(
   workId: string,
   secret: string,
 ): Promise<{ valid: boolean; email?: string }> {
-  const result = await verifyToken(token, workId, secret)
-  if (result.valid && result.payload) {
-    return { valid: true, email: result.payload.email }
+  try {
+    const result = await verifyToken(token, workId, secret)
+    if (result.valid && result.payload) {
+      return { valid: true, email: result.payload.email }
+    }
+    return { valid: false }
+  } catch {
+    // Secret may be intentionally unavailable in hardened deployments.
+    // In that case, rely on API verification only.
+    return { valid: false }
   }
-  return { valid: false }
 }
 
 export async function verifyTokenWithFallback(

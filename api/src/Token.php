@@ -43,7 +43,39 @@ final class Token
      */
     private static function resolveKey(string $secret): string
     {
-        return $secret !== '' ? $secret : self::DEFAULT_DEV_KEY;
+        $trimmed = trim($secret);
+        if ($trimmed !== '') {
+            return $trimmed;
+        }
+
+        if (self::allowInsecureFallback()) {
+            return self::DEFAULT_DEV_KEY;
+        }
+
+        throw new \RuntimeException('HMAC_SECRET is required outside local development.');
+    }
+
+    /**
+     * Allow insecure fallback only in explicit local-development contexts.
+     */
+    private static function allowInsecureFallback(): bool
+    {
+        $allowFlag = strtolower(trim((string) ($_ENV['ALLOW_INSECURE_DEV_KEY'] ?? '')));
+        if (in_array($allowFlag, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+
+        $appEnv = strtolower(trim((string) ($_ENV['APP_ENV'] ?? '')));
+        if (in_array($appEnv, ['dev', 'development', 'local', 'test'], true)) {
+            return true;
+        }
+
+        $frontendUrl = strtolower(trim((string) ($_ENV['FRONTEND_URL'] ?? '')));
+        if ($frontendUrl !== '' && (str_contains($frontendUrl, 'localhost') || str_contains($frontendUrl, '127.0.0.1'))) {
+            return true;
+        }
+
+        return false;
     }
 
     /**

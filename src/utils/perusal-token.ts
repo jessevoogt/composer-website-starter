@@ -61,13 +61,30 @@ export function isTokenForWork(payload: PerusalTokenPayload, workId: string): bo
 
 /**
  * Derive an HMAC-SHA256 CryptoKey from a secret string.
- * If the secret is empty, a default fallback key is used.
- * An empty secret is insecure (anyone can forge tokens) but is acceptable
- * during development / interim mode since perusal scores are already watermarked.
+ * Insecure fallback is only allowed in local dev contexts.
  */
+function allowInsecureFallback(): boolean {
+  if (import.meta.env?.DEV) return true
+
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]') {
+      return true
+    }
+  }
+
+  return false
+}
+
 async function getHmacKey(secret: string): Promise<CryptoKey> {
   const encoder = new TextEncoder()
-  const keyMaterial = secret || 'perusal-gate-default-dev-key'
+  const provided = secret.trim()
+  const keyMaterial = provided || 'perusal-gate-default-dev-key'
+
+  if (!provided && !allowInsecureFallback()) {
+    throw new Error('HMAC secret is required outside local development.')
+  }
+
   return crypto.subtle.importKey('raw', encoder.encode(keyMaterial), { name: 'HMAC', hash: 'SHA-256' }, false, [
     'sign',
     'verify',

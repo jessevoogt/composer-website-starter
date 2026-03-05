@@ -992,7 +992,7 @@ final class Mailer
 
     /**
      * Derive a bare domain from FRONTEND_URL (strips protocol and trailing slash).
-     * e.g. "https://jessevoogt.com" → "jessevoogt.com"
+     * e.g. "https://example.com" → "example.com"
      */
     private function siteDomain(): string
     {
