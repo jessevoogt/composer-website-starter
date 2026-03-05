@@ -1,0 +1,1454 @@
+---
+export const prerender = false
+
+/**
+ * Studio Shell Page
+ *
+ * Dedicated route for the CMS Live Editor. Renders a two-panel workspace:
+ * preview iframe (left) + Keystatic CMS iframe (right). The shell owns all
+ * browser history management — no <ClientRouter />, no View Transition
+ * conflicts.
+ *
+ * Dev-mode only. In production builds, redirects to /404/.
+ */
+if (!import.meta.env.DEV) {
+  return Astro.redirect('/404/')
+}
+
+const requestUrl = new URL(Astro.request.url)
+if (requestUrl.hostname === 'localhost') {
+  requestUrl.hostname = '127.0.0.1'
+  return Astro.redirect(requestUrl.toString())
+}
+
+const initialPreviewPathname = (Astro.params.path ?? '') === '' ? '/' : `/${Astro.params.path ?? ''}/`
+
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Studio</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      /* ── Root ──────────────────────────────────────────────────────── */
+      html, body {
+        margin: 0;
+        height: 100dvh;
+        overflow: hidden;
+        color-scheme: dark;
+      }
+
+      /* ── Workspace grid ────────────────────────────────────────────── */
+      .cms-live-editor-workspace {
+        display: grid;
+        height: 100dvh;
+        grid-template-columns: minmax(0, 1fr) 0px clamp(24rem, 38vw, 38rem);
+        background: #081119;
+      }
+
+      /* ── Preview panel ─────────────────────────────────────────────── */
+      .cms-live-editor-preview-shell {
+        min-width: 0;
+        min-height: 0;
+        background: #09131b;
+      }
+      .cms-live-editor-preview-frame {
+        display: block;
+        border: 0;
+        width: 100%;
+        height: 100%;
+        background: #10161d;
+      }
+
+      /* ── Resize handle ─────────────────────────────────────────────── */
+      .cms-live-editor-resize-handle {
+        width: 5px;
+        margin: 0 -2px;
+        cursor: col-resize;
+        background: #30404d;
+        position: relative;
+        z-index: 2;
+        transition: background 120ms ease;
+      }
+      .cms-live-editor-resize-handle:hover,
+      .cms-live-editor-resize-handle.active {
+        background: #5b9bd5;
+      }
+
+      /* ── CMS panel ─────────────────────────────────────────────────── */
+      .cms-live-editor-cms-shell {
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #0f161d;
+        box-shadow:
+          0 0 0 1px rgb(48 64 77 / 0.9),
+          -20px 0 44px rgb(0 0 0 / 0.3);
+      }
+
+      /* ── Header ────────────────────────────────────────────────────── */
+      .cms-live-editor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #22313d;
+        background: linear-gradient(180deg, rgb(13 20 28 / 0.98) 0%, rgb(13 20 28 / 0.94) 100%);
+        flex-shrink: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #c4d4e0;
+        font-size: 0.8125rem;
+        line-height: 1;
+        gap: 0.5rem;
+      }
+      .cms-live-editor-header-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        font-weight: 500;
+      }
+      .cms-live-editor-header-actions {
+        display: flex;
+        gap: 0.25rem;
+        flex-shrink: 0;
+      }
+      .cms-live-editor-header-btn {
+        appearance: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #30404d;
+        border-radius: 0.375rem;
+        background: transparent;
+        color: #8fa4b8;
+        padding: 0.3rem;
+        cursor: pointer;
+        transition: background 120ms ease, color 120ms ease;
+      }
+      .cms-live-editor-header-btn:hover {
+        background: rgb(48 64 77 / 0.4);
+        color: #e0e8ef;
+      }
+      .cms-live-editor-header-btn:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
+      .cms-live-editor-header-btn:disabled:hover {
+        background: transparent;
+        color: #8fa4b8;
+      }
+      .cms-live-editor-header-btn:focus-visible {
+        outline: 2px solid #5b9bd5;
+        outline-offset: 1px;
+      }
+      .cms-live-editor-nav-group {
+        display: flex;
+        align-items: center;
+        gap: 0;
+      }
+      .cms-live-editor-left-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* ── Toolbar menu ──────────────────────────────────────────────── */
+      .cms-live-editor-toolbar-wrapper {
+        position: relative;
+      }
+      .cms-live-editor-toolbar-toggle img {
+        display: block;
+      }
+      .cms-live-editor-toolbar-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px;
+        background: #1a2330;
+        border: 1px solid #30404d;
+        border-radius: 0.375rem;
+        box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+        min-width: 140px;
+        z-index: 10;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .cms-live-editor-toolbar-menu-item,
+      a.cms-live-editor-toolbar-menu-item {
+        display: flex;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 5px 10px;
+        background: transparent;
+        color: #c4d4e0;
+        border: none;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+        justify-content: flex-start;
+        line-height: 1.3;
+        transition: background 120ms ease;
+        font-family: inherit;
+      }
+      .cms-live-editor-toolbar-menu-item:hover:not([disabled]),
+      a.cms-live-editor-toolbar-menu-item:hover:not([disabled]) {
+        background: rgb(48 64 77 / 0.5);
+        color: #e0e8ef;
+        text-decoration: none;
+      }
+      .cms-live-editor-toolbar-menu-item[disabled] {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .cms-live-editor-toolbar-menu-item.success {
+        background: #14532d;
+        color: #fafafa;
+      }
+      .cms-live-editor-toolbar-menu-item.error {
+        background: #450a0a;
+        color: #fafafa;
+      }
+      .cms-live-editor-toolbar-menu-sep {
+        height: 1px;
+        background: #30404d;
+        margin: 2px 4px;
+      }
+
+      /* ── Confirm modal ─────────────────────────────────────────────── */
+      .cms-live-editor-confirm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 200000;
+        background: rgb(0 0 0 / 0.55);
+        place-items: center;
+      }
+      .cms-live-editor-confirm-overlay[data-open] {
+        display: grid;
+      }
+      .cms-live-editor-confirm-dialog {
+        background: #1a2430;
+        border: 1px solid #30404d;
+        max-width: 26rem;
+        width: calc(100% - 2rem);
+        padding: 1.25rem 1.5rem;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #c4d4e0;
+        line-height: 1.5;
+      }
+      .cms-live-editor-confirm-dialog h2 {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem;
+        color: #e8eff5;
+      }
+      .cms-live-editor-confirm-dialog p {
+        font-size: 0.8125rem;
+        margin: 0 0 1.25rem;
+        color: #8fa4b8;
+      }
+      .cms-live-editor-confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+      }
+      .cms-live-editor-confirm-btn {
+        font: inherit;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        padding: 0.4rem 0.85rem;
+        border: 1px solid #30404d;
+        background: #0f161d;
+        color: #c4d4e0;
+        cursor: pointer;
+        transition: background 0.1s, border-color 0.1s;
+      }
+      .cms-live-editor-confirm-btn:hover {
+        background: #1a2430;
+        border-color: #4a6375;
+      }
+      .cms-live-editor-confirm-btn:focus-visible {
+        outline: 2px solid #5ba3d9;
+        outline-offset: 2px;
+      }
+      .cms-live-editor-confirm-btn--danger {
+        background: #6b1a1a;
+        border-color: #8b2525;
+        color: #fde8e8;
+      }
+      .cms-live-editor-confirm-btn--danger:hover {
+        background: #7f2020;
+        border-color: #a33030;
+      }
+
+      /* ── CMS iframe ────────────────────────────────────────────────── */
+      .cms-live-editor-cms-frame {
+        flex: 1;
+        min-height: 0;
+        display: block;
+        border: 0;
+        width: 100%;
+        background: #fff;
+      }
+
+      /* ── Responsive: stack vertically on narrow screens ─────────── */
+      @media (max-width: 77.99rem) {
+        .cms-live-editor-workspace {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-rows: minmax(0, 1fr) clamp(18rem, 50vh, 30rem);
+        }
+        .cms-live-editor-resize-handle {
+          display: none;
+        }
+        .cms-live-editor-preview-shell {
+          border-bottom: 1px solid #30404d;
+        }
+        .cms-live-editor-cms-shell {
+          box-shadow:
+            0 0 0 1px rgb(48 64 77 / 0.9),
+            0 -20px 44px rgb(0 0 0 / 0.3);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cms-live-editor-workspace" id="workspace">
+      <!-- Preview panel -->
+      <div class="cms-live-editor-preview-shell">
+        <iframe
+          class="cms-live-editor-preview-frame"
+          id="preview-frame"
+          title="CMS Live Editor site preview"
+          name="__cms-live-editor-preview__"
+          loading="eager"
+          referrerpolicy="same-origin"
+        ></iframe>
+      </div>
+
+      <!-- Resize handle -->
+      <div class="cms-live-editor-resize-handle" id="resize-handle" aria-hidden="true"></div>
+
+      <!-- CMS panel -->
+      <div class="cms-live-editor-cms-shell" id="cms-shell">
+        <div class="cms-live-editor-header">
+          <div class="cms-live-editor-left-group">
+            <div class="cms-live-editor-nav-group">
+              <button class="cms-live-editor-header-btn" type="button" title="Back (Alt+←)" aria-label="Back" id="nav-back-btn" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <button class="cms-live-editor-header-btn" type="button" title="Forward (Alt+→)" aria-label="Forward" id="nav-fwd-btn" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+            <button class="cms-live-editor-header-btn" type="button" title="Undo changes" aria-label="Undo changes" id="undo-btn" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.69 3L3 13"/></svg>
+            </button>
+          </div>
+          <span class="cms-live-editor-header-label" id="header-label">CMS Editor</span>
+          <div class="cms-live-editor-header-actions">
+            <!-- Toolbar menu -->
+            <div class="cms-live-editor-toolbar-wrapper" id="toolbar-wrapper">
+              <button
+                class="cms-live-editor-header-btn cms-live-editor-toolbar-toggle"
+                type="button"
+                title="Dev tools"
+                aria-label="Dev tools"
+                aria-expanded="false"
+                id="toolbar-menu-btn"
+              >
+                <img src="/favicon.svg" alt="" style="display:block;height:14px;width:auto" />
+              </button>
+              <div class="cms-live-editor-toolbar-menu" role="menu" id="toolbar-menu">
+                <button class="cms-live-editor-toolbar-menu-item" type="button" role="menuitem" id="search-btn">Search</button>
+                <span id="live-link-slot"></span>
+                <div class="cms-live-editor-toolbar-menu-sep"></div>
+                <button class="cms-live-editor-toolbar-menu-item" type="button" role="menuitem" id="build-btn">&#x2699; Build</button>
+                <button class="cms-live-editor-toolbar-menu-item" type="button" role="menuitem" id="preview-btn">&#x25B6; Preview</button>
+                <button class="cms-live-editor-toolbar-menu-item" type="button" role="menuitem" id="publish-btn">&#x2B06; Publish</button>
+                <button class="cms-live-editor-toolbar-menu-item" type="button" role="menuitem" id="starter-btn">&#x1F4E6; Export Starter</button>
+              </div>
+            </div>
+
+            <!-- Open in new tab -->
+            <button class="cms-live-editor-header-btn" type="button" title="Open CMS in new tab" id="open-tab-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/><path d="m21 3-9 9"/><path d="M15 3h6v6"/></svg>
+            </button>
+
+            <!-- Close -->
+            <button class="cms-live-editor-header-btn" type="button" title="Close Studio" id="close-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+          </div>
+        </div>
+        <iframe
+          class="cms-live-editor-cms-frame"
+          id="cms-frame"
+          title="Keystatic CMS editor"
+          loading="eager"
+          referrerpolicy="same-origin"
+        ></iframe>
+      </div>
+    </div>
+
+    <!-- Confirm discard modal -->
+    <div class="cms-live-editor-confirm-overlay" id="confirm-overlay" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+      <div class="cms-live-editor-confirm-dialog">
+        <h2 id="confirm-title">Unsaved changes</h2>
+        <p id="confirm-desc">You have unsaved changes in the CMS editor. Do you want to discard them and continue?</p>
+        <div class="cms-live-editor-confirm-actions">
+          <button class="cms-live-editor-confirm-btn" type="button" id="confirm-cancel-btn">Cancel</button>
+          <button class="cms-live-editor-confirm-btn cms-live-editor-confirm-btn--danger" type="button" id="confirm-discard-btn">Discard changes</button>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline define:vars={{ INITIAL_PREVIEW_PATHNAME: initialPreviewPathname }}>
+      // ══════════════════════════════════════════════════════════════════════
+      // Studio Shell — client-side logic
+      // ══════════════════════════════════════════════════════════════════════
+
+      // ── Constants ──────────────────────────────────────────────────────
+
+      const STUDIO_ROUTE_PREFIX = '/__studio'
+      const CMS_LIVE_EDITOR_PREVIEW_PARAM = 'cmsLivePreview'
+      const CMS_LIVE_EDITOR_WORKSPACE_STATE_KEY = 'cms-live-editor-workspace-state-v1'
+      const CMS_LIVE_EDITOR_PANEL_WIDTH_KEY = 'cms-live-editor-panel-width-v1'
+      const KEYSTATIC_ROOT_PATH = '/keystatic/'
+
+      // ── Routing: Site page → Keystatic editor ─────────────────────────
+
+      const PAGE_SINGLETON_PATHS = {
+        '/': '/keystatic/singleton/homePage',
+        '/about': '/keystatic/singleton/aboutPage',
+        '/contact': '/keystatic/singleton/contactPage',
+        '/contact/thank-you': '/keystatic/singleton/contactThankYouPage',
+        '/music': '/keystatic/singleton/musicPage',
+        '/music/browse': '/keystatic/singleton/musicBrowsePage',
+        '/accessibility-statement': '/keystatic/singleton/accessibilityPage',
+        '/sitemap': '/keystatic/singleton/sitemapPage',
+        '/404': '/keystatic/singleton/notFoundPage',
+      }
+
+      function normalizePathname(pathname) {
+        const normalized = pathname.replace(/\/+/g, '/').trim()
+        if (!normalized || normalized === '/') return '/'
+        return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized
+      }
+
+      function resolveWorkItemPath(pathname) {
+        const segments = pathname.split('/').filter(Boolean)
+        if (segments[0] !== 'music') return null
+        if (segments.length < 2) return null
+        if (segments[1] === 'browse') {
+          if (segments.length >= 3) return '/keystatic/singleton/musicBrowseTagPage'
+          return PAGE_SINGLETON_PATHS['/music/browse'] ?? null
+        }
+        if (segments[2] === 'request-score-access') {
+          return '/keystatic/singleton/workDetailScoreAccessRequestPage'
+        }
+        if (segments[2] === 'perusal-score' && segments[3] === 'access-granted') {
+          return '/keystatic/singleton/workDetailScoreAccessGrantedPage'
+        }
+        if (segments[2] === 'perusal-score' && segments[3] === 'thank-you') {
+          return '/keystatic/singleton/workDetailScoreAccessThankYouPage'
+        }
+        return '/keystatic/collection/works/item/' + encodeURIComponent(segments[1])
+      }
+
+      function resolveKeystaticPath(pathname, is404) {
+        if (is404) return PAGE_SINGLETON_PATHS['/404'] ?? KEYSTATIC_ROOT_PATH
+
+        const normalizedPath = normalizePathname(pathname)
+
+        const singletonPath = PAGE_SINGLETON_PATHS[normalizedPath]
+        if (singletonPath) return singletonPath
+
+        const workItemPath = resolveWorkItemPath(normalizedPath)
+        if (workItemPath) return workItemPath
+
+        return KEYSTATIC_ROOT_PATH
+      }
+
+      // ── Routing: Keystatic editor → Site page (reverse mapping) ───────
+
+      const KEYSTATIC_SINGLETON_TO_PAGE = {
+        '/keystatic/singleton/homePage': '/',
+        '/keystatic/singleton/aboutPage': '/about/',
+        '/keystatic/singleton/contactPage': '/contact/',
+        '/keystatic/singleton/contactThankYouPage': '/contact/thank-you/',
+        '/keystatic/singleton/musicPage': '/music/',
+        '/keystatic/singleton/musicBrowsePage': '/music/browse/',
+        '/keystatic/singleton/musicBrowseTagPage': '/music/browse/',
+        '/keystatic/singleton/accessibilityPage': '/accessibility-statement/',
+        '/keystatic/singleton/sitemapPage': '/sitemap/',
+        '/keystatic/singleton/notFoundPage': '/404/',
+        '/keystatic/singleton/workDetailScoreAccessRequestPage': '/music/',
+        '/keystatic/singleton/workDetailScoreAccessGrantedPage': '/music/',
+        '/keystatic/singleton/workDetailScoreAccessThankYouPage': '/music/',
+      }
+
+      function resolvePagePathFromKeystatic(keystaticPathname) {
+        const normalized = normalizePathname(keystaticPathname)
+
+        const directMatch = KEYSTATIC_SINGLETON_TO_PAGE[normalized]
+        if (directMatch) return directMatch
+
+        const worksMatch = normalized.match(/^\/keystatic\/collection\/works\/item\/([^/]+)$/)
+        if (worksMatch) return '/music/' + decodeURIComponent(worksMatch[1]) + '/'
+
+        return null
+      }
+
+      // ── Human-readable label for the header ───────────────────────────
+
+      const KEYSTATIC_PATH_LABELS = {
+        '/keystatic/singleton/homePage': 'Homepage',
+        '/keystatic/singleton/aboutPage': 'About',
+        '/keystatic/singleton/contactPage': 'Contact',
+        '/keystatic/singleton/contactThankYouPage': 'Contact Thank You',
+        '/keystatic/singleton/musicPage': 'Music',
+        '/keystatic/singleton/musicBrowsePage': 'Browse Music',
+        '/keystatic/singleton/musicBrowseTagPage': 'Browse by Tag',
+        '/keystatic/singleton/accessibilityPage': 'Accessibility',
+        '/keystatic/singleton/sitemapPage': 'Sitemap',
+        '/keystatic/singleton/notFoundPage': '404 Page',
+        '/keystatic/singleton/workDetailScoreAccessRequestPage': 'Score Access Request',
+        '/keystatic/singleton/workDetailScoreAccessGrantedPage': 'Score Access Granted',
+        '/keystatic/singleton/workDetailScoreAccessThankYouPage': 'Score Access Thank You',
+      }
+
+      function describeKeystaticPath(keystaticPath) {
+        const normalized = normalizePathname(keystaticPath)
+
+        const label = KEYSTATIC_PATH_LABELS[normalized]
+        if (label) return label
+
+        const worksMatch = normalized.match(/\/keystatic\/collection\/works\/item\/([^/]+)/)
+        if (worksMatch) {
+          const slug = decodeURIComponent(worksMatch[1])
+          return slug
+            .split('-')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ')
+        }
+
+        if (normalized === '/keystatic' || normalized === '/keystatic/') {
+          return 'Dashboard'
+        }
+
+        return 'CMS'
+      }
+
+      // ── URL builders ──────────────────────────────────────────────────
+
+      function buildPreviewUrl(pathname) {
+        const nextUrl = new URL(pathname ?? '/', window.location.origin)
+        nextUrl.searchParams.set(CMS_LIVE_EDITOR_PREVIEW_PARAM, '1')
+        return nextUrl.toString()
+      }
+
+      function buildCmsUrl(keystaticPath) {
+        return new URL(keystaticPath, window.location.origin).toString()
+      }
+
+      function buildStudioUrl(previewPathname) {
+        const normalized = normalizePathname(previewPathname)
+        const displayPath = normalized === '/' ? '/' : normalized + '/'
+        return STUDIO_ROUTE_PREFIX + displayPath
+      }
+
+      // ── DOM references ────────────────────────────────────────────────
+
+      const previewFrame = document.getElementById('preview-frame')
+      const cmsFrame = document.getElementById('cms-frame')
+      const cmsShell = document.getElementById('cms-shell')
+      const headerLabel = document.getElementById('header-label')
+      const resizeHandle = document.getElementById('resize-handle')
+      const toolbarMenuBtn = document.getElementById('toolbar-menu-btn')
+      const toolbarMenu = document.getElementById('toolbar-menu')
+      const toolbarWrapper = document.getElementById('toolbar-wrapper')
+      const searchBtn = document.getElementById('search-btn')
+      const buildBtn = document.getElementById('build-btn')
+      const previewBtn = document.getElementById('preview-btn')
+      const publishBtn = document.getElementById('publish-btn')
+      const starterBtn = document.getElementById('starter-btn')
+      const openTabBtn = document.getElementById('open-tab-btn')
+      const closeBtn = document.getElementById('close-btn')
+      const navBackBtn = document.getElementById('nav-back-btn')
+      const navFwdBtn = document.getElementById('nav-fwd-btn')
+      const undoBtn = document.getElementById('undo-btn')
+      const liveSlot = document.getElementById('live-link-slot')
+
+      // ── State ─────────────────────────────────────────────────────────
+
+      let navigationInProgress = false // true while waiting for preview to confirm navigation
+      let lastPreviewPathname = normalizePathname(INITIAL_PREVIEW_PATHNAME)
+      let lastCmsPathname = ''
+      let cmsIsDirty = false
+
+      // Internal navigation history (replaces browser pushState/popstate).
+      // We only use replaceState — the browser Back button exits the studio.
+      // Back/Forward within the studio uses these buttons + this stack.
+      const navStack = [normalizePathname(INITIAL_PREVIEW_PATHNAME)]
+      let navStackIndex = 0
+
+      // ── Iframe navigation helpers ───────────────────────────────────
+      // Use location.replace() to prevent iframe navigations from polluting
+      // the session history (all frames share a single history stack).
+
+      function navigatePreview(url) {
+        try {
+          previewFrame.contentWindow.location.replace(url)
+        } catch {
+          previewFrame.src = url
+        }
+      }
+
+      function navigateCms(url) {
+        try {
+          cmsFrame.contentWindow.location.replace(url)
+        } catch {
+          cmsFrame.src = url
+        }
+      }
+
+      // ── URL helpers ──────────────────────────────────────────────────
+
+      function withTrailingSlash(normalized) {
+        return normalized === '/' ? '/' : normalized + '/'
+      }
+
+      function studioReplaceState(previewPath) {
+        history.replaceState({ href: previewPath }, '', buildStudioUrl(previewPath))
+      }
+
+      // ── Internal navigation stack ──────────────────────────────────
+
+      function updateNavButtons() {
+        navBackBtn.disabled = navStackIndex <= 0
+        navFwdBtn.disabled = navStackIndex >= navStack.length - 1
+      }
+
+      function navStackPush(previewPath) {
+        const normalized = normalizePathname(previewPath)
+        // Don't push duplicates of the current entry
+        if (navStack[navStackIndex] === normalized) {
+          studioReplaceState(normalized)
+          return
+        }
+        // Truncate any forward entries (like browser behavior)
+        navStack.length = navStackIndex + 1
+        navStack.push(normalized)
+        navStackIndex++
+        studioReplaceState(normalized)
+        updateNavButtons()
+      }
+
+      async function studioGoBack() {
+        if (navStackIndex <= 0) return
+        if (cmsIsDirty) {
+          if (!(await confirmDiscard())) return
+          discardDraft()
+        }
+        navStackIndex--
+        const previewPath = navStack[navStackIndex]
+        const fullPath = withTrailingSlash(previewPath)
+        const cmsPath = resolveKeystaticPath(fullPath, false)
+
+        lastPreviewPathname = previewPath
+        lastCmsPathname = normalizePathname(cmsPath)
+
+        navigatePreview(buildPreviewUrl(fullPath))
+        navigateCms(buildCmsUrl(cmsPath))
+        updateHeaderLabel(cmsPath)
+        studioReplaceState(previewPath)
+        updateNavButtons()
+        persistWorkspaceState()
+      }
+
+      async function studioGoForward() {
+        if (navStackIndex >= navStack.length - 1) return
+        if (cmsIsDirty) {
+          if (!(await confirmDiscard())) return
+          discardDraft()
+        }
+        navStackIndex++
+        const previewPath = navStack[navStackIndex]
+        const fullPath = withTrailingSlash(previewPath)
+        const cmsPath = resolveKeystaticPath(fullPath, false)
+
+        lastPreviewPathname = previewPath
+        lastCmsPathname = normalizePathname(cmsPath)
+
+        navigatePreview(buildPreviewUrl(fullPath))
+        navigateCms(buildCmsUrl(cmsPath))
+        updateHeaderLabel(cmsPath)
+        studioReplaceState(previewPath)
+        updateNavButtons()
+        persistWorkspaceState()
+      }
+
+      // ── Helper: update header label ───────────────────────────────────
+
+      function updateHeaderLabel(keystaticPath) {
+        const label = describeKeystaticPath(keystaticPath)
+        headerLabel.textContent = 'Editing: ' + label
+      }
+
+      // ── Draft cleanup (deferred delete after CMS iframe loads) ────────
+
+      function decodeDraftKeySegment(segment) {
+        if (!segment) return segment
+        try {
+          return decodeURIComponent(segment)
+        } catch {
+          return segment
+        }
+      }
+
+      function parseCmsDraftKey() {
+        try {
+          const pathname = lastCmsPathname
+          if (!pathname) return null
+          const singletonMatch = pathname.match(/\/keystatic\/singleton\/([^/]+)/)
+          if (singletonMatch) return ['singleton', decodeDraftKeySegment(singletonMatch[1])]
+          const collectionMatch = pathname.match(/\/keystatic\/collection\/([^/]+)\/item\/([^/]+)/)
+          if (collectionMatch) {
+            return [
+              'collection',
+              decodeDraftKeySegment(collectionMatch[1]),
+              decodeDraftKeySegment(collectionMatch[2]),
+            ]
+          }
+          return null
+        } catch {
+          return null
+        }
+      }
+
+      function discardDraft() {
+        // Reset immediately so subsequent navigations don't re-prompt.
+        // The dirty monitor will confirm the clean state within ~600ms.
+        cmsIsDirty = false
+
+        const key = parseCmsDraftKey()
+        if (!key) return
+        // Draft deletion must happen inside the CMS iframe's origin
+        // (Keystatic may resolve to 127.0.0.1 while the studio shell is
+        // on localhost — IndexedDB is origin-scoped). Send a message to the
+        // dirty monitor script running inside the CMS iframe.
+        try {
+          cmsFrame.contentWindow.postMessage({ type: 'cms-delete-draft', key }, '*')
+        } catch {
+          // Best-effort — cross-origin postMessage should always work,
+          // but guard against edge cases
+        }
+      }
+
+      // ── Confirm discard modal ──────────────────────────────────────────
+
+      const confirmOverlay = document.getElementById('confirm-overlay')
+      const confirmCancelBtn = document.getElementById('confirm-cancel-btn')
+      const confirmDiscardBtn = document.getElementById('confirm-discard-btn')
+      let confirmResolve = null
+
+      /** Shows the unsaved-changes modal. Resolves `true` (discard) or `false` (cancel). */
+      function confirmDiscard() {
+        return new Promise((resolve) => {
+          confirmResolve = resolve
+          confirmOverlay.setAttribute('data-open', '')
+          confirmDiscardBtn.focus()
+        })
+      }
+
+      function closeConfirmModal(result) {
+        confirmOverlay.removeAttribute('data-open')
+        if (confirmResolve) {
+          const fn = confirmResolve
+          confirmResolve = null
+          fn(result)
+        }
+      }
+
+      confirmCancelBtn.addEventListener('click', () => closeConfirmModal(false))
+      confirmDiscardBtn.addEventListener('click', () => closeConfirmModal(true))
+
+      // Close on overlay backdrop click
+      confirmOverlay.addEventListener('click', (e) => {
+        if (e.target === confirmOverlay) closeConfirmModal(false)
+      })
+
+      // Close on Escape (only when confirm modal is open — takes priority
+      // over the studio's own Escape handler)
+      confirmOverlay.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          e.stopPropagation()
+          closeConfirmModal(false)
+        }
+      })
+
+      // Trap focus within the modal when it's open
+      confirmOverlay.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab') return
+        const focusable = [confirmCancelBtn, confirmDiscardBtn]
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+          if (document.activeElement === first) { e.preventDefault(); last.focus() }
+        } else {
+          if (document.activeElement === last) { e.preventDefault(); first.focus() }
+        }
+      })
+
+      // ── State persistence ─────────────────────────────────────────────
+
+      function persistWorkspaceState() {
+        try {
+          const payload = {
+            isOpen: true,
+            previewPathname: lastPreviewPathname,
+            cmsPathname: lastCmsPathname,
+          }
+          window.sessionStorage.setItem(CMS_LIVE_EDITOR_WORKSPACE_STATE_KEY, JSON.stringify(payload))
+        } catch {
+          // Ignore
+        }
+      }
+
+      // ── Resize handle ─────────────────────────────────────────────────
+
+      const MIN_CMS_WIDTH = 320
+      const MAX_CMS_RATIO = 0.65
+
+      let isResizing = false
+      let resizeStartX = 0
+      let resizeStartWidth = 0
+
+      function readPersistedPanelWidth() {
+        try {
+          const raw = window.localStorage.getItem(CMS_LIVE_EDITOR_PANEL_WIDTH_KEY)
+          if (!raw) return null
+          const value = Number(raw)
+          return Number.isFinite(value) && value >= MIN_CMS_WIDTH ? value : null
+        } catch {
+          return null
+        }
+      }
+
+      function persistPanelWidth(width) {
+        try {
+          window.localStorage.setItem(CMS_LIVE_EDITOR_PANEL_WIDTH_KEY, String(Math.round(width)))
+        } catch {
+          // Ignore
+        }
+      }
+
+      function applyPanelWidth(width) {
+        document.getElementById('workspace').style.gridTemplateColumns =
+          'minmax(0, 1fr) 0px ' + width + 'px'
+      }
+
+      function restorePersistedPanelWidth() {
+        const saved = readPersistedPanelWidth()
+        if (saved) {
+          const maxWidth = window.innerWidth * MAX_CMS_RATIO
+          applyPanelWidth(Math.min(saved, maxWidth))
+        }
+      }
+
+      resizeHandle.addEventListener('pointerdown', (e) => {
+        if (resizeHandle.offsetParent === null) return
+        e.preventDefault()
+        isResizing = true
+        resizeStartX = e.clientX
+        resizeStartWidth = cmsShell.getBoundingClientRect().width
+        resizeHandle.classList.add('active')
+        resizeHandle.setPointerCapture(e.pointerId)
+        previewFrame.style.pointerEvents = 'none'
+        cmsFrame.style.pointerEvents = 'none'
+      })
+
+      resizeHandle.addEventListener('pointermove', (e) => {
+        if (!isResizing) return
+        const delta = resizeStartX - e.clientX
+        const viewportWidth = window.innerWidth
+        const maxWidth = viewportWidth * MAX_CMS_RATIO
+        const newWidth = Math.max(MIN_CMS_WIDTH, Math.min(maxWidth, resizeStartWidth + delta))
+        applyPanelWidth(newWidth)
+      })
+
+      function stopResize() {
+        if (!isResizing) return
+        isResizing = false
+        resizeHandle.classList.remove('active')
+        previewFrame.style.pointerEvents = ''
+        cmsFrame.style.pointerEvents = ''
+        const finalWidth = cmsShell.getBoundingClientRect().width
+        if (finalWidth >= MIN_CMS_WIDTH) persistPanelWidth(finalWidth)
+      }
+
+      resizeHandle.addEventListener('pointerup', stopResize)
+      resizeHandle.addEventListener('pointercancel', stopResize)
+      resizeHandle.addEventListener('lostpointercapture', stopResize)
+
+      // ── Toolbar menu ──────────────────────────────────────────────────
+
+      function closeToolbarMenu() {
+        toolbarMenuBtn.setAttribute('aria-expanded', 'false')
+        toolbarMenu.style.display = 'none'
+      }
+
+      toolbarMenuBtn.addEventListener('click', () => {
+        const isOpen = toolbarMenuBtn.getAttribute('aria-expanded') === 'true'
+        toolbarMenuBtn.setAttribute('aria-expanded', isOpen ? 'false' : 'true')
+        toolbarMenu.style.display = isOpen ? 'none' : 'flex'
+      })
+
+      document.addEventListener('click', (e) => {
+        if (!toolbarWrapper.contains(e.target)) closeToolbarMenu()
+      })
+
+      // Fetch live link
+      void fetch('/api/toolbar-config')
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.liveUrl) {
+            const a = document.createElement('a')
+            a.className = 'cms-live-editor-toolbar-menu-item'
+            a.href = data.liveUrl
+            a.target = '_blank'
+            a.rel = 'noopener noreferrer'
+            a.textContent = '\u2197 Live'
+            a.setAttribute('role', 'menuitem')
+            // Copy Astro scoped style attribute so scoped CSS applies to this dynamic element
+            const sibling = toolbarMenu.querySelector('.cms-live-editor-toolbar-menu-item')
+            if (sibling) {
+              for (const attr of sibling.getAttributeNames()) {
+                if (attr.startsWith('data-astro-cid-')) {
+                  a.setAttribute(attr, '')
+                  break
+                }
+              }
+            }
+            liveSlot.replaceWith(a)
+          } else {
+            liveSlot.remove()
+          }
+        })
+        .catch(() => liveSlot.remove())
+
+      // ── Toolbar menu action helpers ───────────────────────────────────
+
+      let toolbarBuildBusy = false
+      let toolbarPublishBusy = false
+      let starterBusy = false
+
+      function resetMenuBtn(b, label) {
+        b.className = 'cms-live-editor-toolbar-menu-item'
+        b.textContent = label
+        b.disabled = false
+      }
+
+      buildBtn.addEventListener('click', async () => {
+        if (toolbarBuildBusy || toolbarPublishBusy) return
+        closeToolbarMenu()
+        toolbarBuildBusy = true
+        buildBtn.disabled = true
+        buildBtn.textContent = '\u23F3 Building\u2026'
+        try {
+          const res = await fetch('/api/build', { method: 'POST' })
+          const data = await res.json()
+          if (res.ok) {
+            buildBtn.className = 'cms-live-editor-toolbar-menu-item success'
+            buildBtn.textContent = '\u2713 Build complete'
+            setTimeout(() => { resetMenuBtn(buildBtn, '\u2699 Build'); toolbarBuildBusy = false }, 3000)
+          } else if (res.status === 409) {
+            resetMenuBtn(buildBtn, '\u2699 Build')
+            toolbarBuildBusy = false
+          } else {
+            buildBtn.className = 'cms-live-editor-toolbar-menu-item error'
+            buildBtn.textContent = '\u2717 Build failed'
+            console.error('[build]', data.error)
+            setTimeout(() => { resetMenuBtn(buildBtn, '\u2699 Build'); toolbarBuildBusy = false }, 5000)
+          }
+        } catch (e) {
+          buildBtn.className = 'cms-live-editor-toolbar-menu-item error'
+          buildBtn.textContent = '\u2717 Network error'
+          console.error('[build]', e)
+          setTimeout(() => { resetMenuBtn(buildBtn, '\u2699 Build'); toolbarBuildBusy = false }, 5000)
+        }
+      })
+
+      previewBtn.addEventListener('click', async () => {
+        if (toolbarBuildBusy) return
+        closeToolbarMenu()
+        previewBtn.disabled = true
+        previewBtn.textContent = '\u23F3 Starting\u2026'
+        try {
+          const res = await fetch('/api/preview', { method: 'POST' })
+          const data = await res.json()
+          if (res.ok && data.url) {
+            window.open(data.url, '_blank', 'noopener,noreferrer')
+            resetMenuBtn(previewBtn, '\u25B6 Preview')
+          } else {
+            previewBtn.className = 'cms-live-editor-toolbar-menu-item error'
+            previewBtn.textContent = '\u2717 ' + (data.error || 'Preview failed')
+            console.error('[preview]', data.error)
+            setTimeout(() => resetMenuBtn(previewBtn, '\u25B6 Preview'), 5000)
+          }
+        } catch (e) {
+          previewBtn.className = 'cms-live-editor-toolbar-menu-item error'
+          previewBtn.textContent = '\u2717 Network error'
+          console.error('[preview]', e)
+          setTimeout(() => resetMenuBtn(previewBtn, '\u25B6 Preview'), 5000)
+        }
+        previewBtn.disabled = false
+      })
+
+      publishBtn.addEventListener('click', async () => {
+        if (toolbarBuildBusy || toolbarPublishBusy) return
+        const ok = window.confirm(
+          'Deploy to live?\n\n' +
+            'This uploads the current dist/ build to the server as-is.\n\n' +
+            'Make sure you have:\n' +
+            '  1. Clicked Build after your last changes\n' +
+            '  2. Clicked Preview to verify everything looks good\n\n' +
+            'Continue?',
+        )
+        if (!ok) return
+        closeToolbarMenu()
+        toolbarPublishBusy = true
+        publishBtn.disabled = true
+        publishBtn.textContent = '\u2B06 Publishing\u2026'
+        try {
+          const res = await fetch('/api/publish', { method: 'POST' })
+          const data = await res.json()
+          if (res.ok) {
+            publishBtn.className = 'cms-live-editor-toolbar-menu-item success'
+            publishBtn.textContent = '\u2713 Published'
+            setTimeout(() => { resetMenuBtn(publishBtn, '\u2B06 Publish'); toolbarPublishBusy = false }, 5000)
+          } else if (res.status === 409) {
+            resetMenuBtn(publishBtn, '\u2B06 Publish')
+            toolbarPublishBusy = false
+          } else {
+            publishBtn.className = 'cms-live-editor-toolbar-menu-item error'
+            publishBtn.textContent = '\u2717 Publish failed'
+            console.error('[publish]', data.error)
+            setTimeout(() => { resetMenuBtn(publishBtn, '\u2B06 Publish'); toolbarPublishBusy = false }, 7000)
+          }
+        } catch (e) {
+          publishBtn.className = 'cms-live-editor-toolbar-menu-item error'
+          publishBtn.textContent = '\u2717 Network error'
+          console.error('[publish]', e)
+          setTimeout(() => { resetMenuBtn(publishBtn, '\u2B06 Publish'); toolbarPublishBusy = false }, 7000)
+        }
+      })
+
+      starterBtn.addEventListener('click', async () => {
+        if (starterBusy) return
+        const ok = window.confirm(
+          'Generate starter kit?\n\n' +
+            'This creates a clean, distributable project in .starter-kit/\n' +
+            'with all personal data, credentials, and purchased assets stripped.\n\n' +
+            'Continue?',
+        )
+        if (!ok) return
+        closeToolbarMenu()
+        starterBusy = true
+        starterBtn.disabled = true
+        starterBtn.textContent = '\uD83D\uDCE6 Exporting\u2026'
+        try {
+          const res = await fetch('/api/generate-starter-kit', { method: 'POST' })
+          const data = await res.json()
+          if (res.ok) {
+            starterBtn.className = 'cms-live-editor-toolbar-menu-item success'
+            starterBtn.textContent = '\u2713 Starter exported'
+            setTimeout(() => { resetMenuBtn(starterBtn, '\uD83D\uDCE6 Export Starter'); starterBusy = false }, 3000)
+          } else {
+            starterBtn.className = 'cms-live-editor-toolbar-menu-item error'
+            starterBtn.textContent = '\u2717 Export failed'
+            console.error('[starter]', data.error)
+            setTimeout(() => { resetMenuBtn(starterBtn, '\uD83D\uDCE6 Export Starter'); starterBusy = false }, 5000)
+          }
+        } catch (e) {
+          starterBtn.className = 'cms-live-editor-toolbar-menu-item error'
+          starterBtn.textContent = '\u2717 Network error'
+          console.error('[starter]', e)
+          setTimeout(() => { resetMenuBtn(starterBtn, '\uD83D\uDCE6 Export Starter'); starterBusy = false }, 5000)
+        }
+      })
+
+      // ── Open in new tab ───────────────────────────────────────────────
+
+      openTabBtn.addEventListener('click', () => {
+        const cmsPathname = lastCmsPathname || KEYSTATIC_ROOT_PATH
+        window.open(buildCmsUrl(cmsPathname), '_blank', 'noopener,noreferrer')
+      })
+
+      // ── Close ─────────────────────────────────────────────────────────
+
+      async function exitStudio() {
+        if (cmsIsDirty) {
+          if (!(await confirmDiscard())) return
+          discardDraft()
+        }
+        window.location.href = withTrailingSlash(lastPreviewPathname)
+      }
+
+      closeBtn.addEventListener('click', () => {
+        void exitStudio()
+      })
+
+      // ── Search modal ──────────────────────────────────────────────────
+
+      let searchModalOverlay = null
+
+      function openSearchModal() {
+        if (searchModalOverlay) return
+
+        const overlay = document.createElement('div')
+        Object.assign(overlay.style, {
+          position: 'fixed',
+          inset: '0',
+          zIndex: '100000',
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          padding: '1rem',
+        })
+
+        const modalCloseBtn = document.createElement('button')
+        modalCloseBtn.type = 'button'
+        modalCloseBtn.setAttribute('aria-label', 'Close search')
+        Object.assign(modalCloseBtn.style, {
+          position: 'absolute',
+          top: '0.25rem',
+          right: '0.25rem',
+          zIndex: '1',
+          background: 'rgba(24, 24, 27, 0.9)',
+          color: '#e4e4e7',
+          border: '1px solid #3f3f46',
+          borderRadius: '6px',
+          width: '28px',
+          height: '28px',
+          fontSize: '16px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          lineHeight: '1',
+        })
+        modalCloseBtn.textContent = '\u00d7'
+        modalCloseBtn.addEventListener('click', closeSearchModal)
+        overlay.append(modalCloseBtn)
+
+        const frame = document.createElement('iframe')
+        frame.src = '/works-search/?modal=1'
+        frame.title = 'Works Search'
+        Object.assign(frame.style, {
+          flex: '1',
+          border: 'none',
+          borderRadius: '6px',
+          background: '#0e0e10',
+        })
+        overlay.append(frame)
+
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) closeSearchModal()
+        })
+
+        document.body.append(overlay)
+        searchModalOverlay = overlay
+        modalCloseBtn.focus()
+      }
+
+      function closeSearchModal() {
+        if (!searchModalOverlay) return
+        searchModalOverlay.remove()
+        searchModalOverlay = null
+      }
+
+      searchBtn.addEventListener('click', () => {
+        closeToolbarMenu()
+        openSearchModal()
+      })
+
+      // ── Escape key ────────────────────────────────────────────────────
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          // Search modal takes priority
+          if (searchModalOverlay) {
+            event.preventDefault()
+            event.stopPropagation()
+            closeSearchModal()
+            return
+          }
+          // Close toolbar dropdown if open
+          if (toolbarMenuBtn.getAttribute('aria-expanded') === 'true') {
+            closeToolbarMenu()
+            event.preventDefault()
+            event.stopPropagation()
+            return
+          }
+          // Close studio
+          event.preventDefault()
+          event.stopPropagation()
+          void exitStudio()
+        }
+      })
+
+      // ── beforeunload guard ────────────────────────────────────────────
+
+      window.addEventListener('beforeunload', (e) => {
+        if (cmsIsDirty) e.preventDefault()
+      })
+
+      // ── Nav button handlers + keyboard shortcuts ──────────────────────
+
+      navBackBtn.addEventListener('click', studioGoBack)
+      navFwdBtn.addEventListener('click', studioGoForward)
+
+      undoBtn.addEventListener('click', () => {
+        if (!cmsIsDirty) return
+        discardDraft()
+        undoBtn.disabled = true
+        navigateCms(buildCmsUrl(lastCmsPathname))
+      })
+
+      document.addEventListener('keydown', (e) => {
+        // Alt+ArrowLeft = Back, Alt+ArrowRight = Forward
+        if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+          if (e.key === 'ArrowLeft') { e.preventDefault(); studioGoBack(); return }
+          if (e.key === 'ArrowRight') { e.preventDefault(); studioGoForward(); return }
+        }
+      })
+
+      // ── Message handler (navigation sync via postMessage) ─────────────
+
+      // Keystatic's client-side router may resolve the CMS iframe to
+      // 127.0.0.1 even when the studio shell loaded via localhost (or vice
+      // versa).  Both refer to the same dev server, so accept either as a
+      // trusted origin.
+      const localOrigins = new Set([location.origin])
+      try {
+        const u = new URL(location.origin)
+        if (u.hostname === 'localhost') {
+          u.hostname = '127.0.0.1'
+          localOrigins.add(u.origin)
+        } else if (u.hostname === '127.0.0.1') {
+          u.hostname = 'localhost'
+          localOrigins.add(u.origin)
+        }
+      } catch { /* noop */ }
+
+      window.addEventListener('message', async (e) => {
+        if (!localOrigins.has(e.origin)) return
+        if (!e.data || typeof e.data !== 'object') return
+
+        const msg = e.data
+
+        // ── Preview reported a navigation ──
+        if (msg.type === 'preview-navigate') {
+          const pathname = normalizePathname(msg.pathname)
+
+          // Exact match → expected confirmation (e.g., after preview-request-navigate
+          // already updated state). Clear the in-progress flag and stop.
+          if (pathname === lastPreviewPathname) {
+            navigationInProgress = false
+            return
+          }
+
+          // Stale message from old page arriving after preview-request-navigate
+          // already updated state to a different pathname. Ignore.
+          if (navigationInProgress) return
+
+          const cmsPath = resolveKeystaticPath(msg.pathname, msg.is404)
+          const normalizedCms = normalizePathname(cmsPath)
+
+          // Update state BEFORE navigating CMS (prevents echo)
+          lastPreviewPathname = pathname
+          lastCmsPathname = normalizedCms
+
+          navigateCms(buildCmsUrl(cmsPath))
+          updateHeaderLabel(cmsPath)
+          navStackPush(pathname)
+          persistWorkspaceState()
+        }
+
+        // ── Preview requests navigation (link click intercepted by bridge) ──
+        if (msg.type === 'preview-request-navigate') {
+          const targetPathname = msg.pathname
+          const normalizedTarget = normalizePathname(targetPathname)
+
+          // Deduplicate: skip if already on this page (prevents multiple
+          // pushState calls from duplicate messages or rapid clicks)
+          if (normalizedTarget === lastPreviewPathname) return
+
+          if (cmsIsDirty) {
+            if (!(await confirmDiscard())) return
+            discardDraft()
+          }
+          const cmsPath = resolveKeystaticPath(targetPathname, false)
+          const normalizedCms = normalizePathname(cmsPath)
+
+          // Update state BEFORE navigating (prevents echo from 'preview-navigate')
+          // Also flag navigation as in-progress to ignore stale messages from old page.
+          navigationInProgress = true
+          lastPreviewPathname = normalizedTarget
+          lastCmsPathname = normalizedCms
+
+          navigateCms(buildCmsUrl(cmsPath))
+          updateHeaderLabel(cmsPath)
+
+          // Navigate preview
+          previewFrame.contentWindow?.postMessage(
+            { type: 'preview-do-navigate', pathname: targetPathname },
+            location.origin,
+          )
+
+          navStackPush(normalizedTarget)
+          persistWorkspaceState()
+        }
+
+        // ── CMS requests navigation (link click intercepted while dirty) ──
+        if (msg.type === 'cms-request-navigate') {
+          const targetPathname = msg.pathname
+          if (!targetPathname) return
+
+          // Show unsaved-changes confirm
+          if (!(await confirmDiscard())) return // user cancelled — click was already blocked
+
+          discardDraft()
+
+          // Tell the CMS iframe to proceed with the navigation
+          try {
+            cmsFrame.contentWindow.postMessage(
+              { type: 'cms-do-navigate', pathname: targetPathname },
+              '*',
+            )
+          } catch {
+            // Best-effort
+          }
+          // The CMS iframe will now navigate and fire 'cms-navigate',
+          // which updates preview + header + nav stack below.
+        }
+
+        // ── CMS iframe changed pages ──
+        // With capture-phase click interception, link clicks while dirty go
+        // through cms-request-navigate above. This handler fires for:
+        //   - Clean-state link clicks (no interception needed)
+        //   - Post-confirm navigations (dirty already handled above)
+        //   - Programmatic React Router navigations (e.g., after save)
+        if (msg.type === 'cms-navigate') {
+          const normalizedCms = normalizePathname(msg.pathname)
+          if (normalizedCms === lastCmsPathname) return // deduplicate
+
+          lastCmsPathname = normalizedCms
+          updateHeaderLabel(msg.pathname)
+
+          const pagePath = resolvePagePathFromKeystatic(msg.pathname)
+          if (!pagePath) {
+            persistWorkspaceState()
+            return
+          }
+
+          const normalizedPage = normalizePathname(pagePath)
+          if (normalizedPage === lastPreviewPathname) {
+            persistWorkspaceState()
+            return
+          }
+
+          // Update state BEFORE navigating (prevents echo from 'preview-navigate')
+          lastPreviewPathname = normalizedPage
+          navigatePreview(buildPreviewUrl(pagePath))
+          navStackPush(normalizedPage)
+          persistWorkspaceState()
+        }
+
+        // ── CMS dirty state ──
+        if (msg.type === 'keystatic-dirty-state') {
+          cmsIsDirty = msg.isDirty === true
+          undoBtn.disabled = !cmsIsDirty
+        }
+
+        // ── Search modal messages ──
+        if (msg.type === 'works-search-close') {
+          closeSearchModal()
+        }
+
+        if (msg.type === 'works-search-edit') {
+          const slug = msg.slug
+          if (!slug) return
+
+          if (cmsIsDirty) {
+            if (!(await confirmDiscard())) return
+            discardDraft()
+          }
+
+          closeSearchModal()
+
+          // Navigate the preview to the work's page
+          const workPagePath = '/music/' + slug + '/'
+          const normalizedPreview = normalizePathname(workPagePath)
+          const cmsPath = resolveKeystaticPath(workPagePath, false)
+          const normalizedCms = normalizePathname(cmsPath)
+
+          lastPreviewPathname = normalizedPreview
+          lastCmsPathname = normalizedCms
+
+          navigatePreview(buildPreviewUrl(workPagePath))
+          navigateCms(buildCmsUrl(cmsPath))
+          updateHeaderLabel(cmsPath)
+          navStackPush(normalizedPreview)
+          persistWorkspaceState()
+        }
+
+        if (msg.type === 'works-search-view') {
+          const slug = msg.slug
+          if (!slug) return
+
+          if (cmsIsDirty) {
+            if (!(await confirmDiscard())) return
+            discardDraft()
+          }
+
+          closeSearchModal()
+          // Close studio and navigate to work page directly
+          window.location.href = '/music/' + slug + '/'
+        }
+      })
+
+      // ── Initialize ────────────────────────────────────────────────────
+
+      const initialCmsPath = resolveKeystaticPath(INITIAL_PREVIEW_PATHNAME, false)
+      lastCmsPathname = normalizePathname(initialCmsPath)
+
+      // Initial iframe loads use location.replace() to avoid adding entries
+      // to the session history. The about:blank entries are replaced in-place.
+      navigatePreview(buildPreviewUrl(INITIAL_PREVIEW_PATHNAME))
+      navigateCms(buildCmsUrl(initialCmsPath))
+      updateHeaderLabel(initialCmsPath)
+      restorePersistedPanelWidth()
+
+      // Set initial history state. replaceState tags the browser's current entry
+      // so that Back returns to whatever page the user came from. The internal
+      // nav stack (navStack / navStackIndex) manages in-studio Back/Forward.
+      studioReplaceState(normalizePathname(INITIAL_PREVIEW_PATHNAME))
+      updateNavButtons()
+
+      persistWorkspaceState()
+    </script>
+  </body>
+</html>

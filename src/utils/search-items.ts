@@ -1,5 +1,6 @@
 import type { SearchableTagItem, SearchableWorkItem } from '../scripts/search-types'
 import type { WorkWithImage } from '@/utils/prepareWorks'
+import type { RecordingType, PerformanceType } from '../content.config'
 
 function unique(values: string[]): string[] {
   return [...new Set(values)]
@@ -18,14 +19,14 @@ function stripDiacritics(value: string): string {
 
 export function buildSearchableWorkItems(worksWithImages: WorkWithImage[]): SearchableWorkItem[] {
   return worksWithImages.map((work) => {
-    const recordingPerformers = work.data.recordings.flatMap((recording) => {
+    const recordingPerformers = work.data.recordings.flatMap((recording: RecordingType) => {
       const ensemble = recording.ensemble?.trim()
-      const performers = recording.performers.map((performer) => performer.trim()).filter(Boolean)
+      const performers = recording.performers.map((performer: string) => performer.trim()).filter(Boolean)
       return ensemble ? [ensemble, ...performers] : performers
     })
-    const performancePerformers = work.data.performances.flatMap((p) => p.performers)
+    const performancePerformers = work.data.performances.flatMap((p: PerformanceType) => p.performers)
     const performers = unique([...recordingPerformers, ...performancePerformers])
-    const venues = unique(work.data.performances.map((p) => p.venue).filter((v): v is string => Boolean(v)))
+    const venues = unique(work.data.performances.map((p: PerformanceType) => p.venue).filter((v: string | undefined): v is string => Boolean(v)))
 
     const titleStripped = stripDiacritics(work.data.title)
     const subtitleStripped = work.data.subtitle ? stripDiacritics(work.data.subtitle) : ''
@@ -50,7 +51,7 @@ export function buildSearchableWorkItems(worksWithImages: WorkWithImage[]): Sear
       difficulty: work.data.difficulty ?? '',
       completionDate: work.data.completionDate ?? '',
       programNote: work.data.programNote ?? '',
-      href: `/works/${work.id}/`,
+      href: `/music/${work.id}/`,
       category: 'work',
     }
   })
@@ -59,14 +60,14 @@ export function buildSearchableWorkItems(worksWithImages: WorkWithImage[]): Sear
 export function buildSearchableTagItems(uniqueTags: Array<{ label: string; slug: string }>): SearchableTagItem[] {
   return uniqueTags.map((tag) => {
     const tagTokens = tokenize(tag.label)
-    const keywords = unique([tag.label.toLowerCase(), ...tagTokens, 'works', 'browse', 'tag'])
+    const keywords = unique([tag.label.toLowerCase(), ...tagTokens, 'music', 'browse', 'tag'])
 
     return {
-      id: `works-browse-${tag.slug}`,
+      id: `music-browse-${tag.slug}`,
       title: tag.label,
       description: `Browse works tagged "${tag.label}".`,
       keywords,
-      href: `/works/browse/${tag.slug}/`,
+      href: `/music/browse/${tag.slug}/`,
       category: 'tag',
       tagLabel: tag.label,
     }

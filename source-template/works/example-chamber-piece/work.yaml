@@ -1,0 +1,25 @@
+title: Example Chamber Piece
+subtitle: for string quartet
+description: >-
+  A short example work demonstrating the works system. Replace this with your
+  own compositions.
+thumbnail:
+  alt: Placeholder thumbnail for example chamber piece
+  crop: ''
+completionDate: '2025-01-01'
+duration: "ca. 8'"
+difficulty: ''
+tags:
+  - Chamber Music
+  - Strings
+instrumentation:
+  - Violin I
+  - Violin II
+  - Viola
+  - Cello
+searchKeywords: []
+selected: true
+selectedOrder: 1
+recordings: []
+performances: []
+sheetMusic: []

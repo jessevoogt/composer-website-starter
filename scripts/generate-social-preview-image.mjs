@@ -1,468 +1,436 @@
-import fs from 'node:fs'
-import { copyFile, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { existsSync, readFileSync } from 'node:fs'
+import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import sharp from 'sharp'
 import yaml from 'js-yaml'
+import sharp from 'sharp'
 
 const width = 1200
 const height = 630
-
-const brandingDirPath = path.resolve('source/branding')
-const sourceSvgPath = path.join(brandingDirPath, 'social-preview-image.svg')
-const sourcePngPath = path.join(brandingDirPath, 'social-preview-image.png')
-const sourceLogoSvgPath = path.join(brandingDirPath, 'favicon.svg')
-const sourceLogoPngPath = path.join(brandingDirPath, 'favicon-96x96.png')
+const workSocialImageDir = '/social/work'
 
 const outputSvgPath = path.resolve('public/social-preview-image.svg')
 const outputPngPath = path.resolve('public/social-preview-image.png')
 const socialImageVersionPath = path.resolve('src/data/social-image-version.ts')
-const siteConfigPath = path.resolve('source/site/site.yaml')
-const themeConfigPath = path.resolve('source/site/theme.yaml')
+const worksContentDir = path.resolve('src/content/works')
+const workSocialOutputDir = path.resolve(`public${workSocialImageDir}`)
+const faviconPngPath = path.resolve('public/favicon-96x96.png')
 
-const forceRegenerate = process.argv.includes('--force')
+// Personal brand data — falls back to generic text-based social preview if not present
+const brandTailPathsFile = path.resolve('src/personal/data/brand-tail-paths.json')
+const hasPersonalData = existsSync(brandTailPathsFile)
 
-const DEFAULT_THEME_COLORS = {
-  colorBackground: '#10161d',
-  colorBackgroundSoft: '#141b23',
-  colorText: '#ecf2f7',
-  colorTextMuted: '#aab8c4',
-  colorAccent: '#97c6de',
-  colorAccentStrong: '#d5edf9',
-  colorButton: '#89b9d3',
-  colorButtonText: '#08131d',
-}
+// Generic social preview generator (used when personal brand data is absent)
+const { buildGenericSocialPreviewSvg } = await import('./generate-social-preview-svg.mjs')
 
-const placeholderDomains = new Set(['example.com', 'www.example.com', 'localhost'])
+// ─── Personal brand SVG builder (only when brand tail paths exist) ──────────
 
-function ensureDir(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true })
-  }
-}
+function buildPersonalBrandSvg() {
+  const brandTailPaths = JSON.parse(readFileSync(brandTailPathsFile, 'utf8'))
 
-function readYamlObject(filePath) {
-  if (!fs.existsSync(filePath)) return {}
+  const initialJPath =
+    'M5.01211 3.704V9.908C5.01211 10.836 4.82011 11.612 4.43611 12.236C4.06011 12.868 3.46811 13.392 2.66011 13.808L2.49211 13.592C2.72411 13.448 2.93211 13.284 3.11611 13.1C3.30811 12.916 3.46811 12.684 3.59611 12.404C3.72411 12.132 3.82011 11.788 3.88411 11.372C3.95611 10.964 3.99211 10.456 3.99211 9.848V3.704C3.99211 3.64 3.97611 3.556 3.94411 3.452C3.92011 3.34 3.87211 3.276 3.80011 3.26L2.93611 3.044V2.792L3.02011 2.72H6.02011L6.10411 2.792L6.08011 3.08L5.26411 3.248C5.19211 3.264 5.13211 3.316 5.08411 3.404C5.03611 3.492 5.01211 3.592 5.01211 3.704Z'
+  const initialVPath =
+    'M7.62581 3.83333L8.65781 3.62933L8.72981 3.85733C8.53781 4.09733 8.34981 4.34933 8.16581 4.61333C7.98181 4.87733 7.81381 5.13333 7.66181 5.38133C7.50981 5.62133 7.38181 5.83333 7.27781 6.01733C7.17381 6.19333 7.10181 6.31333 7.06181 6.37733C6.62981 7.17733 6.20181 8.04533 5.77781 8.98133C5.36181 9.91733 4.98181 10.8813 4.63781 11.8733L3.82181 12.1853L3.70181 12.1013L1.98581 6.31733C1.89781 6.03733 1.80981 5.76133 1.72181 5.48933C1.63381 5.21733 1.52981 4.94933 1.40981 4.68533C1.31381 4.48533 1.18181 4.35733 1.01381 4.30133C0.853813 4.23733 0.605813 4.18133 0.269813 4.13333L0.257812 3.80933L0.341813 3.73733L2.44181 3.61733C2.91381 5.92133 3.57381 8.16133 4.42181 10.3373C4.43781 10.3613 4.45381 10.3813 4.46981 10.3973C4.49381 10.4053 4.50981 10.4133 4.51781 10.4213C4.55781 10.4053 4.64581 10.2493 4.78181 9.95333C4.92581 9.65733 5.12181 9.24133 5.36981 8.70533L6.79781 5.41733C6.90981 5.14533 7.03781 4.87733 7.18181 4.61333C7.32581 4.34933 7.47381 4.08933 7.62581 3.83333Z'
 
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8')
-    const parsed = yaml.load(raw)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch (error) {
-    console.warn(`Warning: unable to parse ${filePath}`, error)
-    return {}
-  }
-}
-
-function toNonEmptyString(value) {
-  return typeof value === 'string' ? value.trim() : ''
-}
-
-function normalizeHexColor(value, fallback) {
-  const normalized = toNonEmptyString(value)
-  if (!normalized) return fallback
-
-  const match = normalized.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i)
-  if (!match) return fallback
-
-  const hexBody = match[1]
-  if (hexBody.length === 3) {
-    const expanded = hexBody
-      .split('')
-      .map((char) => `${char}${char}`)
-      .join('')
-    return `#${expanded.toLowerCase()}`
-  }
-
-  return `#${hexBody.toLowerCase()}`
-}
-
-function hexToRgb(hex) {
-  const normalized = normalizeHexColor(hex, '#000000').slice(1)
-  const value = Number.parseInt(normalized, 16)
-  return {
-    red: (value >> 16) & 255,
-    green: (value >> 8) & 255,
-    blue: value & 255,
-  }
-}
-
-function toHexChannel(value) {
-  return Math.round(value).toString(16).padStart(2, '0')
-}
-
-function rgbToHex(red, green, blue) {
-  return `#${toHexChannel(red)}${toHexChannel(green)}${toHexChannel(blue)}`
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value))
-}
-
-function mixHex(baseHex, targetHex, ratio) {
-  const mixRatio = clamp(ratio, 0, 1)
-  const base = hexToRgb(baseHex)
-  const target = hexToRgb(targetHex)
-  return rgbToHex(
-    base.red + (target.red - base.red) * mixRatio,
-    base.green + (target.green - base.green) * mixRatio,
-    base.blue + (target.blue - base.blue) * mixRatio,
+  // Mirrors the on-site brand lockup proportions in src/styles/site.css.
+  const logoInitialHeight = 216
+  const logoInitialScale = logoInitialHeight / 14
+  const logoInitialWidth = 9 * logoInitialScale
+  const tailFirstPathWidth = Number(brandTailPaths.esse.width)
+  const tailLastPathWidth = Number(brandTailPaths.oogt.width)
+  const tailFirstPathMinX = Number(brandTailPaths.esse.x ?? 0)
+  const tailLastPathMinX = Number(brandTailPaths.oogt.x ?? 0)
+  const tailFirstPathData = String(brandTailPaths.esse.path)
+  const tailLastPathData = String(brandTailPaths.oogt.path)
+  const line2OffsetX = 71
+  const line2OffsetY = -121
+  const initialJMarginRight = -19
+  const initialVMarginRight = -5
+  const tailFirstX = logoInitialWidth + initialJMarginRight - tailFirstPathMinX
+  const tailLastX = logoInitialWidth + initialVMarginRight - tailLastPathMinX
+  const line2Y = logoInitialHeight + line2OffsetY
+  const logoWidth = Math.max(
+    tailFirstX + tailFirstPathMinX + tailFirstPathWidth,
+    line2OffsetX + tailLastX + tailLastPathMinX + tailLastPathWidth,
   )
-}
-
-function escapeXml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-function resolveFontFamily(fontName, fallbackStack) {
-  const normalized = toNonEmptyString(fontName)
-  if (!normalized) return fallbackStack
-  if (normalized === 'system-ui') return "system-ui, -apple-system, 'Segoe UI', sans-serif"
-  if (fallbackStack.includes(`'${normalized}'`) || fallbackStack.includes(normalized)) return fallbackStack
-  return `'${normalized.replace(/'/g, "\\'")}', ${fallbackStack}`
-}
-
-function wrapComposerName(name, maxCharsPerLine = 14, maxLines = 3) {
-  const words = toNonEmptyString(name).split(/\s+/).filter(Boolean)
-  if (words.length === 0) return ['Composer Name']
-
-  const lines = []
-  let current = ''
-
-  for (const word of words) {
-    if (!current) {
-      current = word
-      continue
-    }
-
-    const candidate = `${current} ${word}`
-    if (candidate.length <= maxCharsPerLine || lines.length + 1 >= maxLines) {
-      current = candidate
-      continue
-    }
-
-    lines.push(current)
-    current = word
-  }
-
-  if (current) lines.push(current)
-  return lines
-}
-
-function extractSiteDomain(siteUrl) {
-  const normalized = toNonEmptyString(siteUrl)
-  if (!normalized) return ''
-
-  const withProtocol = normalized.includes('://') ? normalized : `https://${normalized}`
-  try {
-    const hostname = new URL(withProtocol).hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '')
-    if (!hostname || placeholderDomains.has(hostname)) return ''
-    return hostname
-  } catch {
-    return ''
-  }
-}
-
-function getVersionStamp(date = new Date()) {
-  const year = String(date.getFullYear())
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${year}${month}${day}${hours}${minutes}${seconds}`
-}
-
-function needsCopy(src, dest) {
-  if (!fs.existsSync(dest)) return true
-  const srcStat = fs.statSync(src)
-  const destStat = fs.statSync(dest)
-  return srcStat.mtimeMs > destStat.mtimeMs || srcStat.size !== destStat.size
-}
-
-async function copyFileIfNeeded(src, dest) {
-  ensureDir(path.dirname(dest))
-  if (!needsCopy(src, dest)) return false
-  await copyFile(src, dest)
-  return true
-}
-
-function svgToDataUri(svg) {
-  const compact = String(svg)
-    .replace(/<\?xml[^>]*>/gi, '')
-    .replace(/\r?\n+/g, ' ')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
-  return `data:image/svg+xml;utf8,${encodeURIComponent(compact)}`
-}
-
-function pngBufferToDataUri(pngBuffer) {
-  return `data:image/png;base64,${Buffer.from(pngBuffer).toString('base64')}`
-}
-
-async function loadBrandLogoDataUri({ toneHex = '#ffffff', size = 720 } = {}) {
-  const tone = hexToRgb(toneHex)
-
-  async function rasterizeAsMonotonePng(inputBuffer) {
-    return sharp(inputBuffer)
-      .resize(size, size, {
-        fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .ensureAlpha()
-      .grayscale()
-      .tint({ r: tone.red, g: tone.green, b: tone.blue })
-      .png()
-      .toBuffer()
-  }
-
-  if (fs.existsSync(sourceLogoSvgPath)) {
-    const svgBuffer = fs.readFileSync(sourceLogoSvgPath)
-    try {
-      const rasterizedPng = await rasterizeAsMonotonePng(svgBuffer)
-      return pngBufferToDataUri(rasterizedPng)
-    } catch (error) {
-      console.warn(`Warning: unable to rasterize ${sourceLogoSvgPath}`, error)
-      return svgToDataUri(svgBuffer.toString('utf8'))
-    }
-  }
-  if (fs.existsSync(sourceLogoPngPath)) {
-    try {
-      const rasterizedPng = await rasterizeAsMonotonePng(fs.readFileSync(sourceLogoPngPath))
-      return pngBufferToDataUri(rasterizedPng)
-    } catch (error) {
-      console.warn(`Warning: unable to rasterize ${sourceLogoPngPath}`, error)
-      return pngBufferToDataUri(fs.readFileSync(sourceLogoPngPath))
-    }
-  }
-  return ''
-}
-
-function buildSvgFromPng(pngBuffer) {
-  const dataUri = escapeXml(pngBufferToDataUri(pngBuffer))
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <rect width="${width}" height="${height}" fill="#000000" />
-  <image href="${dataUri}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" />
-</svg>
-`
-}
-
-const siteConfig = readYamlObject(siteConfigPath)
-const themeConfig = readYamlObject(themeConfigPath)
-
-const composerName = toNonEmptyString(siteConfig.composerName) || 'Composer Name'
-const siteDomain = extractSiteDomain(siteConfig.siteUrl)
-
-const palette = {
-  background: normalizeHexColor(themeConfig.colorBackground, DEFAULT_THEME_COLORS.colorBackground),
-  backgroundSoft: normalizeHexColor(themeConfig.colorBackgroundSoft, DEFAULT_THEME_COLORS.colorBackgroundSoft),
-  text: normalizeHexColor(themeConfig.colorText, DEFAULT_THEME_COLORS.colorText),
-  textMuted: normalizeHexColor(themeConfig.colorTextMuted, DEFAULT_THEME_COLORS.colorTextMuted),
-  accent: normalizeHexColor(themeConfig.colorAccent, DEFAULT_THEME_COLORS.colorAccent),
-  accentStrong: normalizeHexColor(themeConfig.colorAccentStrong, DEFAULT_THEME_COLORS.colorAccentStrong),
-  button: normalizeHexColor(themeConfig.colorButton, DEFAULT_THEME_COLORS.colorButton),
-  buttonText: normalizeHexColor(themeConfig.colorButtonText, DEFAULT_THEME_COLORS.colorButtonText),
-}
-
-const fonts = {
-  heading: resolveFontFamily(themeConfig.fontHeading, "'Gothic A1', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif"),
-  body: resolveFontFamily(
-    themeConfig.fontBody,
-    "'Atkinson Hyperlegible', 'Avenir Next', 'Helvetica Neue', Arial, sans-serif",
-  ),
-}
-
-function buildGeneratedSvg(logoDataUri = '') {
-  const nameLines = wrapComposerName(composerName)
-  const longestLineLength = nameLines.reduce((max, line) => Math.max(max, line.length), 0)
-  const nameFontSize = Math.round(clamp(112 - Math.max(0, longestLineLength - 11) * 3.2 - (nameLines.length - 1) * 10, 58, 112))
-  const lineHeight = Math.round(nameFontSize * 1.08)
-  const firstLineY = Math.round(314 - ((nameLines.length - 1) * lineHeight) / 2)
-  const footerLabel = siteDomain || 'Music Portfolio'
-
-  const nameLinesSvg = nameLines
-    .map(
-      (line, index) => `  <text
-    x="${width / 2}"
-    y="${firstLineY + index * lineHeight}"
-    text-anchor="middle"
-    fill="${mixHex(palette.text, '#ffffff', 0.08)}"
-    font-family="${fonts.heading}"
-    font-size="${nameFontSize}"
-    font-weight="700"
-    letter-spacing="0.01em"
-  >${escapeXml(line)}</text>`,
-    )
-    .join('\n')
-
-  const logoMarkup = logoDataUri
-    ? `  <g opacity="0.14">
-    <image href="${escapeXml(logoDataUri)}" x="290" y="20" width="620" height="620" preserveAspectRatio="xMidYMid meet" />
-  </g>`
-    : `  <circle cx="600" cy="316" r="230" fill="${mixHex(palette.accentStrong, palette.accent, 0.42)}" fill-opacity="0.12" stroke="${mixHex(palette.accentStrong, palette.backgroundSoft, 0.45)}" stroke-opacity="0.2" />`
+  const logoHeight = line2Y + logoInitialHeight
+  const logoStartX = Math.round((width - logoWidth) / 2)
+  const logoStartY = 116
+  const composerY = logoStartY + logoHeight + 66
+  const domainY = composerY + 82
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none">
   <defs>
-    <linearGradient id="bg" x1="64" y1="34" x2="1162" y2="626" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${palette.background}" />
-      <stop offset="0.56" stop-color="${mixHex(palette.background, palette.backgroundSoft, 0.42)}" />
-      <stop offset="1" stop-color="${palette.backgroundSoft}" />
+    <linearGradient id="bg" x1="100" y1="60" x2="1100" y2="590" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#040812"/>
+      <stop offset="0.55" stop-color="#0B1426"/>
+      <stop offset="1" stop-color="#111E32"/>
     </linearGradient>
-    <radialGradient id="glowA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(970 188) rotate(131.5) scale(433 320)">
-      <stop stop-color="${mixHex(palette.accent, '#ffffff', 0.18)}" stop-opacity="0.42" />
-      <stop offset="1" stop-color="${mixHex(palette.accent, '#ffffff', 0.18)}" stop-opacity="0" />
+    <radialGradient id="spot" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 262) rotate(90) scale(340 560)">
+      <stop stop-color="#4E658F" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#4E658F" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="glowB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(862 492) rotate(176) scale(540 270)">
-      <stop stop-color="${mixHex(palette.accentStrong, palette.accent, 0.35)}" stop-opacity="0.18" />
-      <stop offset="1" stop-color="${mixHex(palette.accentStrong, palette.accent, 0.35)}" stop-opacity="0" />
-    </radialGradient>
-    <linearGradient id="accentBar" x1="116" y1="0" x2="544" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${mixHex(palette.accent, palette.button, 0.35)}" />
-      <stop offset="1" stop-color="${mixHex(palette.accentStrong, palette.accent, 0.55)}" />
-    </linearGradient>
-    <pattern id="dots" width="12" height="12" patternUnits="userSpaceOnUse">
-      <circle cx="1.8" cy="1.8" r="1.2" fill="${palette.text}" fill-opacity="0.085" />
-    </pattern>
   </defs>
 
   <rect width="${width}" height="${height}" fill="url(#bg)" />
-  <rect width="${width}" height="${height}" fill="url(#glowA)" />
-  <rect width="${width}" height="${height}" fill="url(#glowB)" />
-  <rect width="${width}" height="${height}" fill="url(#dots)" opacity="0.15" />
+  <rect width="${width}" height="${height}" fill="url(#spot)" />
+  <rect x="26" y="26" width="${width - 52}" height="${height - 52}" rx="20" stroke="#95A7C9" stroke-opacity="0.18" />
 
-  <rect
-    x="54"
-    y="54"
-    width="${width - 108}"
-    height="${height - 108}"
-    rx="28"
-    fill="${mixHex(palette.backgroundSoft, '#ffffff', 0.08)}"
-    fill-opacity="0.54"
-    stroke="${mixHex(palette.textMuted, palette.background, 0.45)}"
-    stroke-width="1.5"
-  />
-  <rect
-    x="76"
-    y="76"
-    width="${width - 152}"
-    height="${height - 152}"
-    rx="22"
-    stroke="${mixHex(palette.textMuted, palette.background, 0.6)}"
-    stroke-opacity="0.5"
-  />
+  <g opacity="0.65">
+    <circle cx="600" cy="250" r="175" stroke="#BFCBE0" stroke-opacity="0.08" />
+    <circle cx="600" cy="250" r="206" stroke="#BFCBE0" stroke-opacity="0.05" />
+  </g>
 
-${logoMarkup}
+  <g transform="translate(${logoStartX} ${logoStartY})">
+    <g>
+      <g transform="scale(${logoInitialScale})">
+        <path d="${initialJPath}" fill="#F5F9FF" />
+      </g>
+      <path transform="translate(${tailFirstX} 0)" d="${tailFirstPathData}" fill="#D7E0EE" fill-opacity="0.88" />
+    </g>
+
+    <g transform="translate(${line2OffsetX} ${line2Y})">
+      <g transform="scale(${logoInitialScale})">
+        <path d="${initialVPath}" fill="#F5F9FF" />
+      </g>
+      <path transform="translate(${tailLastX} 0)" d="${tailLastPathData}" fill="#D7E0EE" fill-opacity="0.88" />
+    </g>
+  </g>
 
   <text
-    x="${width / 2}"
-    y="166"
+    x="600"
+    y="${composerY}"
     text-anchor="middle"
-    fill="${mixHex(palette.accentStrong, palette.textMuted, 0.45)}"
-    font-family="${fonts.body}"
-    font-size="28"
-    font-weight="600"
-    letter-spacing="0.18em"
-  >COMPOSER</text>
-
-${nameLinesSvg}
-
-  <rect x="386" y="448" width="428" height="4" rx="2" fill="url(#accentBar)" />
-
-  <text
-    x="${width / 2}"
-    y="506"
-    text-anchor="middle"
-    fill="${mixHex(palette.textMuted, palette.text, 0.24)}"
-    font-family="${fonts.body}"
-    font-size="30"
+    fill="#DCE6F6"
+    font-family="'Avenir Next', 'Atkinson Hyperlegible Next', 'Helvetica Neue', Arial, sans-serif"
+    font-size="40"
     font-weight="500"
-    letter-spacing="0.04em"
-  >${escapeXml(footerLabel)}</text>
+    letter-spacing="0.2em"
+  >
+    COMPOSER
+  </text>
+  <text
+    x="600"
+    y="${domainY}"
+    text-anchor="middle"
+    fill="#AEBBD4"
+    font-family="'Avenir Next', 'Atkinson Hyperlegible Next', 'Helvetica Neue', Arial, sans-serif"
+    font-size="24"
+    font-weight="500"
+    letter-spacing="0.16em"
+  >
+    {SITE_NAME}
+  </text>
 </svg>
 `
 }
 
-async function writeSourceSvg(svg) {
-  ensureDir(path.dirname(sourceSvgPath))
-  await writeFile(sourceSvgPath, svg, 'utf8')
+// ─── Generic SVG builder (reads from YAML config) ───────────────────────────
+
+function buildGenericSvg() {
+  const siteYamlPath = path.resolve('source/site/site.yaml')
+  const themeYamlPath = path.resolve('source/site/theme.yaml')
+
+  let composerName = 'Composer'
+  let siteUrl = ''
+  if (existsSync(siteYamlPath)) {
+    const siteConfig = yaml.load(readFileSync(siteYamlPath, 'utf8')) || {}
+    composerName = siteConfig.composerName || 'Composer'
+    siteUrl = siteConfig.siteUrl || ''
+  }
+
+  const svgOptions = { siteUrl }
+  if (existsSync(themeYamlPath)) {
+    const themeConfig = yaml.load(readFileSync(themeYamlPath, 'utf8')) || {}
+    if (themeConfig.branding) {
+      svgOptions.gradientStart = themeConfig.branding.socialGradientStart
+      svgOptions.gradientEnd = themeConfig.branding.socialGradientEnd
+      svgOptions.textColor = themeConfig.branding.socialText
+      svgOptions.mutedColor = themeConfig.branding.socialMuted
+    }
+  }
+
+  return buildGenericSocialPreviewSvg(composerName, svgOptions)
 }
 
-async function writeSourcePngFromSvg(svgBuffer) {
-  ensureDir(path.dirname(sourcePngPath))
-  await sharp(svgBuffer).resize(width, height, { fit: 'cover' }).png({ compressionLevel: 9 }).toFile(sourcePngPath)
+const workForegroundMaxWidth = 980
+const workForegroundMaxHeight = 430
+const workCardPadding = 24
+const workCardAreaTop = 40
+const workBadgeSize = 72
+const workBadgeBottomInset = 26
+const workCardAreaBottom = height - (workBadgeSize + workBadgeBottomInset + 12)
+
+function buildRectSvg({ width: rectWidth, height: rectHeight, radius, fill, stroke, strokeWidth = 1 }) {
+  const inset = stroke ? strokeWidth / 2 : 0
+  const rectAttrs = [
+    `x="${inset}"`,
+    `y="${inset}"`,
+    `width="${rectWidth - inset * 2}"`,
+    `height="${rectHeight - inset * 2}"`,
+    `rx="${Math.max(0, radius - inset)}"`,
+    `fill="${fill}"`,
+  ]
+
+  if (stroke) {
+    rectAttrs.push(`stroke="${stroke}"`, `stroke-width="${strokeWidth}"`)
+  }
+
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${rectWidth}" height="${rectHeight}" viewBox="0 0 ${rectWidth} ${rectHeight}">
+  <rect ${rectAttrs.join(' ')} />
+</svg>`,
+  )
 }
 
-async function writeSocialImageVersion() {
-  const socialImageVersion = getVersionStamp()
-  const socialImageVersionFile = `// Auto-generated by scripts/generate-social-preview-image.mjs
-// Updates only when the social preview image is regenerated.
+function buildWorkOverlaySvg() {
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none">
+  <defs>
+    <linearGradient id="wash" x1="600" y1="0" x2="600" y2="${height}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#040812" stop-opacity="0.2" />
+      <stop offset="0.58" stop-color="#040812" stop-opacity="0.44" />
+      <stop offset="1" stop-color="#040812" stop-opacity="0.82" />
+    </linearGradient>
+    <radialGradient id="spot" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(600 290) rotate(90) scale(360 620)">
+      <stop stop-color="#B8C7DE" stop-opacity="0.12" />
+      <stop offset="1" stop-color="#B8C7DE" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="${width}" height="${height}" fill="url(#wash)" />
+  <rect width="${width}" height="${height}" fill="url(#spot)" />
+  <rect x="24" y="24" width="${width - 48}" height="${height - 48}" rx="24" stroke="#E8EFFC" stroke-opacity="0.14" />
+</svg>`,
+  )
+}
+
+function parseFrontmatter(mdxContent) {
+  const match = mdxContent.match(/^---\r?\n([\s\S]+?)\r?\n---/)
+  if (!match) return null
+
+  try {
+    return yaml.load(match[1]) || null
+  } catch {
+    return null
+  }
+}
+
+function resolveThumbnailFile(thumbnailSrc) {
+  if (typeof thumbnailSrc !== 'string') return null
+  const normalized = thumbnailSrc.trim()
+  if (!normalized.startsWith('/assets/images/works/')) return null
+  return path.resolve('src', normalized.replace(/^\/+/, ''))
+}
+
+async function writeTextFileIfChanged(filePath, contents) {
+  const nextBuffer = Buffer.from(contents, 'utf8')
+
+  try {
+    const existing = await readFile(filePath)
+    if (existing.equals(nextBuffer)) return false
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+  }
+
+  await mkdir(path.dirname(filePath), { recursive: true })
+  await writeFile(filePath, contents, 'utf8')
+  return true
+}
+
+async function writeBinaryFileIfChanged(filePath, contents) {
+  try {
+    const existing = await readFile(filePath)
+    if (existing.equals(contents)) return false
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+  }
+
+  await mkdir(path.dirname(filePath), { recursive: true })
+  await writeFile(filePath, contents)
+  return true
+}
+
+async function buildFaviconBadge() {
+  const iconSize = 36
+  const badgeBase = sharp({
+    create: {
+      width: workBadgeSize,
+      height: workBadgeSize,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+
+  const badgeChrome = buildRectSvg({
+    width: workBadgeSize,
+    height: workBadgeSize,
+    radius: Math.round(workBadgeSize / 2),
+    fill: 'rgba(8, 14, 24, 0.82)',
+    stroke: 'rgba(236, 243, 255, 0.22)',
+    strokeWidth: 2,
+  })
+
+  const favicon = await sharp(faviconPngPath).resize(iconSize, iconSize, { fit: 'contain' }).png().toBuffer()
+
+  return badgeBase
+    .composite([
+      { input: badgeChrome, top: 0, left: 0 },
+      {
+        input: favicon,
+        top: Math.round((workBadgeSize - iconSize) / 2),
+        left: Math.round((workBadgeSize - iconSize) / 2),
+      },
+    ])
+    .png()
+    .toBuffer()
+}
+
+async function buildWorkSocialImage(inputPath, faviconBadgeBuffer) {
+  const backgroundBuffer = await sharp(inputPath)
+    .resize(width, height, {
+      fit: 'cover',
+      position: sharp.strategy.attention,
+    })
+    .modulate({
+      brightness: 0.78,
+      saturation: 1.04,
+    })
+    .blur(18)
+    .png()
+    .toBuffer()
+
+  const { data: foregroundBuffer, info: foregroundInfo } = await sharp(inputPath)
+    .resize({
+      width: workForegroundMaxWidth,
+      height: workForegroundMaxHeight,
+      fit: 'inside',
+    })
+    .png()
+    .toBuffer({ resolveWithObject: true })
+
+  const cardWidth = foregroundInfo.width + workCardPadding * 2
+  const cardHeight = foregroundInfo.height + workCardPadding * 2
+  const cardX = Math.round((width - cardWidth) / 2)
+  const cardY = workCardAreaTop + Math.max(0, Math.round((workCardAreaBottom - workCardAreaTop - cardHeight) / 2))
+
+  const cardShadow = await sharp(
+    buildRectSvg({
+      width: cardWidth + 28,
+      height: cardHeight + 28,
+      radius: 30,
+      fill: 'rgba(4, 8, 18, 0.46)',
+    }),
+  )
+    .blur(16)
+    .png()
+    .toBuffer()
+
+  const cardPlate = buildRectSvg({
+    width: cardWidth,
+    height: cardHeight,
+    radius: 24,
+    fill: 'rgba(8, 12, 22, 0.66)',
+    stroke: 'rgba(236, 243, 255, 0.14)',
+    strokeWidth: 2,
+  })
+
+  return sharp(backgroundBuffer)
+    .composite([
+      { input: buildWorkOverlaySvg(), top: 0, left: 0 },
+      { input: cardShadow, top: cardY + 16, left: cardX - 14 },
+      { input: cardPlate, top: cardY, left: cardX },
+      { input: foregroundBuffer, top: cardY + workCardPadding, left: cardX + workCardPadding },
+      {
+        input: faviconBadgeBuffer,
+        top: height - workBadgeSize - workBadgeBottomInset,
+        left: Math.round((width - workBadgeSize) / 2),
+      },
+    ])
+    .png({ compressionLevel: 9 })
+    .toBuffer()
+}
+
+async function collectWorkSocialSources() {
+  const entries = await readdir(worksContentDir, { withFileTypes: true })
+  const workSources = []
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.endsWith('.mdx')) continue
+
+    const workSlug = entry.name.replace(/\.mdx$/, '')
+    const filePath = path.join(worksContentDir, entry.name)
+    const frontmatter = parseFrontmatter(await readFile(filePath, 'utf8'))
+    const thumbnailSrc = frontmatter?.thumbnail?.src
+    const thumbnailFile = resolveThumbnailFile(thumbnailSrc)
+    if (!thumbnailFile) continue
+
+    workSources.push({ workSlug, thumbnailFile })
+  }
+
+  return workSources.sort((left, right) => left.workSlug.localeCompare(right.workSlug))
+}
+
+async function cleanupStaleWorkImages(activeWorkSlugs) {
+  try {
+    const entries = await readdir(workSocialOutputDir, { withFileTypes: true })
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith('.png')) continue
+      const workSlug = entry.name.replace(/\.png$/, '')
+      if (activeWorkSlugs.has(workSlug)) continue
+      await unlink(path.join(workSocialOutputDir, entry.name))
+    }
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+  }
+}
+
+// Build the site-level social preview SVG (personal brand or generic)
+const svg = hasPersonalData ? buildPersonalBrandSvg() : buildGenericSvg()
+const pngBuffer = await sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer()
+
+// Build per-work social images (only if favicon badge is available)
+const hasFavicon = existsSync(faviconPngPath)
+const faviconBadgeBuffer = hasFavicon ? await buildFaviconBadge() : null
+const workSources = await collectWorkSocialSources()
+const generatedWorkImages = []
+
+for (const workSource of workSources) {
+  if (!faviconBadgeBuffer) continue
+  const imageBuffer = await buildWorkSocialImage(workSource.thumbnailFile, faviconBadgeBuffer)
+  generatedWorkImages.push({ workSlug: workSource.workSlug, buffer: imageBuffer })
+}
+
+await cleanupStaleWorkImages(new Set(workSources.map((entry) => entry.workSlug)))
+
+const versionHash = createHash('sha256')
+versionHash.update(svg)
+versionHash.update(pngBuffer)
+
+for (const workImage of generatedWorkImages) {
+  versionHash.update(workImage.workSlug)
+  versionHash.update(workImage.buffer)
+}
+
+const socialImageVersion = versionHash.digest('hex').slice(0, 12)
+const socialImageVersionFile = `// Auto-generated by scripts/generate-social-preview-image.mjs
+// Updates only when generated social preview assets change.
 export const SOCIAL_IMAGE_VERSION = '${socialImageVersion}' as const
 `
-  await writeFile(socialImageVersionPath, socialImageVersionFile, 'utf8')
+
+await writeTextFileIfChanged(outputSvgPath, svg)
+await writeBinaryFileIfChanged(outputPngPath, pngBuffer)
+
+for (const workImage of generatedWorkImages) {
+  const outputPath = path.join(workSocialOutputDir, `${workImage.workSlug}.png`)
+  await writeBinaryFileIfChanged(outputPath, workImage.buffer)
 }
 
-async function ensureSocialPreviewImages() {
-  let sourceFilesWritten = false
+await writeTextFileIfChanged(socialImageVersionPath, socialImageVersionFile)
 
-  const hasSourceSvg = fs.existsSync(sourceSvgPath)
-  const hasSourcePng = fs.existsSync(sourcePngPath)
-  let generatedSvgCache = ''
-
-  async function getGeneratedSvg() {
-    if (generatedSvgCache) return generatedSvgCache
-    const logoTone = mixHex(palette.textMuted, palette.text, 0.22)
-    const logoDataUri = await loadBrandLogoDataUri({ toneHex: logoTone, size: 720 })
-    generatedSvgCache = buildGeneratedSvg(logoDataUri)
-    return generatedSvgCache
-  }
-
-  if (forceRegenerate) {
-    const generatedSvg = await getGeneratedSvg()
-    await writeSourceSvg(generatedSvg)
-    await writeSourcePngFromSvg(Buffer.from(generatedSvg))
-    sourceFilesWritten = true
-    console.log(`Regenerated ${sourceSvgPath}`)
-    console.log(`Regenerated ${sourcePngPath}`)
-  } else if (!hasSourceSvg && !hasSourcePng) {
-    const generatedSvg = await getGeneratedSvg()
-    await writeSourceSvg(generatedSvg)
-    await writeSourcePngFromSvg(Buffer.from(generatedSvg))
-    sourceFilesWritten = true
-    console.log(`Generated ${sourceSvgPath}`)
-    console.log(`Generated ${sourcePngPath}`)
-  } else if (hasSourceSvg && !hasSourcePng) {
-    await writeSourcePngFromSvg(fs.readFileSync(sourceSvgPath))
-    sourceFilesWritten = true
-    console.log(`Generated missing ${sourcePngPath} from ${sourceSvgPath}`)
-  } else if (!hasSourceSvg && hasSourcePng) {
-    const generatedSvg = buildSvgFromPng(fs.readFileSync(sourcePngPath))
-    await writeSourceSvg(generatedSvg)
-    sourceFilesWritten = true
-    console.log(`Generated missing ${sourceSvgPath} from ${sourcePngPath}`)
-  } else {
-    console.log('Social preview assets already exist in source/branding. Use --force to regenerate.')
-  }
-
-  if (!fs.existsSync(sourceSvgPath) || !fs.existsSync(sourcePngPath)) {
-    throw new Error('Unable to resolve both source/branding social preview assets.')
-  }
-
-  const mirroredSvg = await copyFileIfNeeded(sourceSvgPath, outputSvgPath)
-  const mirroredPng = await copyFileIfNeeded(sourcePngPath, outputPngPath)
-
-  if (mirroredSvg) console.log(`Synced ${outputSvgPath}`)
-  if (mirroredPng) console.log(`Synced ${outputPngPath}`)
-
-  if (sourceFilesWritten || mirroredSvg || mirroredPng) {
-    await writeSocialImageVersion()
-    console.log(`Wrote ${socialImageVersionPath}`)
-  }
-}
-
-await ensureSocialPreviewImages()
+console.log(`Wrote ${outputSvgPath}`)
+console.log(`Wrote ${outputPngPath}`)
+console.log(`Wrote ${generatedWorkImages.length} work social preview images in ${workSocialOutputDir}`)
+console.log(`Wrote ${socialImageVersionPath}`)

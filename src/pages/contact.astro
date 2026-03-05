@@ -3,18 +3,18 @@ import { getSiteConfig } from '@/utils/source-config'
 import PerusalOnlyRedirect from '@components/PerusalOnlyRedirect.astro'
 const isPerusalOnlyMode = getSiteConfig().perusalScoreOnlyMode
 import SiteLayout from '@layouts/SiteLayout.astro'
-import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
 import ContactForm from '@components/ContactForm.astro'
 import { getContactPage } from '@/utils/source-config'
-import { buildHeroSwitcherPageData, resolvePageHero } from '@/utils/page-hero'
+import { resolvePageHero } from '@/utils/page-hero'
 
 const siteConfig = getSiteConfig()
 const contactPage = getContactPage()
-const heroVariantEventName = 'jv:immersive:hero-variant:set'
-const isDevMode = import.meta.env.DEV
-const resolvedHero = resolvePageHero(contactPage.preferredHeroId, { allowEmptyPreferredHero: true })
-const pageHero = resolvedHero.pageHero
-const heroSwitcherPageData = buildHeroSwitcherPageData('contact', resolvedHero, isDevMode, heroVariantEventName)
+const { pageHero } = resolvePageHero(contactPage.preferredHeroId)
+
+const isEmailOnlyContact = !contactPage.contactFormEnabled
+const contactPageContentClass = isEmailOnlyContact
+  ? 'page-content-contact page-content-contact-email-only page-content-centered'
+  : 'page-content-contact page-content-centered'
 ---
 
 {isPerusalOnlyMode ? (
@@ -25,51 +25,29 @@ const heroSwitcherPageData = buildHeroSwitcherPageData('contact', resolvedHero, 
   description={contactPage.metaDescription}
   url="/contact/"
   skipTargetId="contact-heading"
-  pageContentClass="page-content-contact"
-  pageHero={
-    pageHero
-      ? {
-          pageKey: 'contact',
-          id: pageHero.id,
-          src: pageHero.src,
-          position: pageHero.position,
-          filter: pageHero.filter,
-        }
-      : undefined
-  }
+  pageContentClass={contactPageContentClass}
+  pageHero={pageHero}
+  pageKey="contact"
 >
-  <section class="container contact-shell" id="contact" aria-labelledby="contact-heading">
-    <div class="contact-stage">
-      <ImmersivePageHeader title={contactPage.title} subtitle={contactPage.introText} class="contact-stage-header">
-        {contactPage.contactFormEnabled ? (
-          <>
-            <h2 id="contact-heading" class="sr-only">Contact form</h2>
-            <ContactForm
-              idPrefix="contact"
-              nameLabel={contactPage.contactFormNameLabel}
-              namePlaceholder={contactPage.contactFormNamePlaceholder}
-              emailLabel={contactPage.contactFormEmailLabel}
-              emailPlaceholder={contactPage.contactFormEmailPlaceholder}
-              messageLabel={contactPage.contactFormMessageLabel}
-              messagePlaceholder={contactPage.contactFormMessagePlaceholder}
-              submitText={contactPage.contactFormSubmitText}
-            />
-          </>
-        ) : (
-          <>
-            <h2 id="contact-heading" class="sr-only">Contact details</h2>
-            {contactPage.contactEmailLeadText ? <p>{contactPage.contactEmailLeadText}</p> : null}
-            <p class="contact-email">
-              <a href={`mailto:${siteConfig.email}`} data-obfuscation="1">
-                {contactPage.contactEmailLinkText || siteConfig.email}
-              </a>
-            </p>
-          </>
-        )}
-      </ImmersivePageHeader>
+  <section class:list={['container', 'contact-shell', isEmailOnlyContact && 'contact-shell-email-only']} id="contact" aria-labelledby="contact-heading">
+    <div class:list={['contact-stage', isEmailOnlyContact && 'contact-stage-email-only']}>
+      <h1 class="contact-title">{contactPage.title}</h1>
+      {contactPage.introText && <p class="contact-intro-text">{contactPage.introText}</p>}
+
+      {contactPage.contactFormEnabled ? (
+        <>
+          <h2 id="contact-heading" class="sr-only">Contact form</h2>
+          <ContactForm idPrefix="contact" />
+        </>
+      ) : (
+        <>
+          <h2 id="contact-heading" class="sr-only">Contact details</h2>
+          <p class="contact-email">
+            <a href={`mailto:${siteConfig.email}`} data-obfuscation="1">{siteConfig.email}</a>
+          </p>
+        </>
+      )}
     </div>
   </section>
-
-  <script is:inline id="hero-switcher-page-data" type="application/json" set:html={heroSwitcherPageData} />
 </SiteLayout>
 )}

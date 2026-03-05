@@ -4,7 +4,7 @@
  */
 
 import type { WorkWithImage } from '@/utils/prepareWorks'
-import type { RecordingLinkType } from '../content.config'
+import type { RecordingLinkType, RecordingType } from '../content.config'
 import type { ClientRecordingEntry } from '../scripts/immersive/types'
 
 /** Parse a date-like string to a timestamp, returning 0 on failure. */
@@ -57,20 +57,20 @@ export function flattenRecordingEntries(
   perusalScoreMap?: Record<string, number>,
 ): ClientRecordingEntry[] {
   return worksWithImages.flatMap((work) =>
-    work.data.recordings.flatMap((recording, recordingIndex) =>
+    work.data.recordings.flatMap((recording: RecordingType, recordingIndex: number) =>
       recording.links
         .filter(isLinkObject)
-        .filter((link) => typeof link.mp3 === 'string' && link.mp3.trim().length > 0)
-        .map((link, linkIndex) => {
+        .filter((link: Exclude<RecordingLinkType, string>) => typeof link.mp3 === 'string' && link.mp3.trim().length > 0)
+        .map((link: Exclude<RecordingLinkType, string>, linkIndex: number) => {
           const ensemble = recording.ensemble?.trim()
-          const primaryPerformer = recording.performers.find((performer) => performer.trim().length > 0)?.trim()
+          const primaryPerformer = recording.performers.find((performer: string) => performer.trim().length > 0)?.trim()
 
           return {
             key: `${work.id}-${recordingIndex}-${linkIndex}`,
             workId: work.id,
-            workHref: `/works/${work.id}/`,
+            workHref: `/music/${work.id}/`,
             perusalScoreHref: perusalScoreMap?.[work.id]
-              ? `/works/${work.id}/perusal-score/`
+              ? `/music/${work.id}/perusal-score/`
               : undefined,
             title: link.label ? `${work.data.title} — ${link.label}` : work.data.title,
             performer: ensemble || primaryPerformer || 'Performer to be announced',

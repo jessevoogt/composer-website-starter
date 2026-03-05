@@ -35,33 +35,35 @@ async function loadConfig() {
     config = mod.default || {}
   }
 
-  // Load .env.local overrides
-  const envPath = path.join(workspaceRoot, '.env.local')
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8')
-    for (const line of envContent.split('\n')) {
-      const match = line.match(/^\s*([\w]+)\s*=\s*(.*)$/)
-      if (match) {
-        const [, key, rawValue] = match
-        process.env[key] = rawValue.replace(/^['"]|['"]$/g, '')
-      }
-    }
-  }
-
-  const rawSourceDir = (process.env.WORKS_SOURCE_DIR || config.sourceDir || '').replace(/^~/, os.homedir())
+  const rawSourceDir = (config.sourceDir || '').replace(/^~/, process.env.HOME)
   // Resolve relative paths against workspace root
   const sourceDir = path.isAbsolute(rawSourceDir) ? rawSourceDir : path.resolve(workspaceRoot, rawSourceDir)
 
   if (!sourceDir) {
     console.error('Error: No source directory configured.')
-    console.error('Set sourceDir in source.config.mjs or WORKS_SOURCE_DIR in .env.local')
+    console.error('Set sourceDir in source.config.mjs')
     process.exit(1)
+  }
+
+  // Read siteUrl from source/site/site.yaml for ID3 tag comments
+  let siteUrl = 'https://example.com'
+  const siteYamlPath = path.join(workspaceRoot, 'source', 'site', 'site.yaml')
+  if (fs.existsSync(siteYamlPath)) {
+    try {
+      const siteData = yaml.load(fs.readFileSync(siteYamlPath, 'utf8'))
+      if (siteData?.siteUrl && typeof siteData.siteUrl === 'string') {
+        siteUrl = siteData.siteUrl.replace(/\/+$/, '') // strip trailing slash
+      }
+    } catch {
+      // Fall back to default
+    }
   }
 
   return {
     sourceDir,
-    defaultComposer: config.defaultComposer || 'FirstName LastName',
+    defaultComposer: config.defaultComposer || 'Composer Name',
     mp3Bitrate: config.mp3Bitrate || 320,
+    siteUrl,
   }
 }
 
@@ -98,17 +100,11 @@ function isNewerThan(src, target) {
 
 function hasFfmpeg() {
   try {
-    execSync(process.platform === 'win32' ? 'where ffmpeg' : 'which ffmpeg', { stdio: 'pipe' })
+    execSync('which ffmpeg', { stdio: 'pipe' })
     return true
   } catch {
     return false
   }
-}
-
-function ffmpegInstallHint() {
-  if (process.platform === 'darwin') return 'brew install ffmpeg'
-  if (process.platform === 'win32') return 'choco install ffmpeg  (or download from https://ffmpeg.org/download.html)'
-  return 'sudo apt install ffmpeg  (or use your distro package manager)'
 }
 
 /** Get audio duration in seconds using ffprobe */
@@ -251,7 +247,9 @@ function hasAssetChanges(work, manifest) {
   // Audio and photo assets — compare source mtimes against the manifest's last-processed timestamp.
   // Building the exact target audio filename requires the full config (async), so we use the
   // manifest timestamp as a reliable "last fully processed" reference instead.
-  const lastProcessedMs = manifest[work.slug]?.timestamp ? new Date(manifest[work.slug].timestamp).getTime() : 0
+  const lastProcessedMs = manifest[work.slug]?.timestamp
+    ? new Date(manifest[work.slug].timestamp).getTime()
+    : 0
 
   // Directory mtimes catch add/remove/rename events (not just file content updates).
   // This is important for cases like deleting/renaming recording audio files where the
@@ -336,7 +334,7 @@ function processAudio(srcPath, targetFilename, config, id3Tags) {
     // Convert to MP3 via ffmpeg
     if (!hasFfmpeg()) {
       console.warn(`  Warning: ffmpeg not found, cannot convert ${path.basename(srcPath)}`)
-      console.warn(`  Install with: ${ffmpegInstallHint()}`)
+      console.warn('  Install with: brew install ffmpeg')
       return null
     }
     if (isNewerThan(srcPath, targetPath)) {
@@ -407,11 +405,14 @@ function buildFrontmatter(work, config) {
   if (workMeta.duration) fm.duration = workMeta.duration
   if (workMeta.difficulty) fm.difficulty = workMeta.difficulty
   if (workMeta.programNote) fm.programNote = workMeta.programNote
+  if (workMeta.movements?.length) fm.movements = workMeta.movements
 
   // Perusal score: auto-detected as score.pdf in the work folder
   if (isFile(path.join(work.sourceDir, 'score.pdf'))) {
     fm.hasPerusalScore = true
   }
+  if (workMeta.perusalScoreGated) fm.perusalScoreGated = workMeta.perusalScoreGated
+  if (workMeta.preferredHeroId) fm.preferredHeroId = workMeta.preferredHeroId
 
   // Selected
   if (workMeta.selected) fm.selected = true
@@ -465,7 +466,7 @@ function buildRecording(recMeta, recFolder, work, workMeta, config) {
   const photoSrcPath = findFile(recFolder.dir, 'photo', IMAGE_EXTS)
   if (photoSrcPath) {
     const imgName = processRecordingImage(photoSrcPath, work.slug, recFolder.name, '-photo', recMeta.photo?.crop)
-    const webpBase = imgName.replace(/-crop-[a-z]{2}(?=\.\w+$)/, '').replace(/\.\w+$/, '')
+    const webpBase = imgName.replace(/-crop-\w+/, '').replace(/\.\w+$/, '')
     rec.image = {
       src: `/assets/images/works/${webpBase}-740w.webp`,
     }
@@ -561,7 +562,7 @@ function buildSingleRecordingLink(
       albumArtist: composer,
       album: subtitle ? `${title} ${subtitle}` : title,
       year: workMeta.completionDate?.slice(0, 4) || '',
-      comment: `https://example.com/works/${work.slug}/`,
+      comment: `${config.siteUrl}/music/${work.slug}/`,
     }
     const publicPath = processAudio(audioSrcPath, audioFilename, config, id3Tags)
     if (publicPath) link.mp3 = publicPath
@@ -620,7 +621,7 @@ function buildRecordingLink(
       albumArtist: composer,
       album: subtitle ? `${title} ${subtitle}` : title,
       year: workMeta.completionDate?.slice(0, 4) || '',
-      comment: `https://example.com/works/${work.slug}/`,
+      comment: `${config.siteUrl}/music/${work.slug}/`,
     }
     const publicPath = processAudio(audioSrcPath, audioFilename, config, id3Tags)
     if (publicPath) link.mp3 = publicPath
@@ -633,7 +634,7 @@ function buildRecordingLink(
   const photoSrcPath = findFile(movDir.dir, 'photo', IMAGE_EXTS)
   if (photoSrcPath) {
     const imgName = processRecordingImage(photoSrcPath, work.slug, recFolder.name, `-mov-${movDir.name}`, null)
-    const webpBase = imgName.replace(/-crop-[a-z]{2}(?=\.\w+$)/, '').replace(/\.\w+$/, '')
+    const webpBase = imgName.replace(/-crop-\w+/, '').replace(/\.\w+$/, '')
     link.image = {
       src: `/assets/images/works/${webpBase}-740w.webp`,
     }
@@ -736,7 +737,7 @@ async function main() {
 
   if (!isDir(config.sourceDir)) {
     console.error(`Error: Source directory not found: ${config.sourceDir}`)
-    console.error('Create it or update the path in source.config.mjs / .env.local')
+    console.error('Create it or update the path in source.config.mjs')
     process.exit(1)
   }
 
@@ -744,7 +745,7 @@ async function main() {
   const ffmpegAvailable = hasFfmpeg()
   if (!ffmpegAvailable) {
     console.warn('Warning: ffmpeg not found. WAV conversion and auto-duration detection disabled.')
-    console.warn(`Install with: ${ffmpegInstallHint()}\n`)
+    console.warn('Install with: brew install ffmpeg\n')
   }
 
   if (FORCE) console.log('Mode: --force (reprocessing all works)\n')

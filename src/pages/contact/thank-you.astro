@@ -1,0 +1,41 @@
+---
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ThankYouCard from '@components/ThankYouCard.astro'
+import { getContactThankYouPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
+
+const config = getContactThankYouPage()
+const { pageHero } = resolvePageHero(config.preferredHeroId)
+---
+
+<SiteLayout
+  title="Thank You"
+  description="Your message has been sent successfully."
+  url="/contact/thank-you/"
+  robots="noindex, nofollow"
+  pageContentClass="page-content-thank-you"
+  pageHero={pageHero}
+  customBreadcrumbLabels={{ 'thank-you': 'Thank You' }}
+  pageKey="contact-thank-you"
+>
+  <ThankYouCard headingId="thank-you-heading" heading={config.heading}>
+    <p>{config.message}</p>
+
+    <a slot="actions" href="/" class="ty-btn ty-btn-back">
+      <svg
+        class="ty-btn-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M5 12h13"></path>
+        <path d="m13 6 6 6-6 6"></path>
+      </svg>
+      <span class="ty-btn-label">{config.buttonLabel}</span>
+    </a>
+  </ThankYouCard>
+</SiteLayout>

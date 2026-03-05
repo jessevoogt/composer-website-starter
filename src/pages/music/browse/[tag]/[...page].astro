@@ -1,0 +1,191 @@
+---
+import { getSiteConfig as _checkMode, getMusicBrowsePage, getMusicBrowseTagPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
+import PerusalOnlyRedirect from '@components/PerusalOnlyRedirect.astro'
+const isPerusalOnlyMode = _checkMode().perusalScoreOnlyMode
+const musicBrowseTagPage = getMusicBrowseTagPage()
+const musicBrowsePage = getMusicBrowsePage()
+const { pageHero } = resolvePageHero(musicBrowseTagPage.preferredHeroId || musicBrowsePage.preferredHeroId)
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
+import ImmersiveCard from '@components/immersive/ImmersiveCard.astro'
+import ImmersivePagination from '@components/immersive/ImmersivePagination.astro'
+import WorksSearch from '@components/WorksSearch.astro'
+import { getCollection } from 'astro:content'
+import type { GetStaticPaths, Page } from 'astro'
+import type { CollectionEntry } from 'astro:content'
+import type { SearchableItem } from '../../../../scripts/search-types'
+
+import prepareWorks from '@/utils/prepareWorks'
+import { buildSearchableTagItems, buildSearchableWorkItems } from '@/utils/search-items'
+import { getPerformerCreditKey, normalizeCreditKey } from '@/utils/credit-labels'
+
+type TagType = 'performer' | 'ensemble' | 'other'
+
+export const getStaticPaths = (async ({ paginate }) => {
+  function addWorkToKey(map: Map<string, Set<string>>, key: string, workId: string): void {
+    const workIds = map.get(key) ?? new Set<string>()
+    workIds.add(workId)
+    map.set(key, workIds)
+  }
+
+  const works = await getCollection('works')
+  const { works: worksWithImages, uniqueTags } = prepareWorks(works)
+
+  const searchableItems: SearchableItem[] = [
+    ...buildSearchableWorkItems(worksWithImages),
+    ...buildSearchableTagItems(uniqueTags),
+  ]
+
+  const performerWorkIdsByKey = new Map<string, Set<string>>()
+  const ensembleWorkIdsByKey = new Map<string, Set<string>>()
+  const creditWorkIdsByKey = new Map<string, Set<string>>()
+
+  for (const work of works) {
+    for (const recording of work.data.recordings) {
+      const ensemble = recording.ensemble?.trim()
+      if (ensemble) {
+        const key = normalizeCreditKey(ensemble)
+        addWorkToKey(ensembleWorkIdsByKey, key, work.id)
+        addWorkToKey(creditWorkIdsByKey, key, work.id)
+      }
+
+      for (const performer of recording.performers) {
+        const label = performer.trim()
+        if (!label) continue
+        const key = getPerformerCreditKey(label)
+        addWorkToKey(performerWorkIdsByKey, key, work.id)
+        addWorkToKey(creditWorkIdsByKey, key, work.id)
+      }
+    }
+  }
+
+  const sharedCreditKeys = new Set(
+    [...creditWorkIdsByKey.entries()].filter(([, workIds]) => workIds.size > 1).map(([key]) => key),
+  )
+
+  // If a shared credit appears as both performer and ensemble, treat it as ensemble for display.
+  const sharedEnsembleKeys = new Set(
+    [...sharedCreditKeys].filter((key) => (ensembleWorkIdsByKey.get(key)?.size ?? 0) > 0),
+  )
+  const sharedPerformerKeys = new Set(
+    [...sharedCreditKeys].filter(
+      (key) => !sharedEnsembleKeys.has(key) && (performerWorkIdsByKey.get(key)?.size ?? 0) > 0,
+    ),
+  )
+
+  // Generate paginated pages for each tag
+  const allPaginatedPages = []
+
+  for (const tag of uniqueTags) {
+    const filteredworks = worksWithImages.filter((work) => work.tagSlugs.includes(tag.slug))
+    const normalizedTag = normalizeCreditKey(tag.label)
+    let tagType: TagType = 'other'
+
+    if (sharedEnsembleKeys.has(normalizedTag)) {
+      tagType = 'ensemble'
+    } else if (sharedPerformerKeys.has(normalizedTag)) {
+      tagType = 'performer'
+    }
+
+    const paginatedPages = paginate(filteredworks, {
+      pageSize: 6,
+      params: { tag: tag.slug },
+      props: {
+        currentTag: {
+          ...tag,
+          type: tagType,
+        },
+        searchableItems,
+      },
+    })
+
+    allPaginatedPages.push(...paginatedPages)
+  }
+
+  return allPaginatedPages
+}) satisfies GetStaticPaths
+
+interface Props {
+  page: Page<CollectionEntry<'works'> & { featuredImage: ReturnType<typeof prepareWorks>['works'][number]['featuredImage'] }>
+  currentTag: { label: string; slug: string; type: TagType }
+  searchableItems: SearchableItem[]
+}
+
+const { page, currentTag, searchableItems } = Astro.props
+const isPerformanceTag = currentTag.type === 'performer' || currentTag.type === 'ensemble'
+const heading = isPerformanceTag ? `Works performed by ${currentTag.label}` : `Works: ${currentTag.label}`
+const metaTitle = isPerformanceTag ? heading : `Works - ${currentTag.label}`
+const summary = isPerformanceTag
+  ? `Showing ${page.total} work${page.total !== 1 ? 's' : ''} performed by "${currentTag.label}".`
+  : `Showing ${page.total} work${page.total !== 1 ? 's' : ''} tagged with "${currentTag.label}".`
+const listingQualifier = isPerformanceTag
+  ? `performed by "${currentTag.label}"`
+  : `tagged with "${currentTag.label}"`
+---
+
+{isPerusalOnlyMode ? (
+  <PerusalOnlyRedirect />
+) : (
+<SiteLayout
+  title={metaTitle}
+  description={`Works filtered by ${currentTag.label} tag. Discover our work in ${currentTag.label} and related technologies.`}
+  pageHero={pageHero}
+  pageKey="music-browse-tag"
+>
+  <ImmersivePageHeader
+    title={heading}
+    subtitle={`${summary}<br /><a href="/music/">View all works</a>`}
+    customBreadcrumbLabels={{
+      [currentTag.slug]: currentTag.label,
+    }}
+    joinLastBreadcrumb={true}
+    class="works-page-header"
+  >
+    <div class="works-page-header-search">
+      <WorksSearch mode="site" items={searchableItems} label="Search works" placeholder="Enter keywords..." />
+    </div>
+  </ImmersivePageHeader>
+  <section>
+    <div class="container">
+      <p class="works-listing-summary">
+        <em>
+          Work {page.start + 1} through {page.end + 1} of {page.total} total works {listingQualifier}
+        </em>
+      </p>
+      <ul class="work-card-grid works-listing-grid">
+        {
+          page.data.map((work) => (
+            <ImmersiveCard
+              url={'/music/' + work.id + '/'}
+              title={work.data.title}
+              headingLevel="h2"
+              footer={'Instrumentation: ' + work.data.instrumentation.join(', ')}
+              imageData={work.featuredImage}
+              imageAlt={work.data.thumbnail?.alt ?? ''}
+            >
+              {work.data.description}
+            </ImmersiveCard>
+          ))
+        }
+      </ul>
+
+      {
+        page && page.lastPage > 1 && (
+          <div style="margin-top: var(--space-xl); display: grid; place-content: center;">
+            <ImmersivePagination
+              firstPage={page.url.prev ? `/music/browse/${currentTag.slug}/` : null}
+              previousPage={page.url.prev ? page.url.prev : null}
+              nextPage={page.url.next ? page.url.next : null}
+              lastPage={page.url.next ? `/music/browse/${currentTag.slug}/${page.lastPage}/` : null}
+              currentPage={`${page.currentPage}`}
+              totalPages={`${page.lastPage}`}
+              ariaLabel={`${currentTag.label} works pagination`}
+            />
+          </div>
+        )
+      }
+    </div>
+  </section>
+</SiteLayout>
+)}

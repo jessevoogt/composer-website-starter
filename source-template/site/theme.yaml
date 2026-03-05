@@ -1,10 +1,55 @@
-colorBackground: '#05070a'
-colorBackgroundSoft: '#0b1016'
-colorText: '#f9fcff'
-colorTextMuted: '#d7e4f1'
-colorAccent: '#7dd3ff'
-colorAccentStrong: '#e6f6ff'
-colorButton: '#9be0ff'
-colorButtonText: '#031019'
-fontBody: Atkinson Hyperlegible
-fontHeading: Playfair Display
+# Theme configuration
+# Colors should be specified as hex values (e.g. #1a1a2e).
+# Use the Theme Studio in the dev toolbar to preview and apply presets.
+
+currentThemeId: concert-hall
+colorBackground: '#f6f1e8'
+colorBackgroundSoft: '#ffffff'
+colorText: '#1a1a1a'
+colorTextMuted: '#5d5a55'
+colorAccent: '#6e0f1a'
+colorAccentStrong: '#b08d57'
+colorButton: '#6e0f1a'
+colorButtonText: '#ffffff'
+focusRingColor: '#000000'
+navActiveUnderline: ''
+navActiveText: ''
+navHoverUnderline: ''
+navHoverText: ''
+scrimColor: ''
+disableImageOverlays: false
+ctaBackground: ''
+ctaText: ''
+fontBody: IBM Plex Sans
+fontHeading: Cormorant Garamond
+borderRadius: subtle
+playerBorderRadius: rounded
+socialIconBorderRadius: circle
+profileImageBorderRadius: circle
+tagBadgeBorderRadius: circle
+customCss: ''
+aboutPage:
+  profileImagePosition: center
+contactPage:
+  position: center
+  maxWidth: default
+homeHero:
+  mirrorImage: false
+  layout:
+    mode: columns
+    columnsImagePosition: left
+    columnSplit: text-wide
+    stackedImageOrder: first
+  typography:
+    titleScale: default
+    taglineScale: default
+    citationScale: default
+  divider:
+    visible: false
+    widthPx: 1
+    color: ''
+    glow: none
+    glowSide: balanced
+  actions:
+    listenNow: theme-default
+    searchMusic: theme-default

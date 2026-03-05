@@ -2,22 +2,36 @@
 import '../styles/site.css'
 import {
   getSiteConfig,
-  getAudioPlayerControls,
   getThemeConfig,
+  getPrimaryNavLinks,
   getSocialLinks,
-  getNavigation,
   getBrandConfig,
-  getHeroVariants,
-  getHeroConfig,
+  getBreadcrumbsConfig,
+  getCopyrightConfig,
+  getFooterMenuConfig,
+  getResponsiveHeaderConfigs,
+  anyHeaderHasElement,
+  getFooterBlockConfig,
+  getGlobalLayout,
+  isPlaceholderConfig,
 } from '@/utils/source-config'
 import {
   DEFAULT_THEME_FONT_BODY,
   DEFAULT_THEME_FONT_HEADING,
-  getThemeGoogleFontsStylesheetHref,
   normalizeThemeFontValue,
-  resolveImmersiveButtonLabelShifts,
   resolveThemeFontFamily,
+  resolveImmersiveButtonLabelShifts,
+  getThemeGoogleFontsStylesheetHref,
 } from '@/utils/theme-fonts'
+import {
+  normalizeThemeColors,
+  normalizeHexColorExact,
+  toThemeCssVars,
+  toThemeStyleString,
+} from '@/utils/theme-css-vars'
+import { THEME_PRESETS, THEME_COLOR_KEYS } from '@/utils/theme-presets'
+import type { HeaderElement, HeaderBreakpoint } from '@/utils/source-config'
+import { getBrandPluginId } from '@/utils/brand-plugin'
 import SiteMeta from '@components/SiteMeta.astro'
 import GoogleAnalytics from '@components/GoogleAnalytics.astro'
 import SocialIcon from '@components/icons/SocialIcon.astro'
@@ -26,11 +40,17 @@ import ImmersiveBreadcrumbs from '@components/immersive/ImmersiveBreadcrumbs.ast
 import WorksSearch from '@components/WorksSearch.astro'
 import { ClientRouter } from 'astro:transitions'
 import { getCollection } from 'astro:content'
-const navigationConfig = getNavigation()
-const primaryNavLinks = navigationConfig.menuItems.filter((item) => item.enabled).sort((a, b) => a.order - b.order)
+const primaryNavLinks = getPrimaryNavLinks()
 const socialLinks = getSocialLinks()
-const { footerLinks } = navigationConfig
+const copyrightConfig = getCopyrightConfig()
+const footerMenuConfig = getFooterMenuConfig()
+const responsiveHeaders = getResponsiveHeaderConfigs()
+const footerBlockConfig = getFooterBlockConfig()
+const globalLayout = getGlobalLayout()
+const visibleBlocks = new Set(globalLayout.sections.map((s) => s.key))
 const brandConfig = getBrandConfig()
+const brandPluginId = getBrandPluginId(brandConfig)
+const hasCustomBrandPlugin = brandPluginId === 'custom-animation'
 import type { SearchableItem, SearchableWorkItem } from '../scripts/search-types'
 import { generatedPageSearchEntries } from '@data/generated-page-search-metadata'
 import { resolveNavHref } from '@/utils/resolve-nav-href'
@@ -40,6 +60,8 @@ import worksImages from '@/utils/works-images'
 import { flattenRecordingEntries } from '@/utils/immersive-helpers'
 import perusalScores from '@/utils/perusal-scores'
 import type { ClientRecordingEntry } from '../scripts/immersive/types'
+import type { PageHero } from '@/utils/page-hero'
+import { getHeroVariants, getHeroConfig } from '@/utils/source-config'
 
 interface Props {
   title?: string
@@ -48,6 +70,7 @@ interface Props {
   image?: string
   imageAlt?: string
   author?: string
+  robots?: string
   isHomepage?: boolean
   skipTargetId?: string
   pageContentClass?: string
@@ -55,203 +78,98 @@ interface Props {
   customBreadcrumbLabels?: Record<string, string>
   headerBreadcrumbItems?: Array<{ href?: string; label: string; currentPage?: boolean }>
   replaceLastAutoBreadcrumbLabel?: string
-  pageHero?: {
-    pageKey: 'home' | 'contact' | 'works' | 'about'
-    id: string
-    src: string
-    position: string
-    filter: string
-  }
+  pageHero?: PageHero | null
+  pageKey?: 'home' | 'contact' | 'about' | 'works' | string
+  /** Work slug — enables per-work background scope in the dev toolbar. */
+  workSlug?: string
+  /** The work-detail page-level default hero id (before per-work override). */
+  pageDefaultHeroId?: string
 }
-
-type ToolbarHeroPageKey = 'home' | 'contact' | 'works' | 'about' | 'preview'
 
 const siteConfig = getSiteConfig()
-const siteAudioPlayerControls = getAudioPlayerControls()
 const themeConfig = getThemeConfig()
-const DEFAULT_MAIN_NAV_FONT_SIZE_PX = 15
-const MIN_MAIN_NAV_FONT_SIZE_PX = 11
-const MAX_MAIN_NAV_FONT_SIZE_PX = 24
-const DEFAULT_INTERIOR_HERO_OVERLAY_OPACITY = 0.86
 
-const DEFAULT_THEME_COLORS = {
-  colorBackground: '#10161d',
-  colorBackgroundSoft: '#141b23',
-  colorText: '#ecf2f7',
-  colorTextMuted: '#aab8c4',
-  colorAccent: '#97c6de',
-  colorAccentStrong: '#d5edf9',
-  colorButton: '#89b9d3',
-  colorButtonText: '#08131d',
-} as const
+// Redirect to setup wizard if still using placeholder config (dev mode only)
+const isSetupNeeded = import.meta.env.DEV && isPlaceholderConfig()
 
-function normalizeHexColor(value: string | undefined, fallback: string): string {
-  const trimmed = typeof value === 'string' ? value.trim() : ''
-  if (!trimmed) return fallback
+// Resolve theme colors, fonts, and border radius
+const resolvedThemeColors = normalizeThemeColors(themeConfig)
+const resolvedFontBody = normalizeThemeFontValue(themeConfig.fontBody, DEFAULT_THEME_FONT_BODY)
+const resolvedFontHeading = normalizeThemeFontValue(themeConfig.fontHeading, DEFAULT_THEME_FONT_HEADING)
+const resolvedBorderRadius = themeConfig.borderRadius || 'none'
 
-  const match = trimmed.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
-  if (!match) return fallback
-
-  const hex = match[1]
-  if (hex.length === 3) {
-    return `#${hex
-      .split('')
-      .map((char) => `${char}${char}`)
-      .join('')
-      .toLowerCase()}`
-  }
-
-  return `#${hex.toLowerCase()}`
-}
-
-function hexToRgbTuple(value: string): [number, number, number] {
-  const normalized = normalizeHexColor(value, '#000000').slice(1)
-  const red = Number.parseInt(normalized.slice(0, 2), 16)
-  const green = Number.parseInt(normalized.slice(2, 4), 16)
-  const blue = Number.parseInt(normalized.slice(4, 6), 16)
-  return [red, green, blue]
-}
-
-function clampUnit(value: number): number {
-  if (Number.isNaN(value)) return 0
-  if (value < 0) return 0
-  if (value > 1) return 1
-  return value
-}
-
-function resolveInteriorHeroOverlayOpacity(value: string | number | undefined, fallback: number): number {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return clampUnit(value)
-  }
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed) return fallback
-    const parsed = Number.parseFloat(trimmed)
-    if (Number.isFinite(parsed)) return clampUnit(parsed)
-  }
-
-  return fallback
-}
-
-function normalizeThemeConfigValue(value: string | number | undefined): string {
-  if (typeof value === 'number' && Number.isFinite(value)) return String(value)
-  if (typeof value === 'string') return value.trim()
-  return ''
-}
-
-function resolveMainNavFontSizePx(value: number | undefined, fallback: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
-  const rounded = Math.round(value)
-  return Math.min(MAX_MAIN_NAV_FONT_SIZE_PX, Math.max(MIN_MAIN_NAV_FONT_SIZE_PX, rounded))
-}
-
-function mixHex(baseHex: string, targetHex: string, amount: number): string {
-  const [baseRed, baseGreen, baseBlue] = hexToRgbTuple(baseHex)
-  const [targetRed, targetGreen, targetBlue] = hexToRgbTuple(targetHex)
-  const alpha = clampUnit(amount)
-
-  const red = Math.round(baseRed + (targetRed - baseRed) * alpha)
-  const green = Math.round(baseGreen + (targetGreen - baseGreen) * alpha)
-  const blue = Math.round(baseBlue + (targetBlue - baseBlue) * alpha)
-
-  const toHex = (channel: number): string => channel.toString(16).padStart(2, '0')
-  return `#${toHex(red)}${toHex(green)}${toHex(blue)}`
-}
-
-const resolvedThemeColors = {
-  colorBackground: normalizeHexColor(themeConfig.colorBackground, DEFAULT_THEME_COLORS.colorBackground),
-  colorBackgroundSoft: normalizeHexColor(themeConfig.colorBackgroundSoft, DEFAULT_THEME_COLORS.colorBackgroundSoft),
-  colorText: normalizeHexColor(themeConfig.colorText, DEFAULT_THEME_COLORS.colorText),
-  colorTextMuted: normalizeHexColor(themeConfig.colorTextMuted, DEFAULT_THEME_COLORS.colorTextMuted),
-  colorAccent: normalizeHexColor(themeConfig.colorAccent, DEFAULT_THEME_COLORS.colorAccent),
-  colorAccentStrong: normalizeHexColor(themeConfig.colorAccentStrong, DEFAULT_THEME_COLORS.colorAccentStrong),
-  colorButton: normalizeHexColor(themeConfig.colorButton, DEFAULT_THEME_COLORS.colorButton),
-  colorButtonText: normalizeHexColor(themeConfig.colorButtonText, DEFAULT_THEME_COLORS.colorButtonText),
-}
-
-const [backgroundRed, backgroundGreen, backgroundBlue] = hexToRgbTuple(resolvedThemeColors.colorBackground)
-const [backgroundSoftRed, backgroundSoftGreen, backgroundSoftBlue] = hexToRgbTuple(resolvedThemeColors.colorBackgroundSoft)
-const [accentRed, accentGreen, accentBlue] = hexToRgbTuple(resolvedThemeColors.colorAccent)
-const [accentStrongRed, accentStrongGreen, accentStrongBlue] = hexToRgbTuple(resolvedThemeColors.colorAccentStrong)
-const [buttonRed, buttonGreen, buttonBlue] = hexToRgbTuple(resolvedThemeColors.colorButton)
-const interiorHeroOverlayOpacity = resolveInteriorHeroOverlayOpacity(
-  themeConfig.interiorHeroOverlayOpacity,
-  DEFAULT_INTERIOR_HERO_OVERLAY_OPACITY,
+// Match the current YAML theme against presets to pick up overrides like focusRingColor
+const matchedPreset = THEME_PRESETS.find(
+  (preset) =>
+    THEME_COLOR_KEYS.every((key) => {
+      const a = normalizeHexColorExact(resolvedThemeColors[key])
+      const b = normalizeHexColorExact(preset.colors[key])
+      return a && b && a === b
+    }) && (preset.borderRadius || 'none') === resolvedBorderRadius,
 )
-const resolvedThemeFontBody = normalizeThemeFontValue(themeConfig.fontBody, DEFAULT_THEME_FONT_BODY)
-const resolvedThemeFontHeading = normalizeThemeFontValue(themeConfig.fontHeading, DEFAULT_THEME_FONT_HEADING)
-const resolvedMainNavFontSizePx = resolveMainNavFontSizePx(
-  navigationConfig.mainNavFontSizePx,
-  DEFAULT_MAIN_NAV_FONT_SIZE_PX,
+
+const resolvedCtaBackground = themeConfig.ctaBackground.trim() || matchedPreset?.ctaBackground || ''
+const resolvedCtaText = themeConfig.ctaText.trim() || matchedPreset?.ctaText || ''
+const resolvedFocusRingColor = themeConfig.focusRingColor.trim() || matchedPreset?.focusRingColor || ''
+const resolvedNavActiveUnderline = themeConfig.navActiveUnderline.trim() || matchedPreset?.navActiveUnderline || ''
+const resolvedNavActiveText = themeConfig.navActiveText.trim() || matchedPreset?.navActiveText || ''
+const resolvedNavHoverUnderline = themeConfig.navHoverUnderline.trim() || matchedPreset?.navHoverUnderline || ''
+const resolvedNavHoverText = themeConfig.navHoverText.trim() || matchedPreset?.navHoverText || ''
+const resolvedScrimColor = themeConfig.scrimColor.trim() || matchedPreset?.scrimColor || ''
+const resolvedDisableImageOverlays = themeConfig.disableImageOverlays
+const resolvedPlayerBorderRadius = themeConfig.playerBorderRadius.trim()
+const resolvedSocialIconBorderRadius = themeConfig.socialIconBorderRadius.trim()
+const resolvedProfileImageBorderRadius =
+  themeConfig.profileImageBorderRadius.trim() || matchedPreset?.profileImageBorderRadius || 'circle'
+const resolvedTagBadgeBorderRadius =
+  themeConfig.tagBadgeBorderRadius.trim() || matchedPreset?.tagBadgeBorderRadius || 'circle'
+const resolvedThemeId = themeConfig.currentThemeId.trim() || matchedPreset?.id || ''
+const resolvedThemeCustomCss = themeConfig.customCss.trim()
+const resolvedAboutPage = themeConfig.aboutPage
+const resolvedContactPage = themeConfig.contactPage
+
+const themeVars = toThemeCssVars(
+  resolvedThemeColors,
+  resolvedBorderRadius,
+  resolvedFocusRingColor,
+  resolvedCtaBackground,
+  resolvedCtaText,
+  resolvedNavActiveUnderline,
+  resolvedNavActiveText,
+  resolvedNavHoverUnderline,
+  resolvedNavHoverText,
+  resolvedScrimColor,
+  resolvedDisableImageOverlays,
+  resolvedPlayerBorderRadius,
+  resolvedSocialIconBorderRadius,
+  resolvedProfileImageBorderRadius,
+  resolvedTagBadgeBorderRadius,
+  resolvedAboutPage.profileImagePosition,
+  resolvedAboutPage.position,
+  resolvedAboutPage.maxWidth,
+  resolvedContactPage.position,
+  resolvedContactPage.maxWidth,
 )
-const immersiveButtonLabelShifts = resolveImmersiveButtonLabelShifts(
-  resolvedThemeFontHeading,
-  DEFAULT_THEME_FONT_HEADING,
-)
-const surfaceColor = mixHex(resolvedThemeColors.colorBackgroundSoft, resolvedThemeColors.colorText, 0.03)
-const surfaceSoftColor = mixHex(resolvedThemeColors.colorBackgroundSoft, resolvedThemeColors.colorText, 0.08)
-const lineColor = mixHex(resolvedThemeColors.colorBackgroundSoft, resolvedThemeColors.colorAccent, 0.2)
+themeVars['--font-heading'] = resolveThemeFontFamily(resolvedFontHeading, DEFAULT_THEME_FONT_HEADING)
+themeVars['--font-body'] = resolveThemeFontFamily(resolvedFontBody, DEFAULT_THEME_FONT_BODY)
+const immersiveLabelShifts = resolveImmersiveButtonLabelShifts(resolvedFontHeading, DEFAULT_THEME_FONT_HEADING)
+themeVars['--immersive-btn-label-shift-standard'] = immersiveLabelShifts.standard
+themeVars['--immersive-btn-label-shift-control'] = immersiveLabelShifts.control
+const themeStyleVars = toThemeStyleString(themeVars)
+
 const googleFontsStylesheetHref = getThemeGoogleFontsStylesheetHref([
-  { value: resolvedThemeFontBody, fallback: DEFAULT_THEME_FONT_BODY },
-  { value: resolvedThemeFontHeading, fallback: DEFAULT_THEME_FONT_HEADING },
+  { value: resolvedFontBody, fallback: DEFAULT_THEME_FONT_BODY },
+  { value: resolvedFontHeading, fallback: DEFAULT_THEME_FONT_HEADING },
 ])
-
-const themeStyleVars = [
-  `--bg-r: ${backgroundRed}`,
-  `--bg-g: ${backgroundGreen}`,
-  `--bg-b: ${backgroundBlue}`,
-  `--bg-soft-r: ${backgroundSoftRed}`,
-  `--bg-soft-g: ${backgroundSoftGreen}`,
-  `--bg-soft-b: ${backgroundSoftBlue}`,
-  `--bg: ${resolvedThemeColors.colorBackground}`,
-  `--bg-soft: ${resolvedThemeColors.colorBackgroundSoft}`,
-  `--surface: ${surfaceColor}`,
-  `--surface-soft: ${surfaceSoftColor}`,
-  `--line: ${lineColor}`,
-  `--ink: ${resolvedThemeColors.colorText}`,
-  `--ink-soft: ${resolvedThemeColors.colorTextMuted}`,
-  `--accent: ${resolvedThemeColors.colorAccent}`,
-  `--accent-strong: ${resolvedThemeColors.colorAccentStrong}`,
-  `--button-bg: ${resolvedThemeColors.colorButton}`,
-  `--button-ink: ${resolvedThemeColors.colorButtonText}`,
-  `--accent-rgb: ${accentRed} ${accentGreen} ${accentBlue}`,
-  `--accent-strong-rgb: ${accentStrongRed} ${accentStrongGreen} ${accentStrongBlue}`,
-  `--button-rgb: ${buttonRed} ${buttonGreen} ${buttonBlue}`,
-  `--interior-hero-overlay-opacity: ${interiorHeroOverlayOpacity}`,
-  `--font-heading: ${resolveThemeFontFamily(resolvedThemeFontHeading, DEFAULT_THEME_FONT_HEADING)}`,
-  `--font-body: ${resolveThemeFontFamily(resolvedThemeFontBody, DEFAULT_THEME_FONT_BODY)}`,
-  `--main-nav-font-size: ${resolvedMainNavFontSizePx}px`,
-  `--immersive-btn-label-shift-standard: ${immersiveButtonLabelShifts.standard}`,
-  `--immersive-btn-label-shift-control: ${immersiveButtonLabelShifts.control}`,
-].join('; ')
-
-const rawThemeColors = {
-  colorBackground: normalizeThemeConfigValue(themeConfig.colorBackground),
-  colorBackgroundSoft: normalizeThemeConfigValue(themeConfig.colorBackgroundSoft),
-  colorText: normalizeThemeConfigValue(themeConfig.colorText),
-  colorTextMuted: normalizeThemeConfigValue(themeConfig.colorTextMuted),
-  colorAccent: normalizeThemeConfigValue(themeConfig.colorAccent),
-  colorAccentStrong: normalizeThemeConfigValue(themeConfig.colorAccentStrong),
-  colorButton: normalizeThemeConfigValue(themeConfig.colorButton),
-  colorButtonText: normalizeThemeConfigValue(themeConfig.colorButtonText),
-}
-
-const siteThemeData = JSON.stringify({
-  colors: resolvedThemeColors,
-  rawColors: rawThemeColors,
-  interiorHeroOverlayOpacity: normalizeThemeConfigValue(themeConfig.interiorHeroOverlayOpacity),
-  fontBody: resolvedThemeFontBody,
-  fontHeading: resolvedThemeFontHeading,
-})
 
 const {
   title = siteConfig.siteTitle,
   description = siteConfig.siteDescription,
   url = Astro.site,
   image = '/social-preview-image.png',
-  imageAlt = `${siteConfig.composerName} social preview image`,
+  imageAlt = `${siteConfig.composerName} monogram and wordmark`,
   author = siteConfig.composerName,
+  robots,
   isHomepage = false,
   skipTargetId = 'main-content',
   pageContentClass,
@@ -260,12 +178,24 @@ const {
   headerBreadcrumbItems: customHeaderBreadcrumbItems,
   replaceLastAutoBreadcrumbLabel,
   pageHero,
+  pageKey,
+  workSlug,
+  pageDefaultHeroId,
 } = Astro.props
 
 const year = new Date().getFullYear()
 const currentPath = Astro.url.pathname
 const pathSegments = currentPath.split('/').filter(Boolean)
+const breadcrumbsConfig = getBreadcrumbsConfig()
+
+// Header slot system — three responsive layouts, each with independent slot arrays
+const anyHasMobileMenu = anyHeaderHasElement(responsiveHeaders, 'mobile-menu')
+
+type SlotPosition = 'left' | 'center' | 'right'
+const breakpointOrder: HeaderBreakpoint[] = ['desktop', 'tablet', 'mobile']
+
 const showHeaderBreadcrumbs =
+  visibleBlocks.has('breadcrumbs') &&
   !isHomepage &&
   (currentPath !== '/' || Boolean(customHeaderBreadcrumbItems?.length) || Boolean(replaceLastAutoBreadcrumbLabel))
 const worksCollection = await getCollection('works')
@@ -293,7 +223,6 @@ const featuredPlayerRecordings: ClientRecordingEntry[] =
   featuredRecordings.length > 0 ? featuredRecordings : fallbackRecording ? [fallbackRecording] : []
 
 const serializedFeaturedPlayerRecordings = JSON.stringify(featuredPlayerRecordings)
-const serializedSiteAudioPlayerControls = JSON.stringify(siteAudioPlayerControls)
 const candidateWorkIdForInitialRecording =
   pathSegments.length === 2 && pathSegments[0] === 'works' ? pathSegments[1] : undefined
 const workIdForInitialRecording =
@@ -329,7 +258,7 @@ const formatSegmentLabel = (segment: string): string => {
 const autoHeaderBreadcrumbItems: BreadcrumbItem[] = []
 
 if (showHeaderBreadcrumbs) {
-  autoHeaderBreadcrumbItems.push({ href: '/', label: 'Home' })
+  autoHeaderBreadcrumbItems.push({ href: '/', label: breadcrumbsConfig.homeCrumbLabel || 'Home' })
   pathSegments.forEach((segment, index) => {
     const url = `/${pathSegments.slice(0, index + 1).join('/')}/`
     const isLast = index === pathSegments.length - 1
@@ -349,11 +278,17 @@ const knownBreadcrumbPathSet = new Set(
   [
     ...generatedPageSearchEntries.map((entry) => entry.href),
     ...primaryNavLinks.map((link) => link.href),
-    ...worksWithImages.map((work) => `/works/${work.id}/`),
+    ...worksWithImages.map((work) => `/music/${work.id}/`),
     ...worksWithImages
       .filter((work) => Boolean(perusalScores[work.id]))
-      .map((work) => `/works/${work.id}/perusal-score/`),
-    ...uniqueTags.map((tag) => `/works/browse/${tag.slug}/`),
+      .map((work) => `/music/${work.id}/perusal-score/`),
+    ...worksWithImages
+      .filter((work) => Boolean(perusalScores[work.id]))
+      .map((work) => `/music/${work.id}/perusal-score/thank-you/`),
+    ...worksWithImages
+      .filter((work) => Boolean(perusalScores[work.id]))
+      .map((work) => `/music/${work.id}/perusal-score/access-granted/`),
+    ...uniqueTags.map((tag) => `/music/browse/${tag.slug}/`),
   ].map((path) => normalizePath(path)),
 )
 
@@ -369,18 +304,18 @@ function isKnownBreadcrumbPath(path: string): boolean {
   const normalized = normalizePath(path)
   if (knownBreadcrumbPathSet.has(normalized)) return true
 
-  const workDetailMatch = normalized.match(/^\/works\/([^/]+)\/$/)
+  const workDetailMatch = normalized.match(/^\/music\/([^/]+)\/$/)
   if (workDetailMatch) {
     return knownWorkIdSet.has(workDetailMatch[1])
   }
 
-  const perusalMatch = normalized.match(/^\/works\/([^/]+)\/perusal-score\/$/)
+  const perusalMatch = normalized.match(/^\/music\/([^/]+)\/perusal-score\/$/)
   if (perusalMatch) {
     const workId = perusalMatch[1]
     return knownWorkIdSet.has(workId) && Boolean(perusalScores[workId])
   }
 
-  const tagPaginationMatch = normalized.match(/^\/works\/browse\/([^/]+)\/(\d+)\/$/)
+  const tagPaginationMatch = normalized.match(/^\/music\/browse\/([^/]+)\/(\d+)\/$/)
   if (tagPaginationMatch) {
     const [, tagSlug, page] = tagPaginationMatch
     return knownTagSlugSet.has(tagSlug) && Number(page) >= 1
@@ -390,7 +325,7 @@ function isKnownBreadcrumbPath(path: string): boolean {
 }
 
 function buildValidAutoBreadcrumbPrefixItems(): BreadcrumbItem[] {
-  const validPrefixItems: BreadcrumbItem[] = [{ href: '/', label: 'Home' }]
+  const validPrefixItems: BreadcrumbItem[] = [{ href: '/', label: breadcrumbsConfig.homeCrumbLabel || 'Home' }]
 
   for (let index = 0; index < pathSegments.length; index += 1) {
     const segment = pathSegments[index]
@@ -432,46 +367,81 @@ const pageHeroStyle =
       ].join('; ')
     : undefined
 
-function resolveToolbarHeroPageKey(pathname: string): ToolbarHeroPageKey {
-  const normalizedPath = pathname.endsWith('/') ? pathname : `${pathname}/`
-  if (normalizedPath === '/') return 'home'
-  if (normalizedPath.startsWith('/contact/')) return 'contact'
-  if (normalizedPath.startsWith('/works/')) return 'works'
-  if (normalizedPath.startsWith('/about/')) return 'about'
-  return 'preview'
-}
-
+// Hero switcher toolbar data (dev mode only)
 const heroVariantEventName = 'jv:immersive:hero-variant:set'
-const toolbarHeroPageKey = resolveToolbarHeroPageKey(currentPath)
 const isDevMode = import.meta.env.DEV
-const heroVariantsForToolbar = isDevMode ? getHeroVariants() : []
-const heroConfigForToolbar = getHeroConfig()
-const fallbackHeroSrcForToolbar =
-  heroVariantsForToolbar.find((variant) => variant.id === heroConfigForToolbar.fallbackHeroId)?.src ??
-  heroVariantsForToolbar[0]?.src ??
-  ''
-const siteHeroSwitcherPageData = JSON.stringify({
-  pageKey: toolbarHeroPageKey,
-  heroVariants: heroVariantsForToolbar,
-  fallbackHeroSrc: fallbackHeroSrcForToolbar,
-  defaultHeroFilter: heroConfigForToolbar.defaultFilter,
-  heroVariantEventName,
-  devMode: isDevMode,
-})
+const heroToolbarData = isDevMode
+  ? (() => {
+      const allHeroVariants = getHeroVariants()
+      const heroConfig = getHeroConfig()
+      return JSON.stringify({
+        pageKey: isHomepage ? 'home' : (pageKey ?? ''),
+        heroVariants: allHeroVariants,
+        fallbackHeroSrc:
+          allHeroVariants.find((v) => v.id === heroConfig.fallbackHeroId)?.src ?? allHeroVariants[0]?.src ?? '',
+        defaultHeroFilter: heroConfig.defaultFilter,
+        heroVariantEventName,
+        devMode: true,
+        ...(workSlug ? { workSlug } : {}),
+        ...(pageDefaultHeroId ? { pageDefaultHeroId } : {}),
+      })
+    })()
+  : null
+
+const themeToolbarData = isDevMode
+  ? JSON.stringify({
+      currentThemeId: themeConfig.currentThemeId.trim(),
+      colors: resolvedThemeColors,
+      rawColors: {
+        colorBackground: themeConfig.colorBackground.trim(),
+        colorBackgroundSoft: themeConfig.colorBackgroundSoft.trim(),
+        colorText: themeConfig.colorText.trim(),
+        colorTextMuted: themeConfig.colorTextMuted.trim(),
+        colorAccent: themeConfig.colorAccent.trim(),
+        colorAccentStrong: themeConfig.colorAccentStrong.trim(),
+        colorButton: themeConfig.colorButton.trim(),
+        colorButtonText: themeConfig.colorButtonText.trim(),
+      },
+      focusRingColor: resolvedFocusRingColor,
+      navActiveUnderline: resolvedNavActiveUnderline,
+      navActiveText: resolvedNavActiveText,
+      navHoverUnderline: resolvedNavHoverUnderline,
+      navHoverText: resolvedNavHoverText,
+      scrimColor: resolvedScrimColor,
+      disableImageOverlays: resolvedDisableImageOverlays,
+      ctaBackground: resolvedCtaBackground,
+      ctaText: resolvedCtaText,
+      fontBody: resolvedFontBody,
+      fontHeading: resolvedFontHeading,
+      borderRadius: resolvedBorderRadius,
+      playerBorderRadius: resolvedPlayerBorderRadius,
+      socialIconBorderRadius: resolvedSocialIconBorderRadius,
+      profileImageBorderRadius: resolvedProfileImageBorderRadius,
+      tagBadgeBorderRadius: resolvedTagBadgeBorderRadius,
+      customCss: themeConfig.customCss,
+      aboutPage: themeConfig.aboutPage,
+      contactPage: themeConfig.contactPage,
+      homeHero: themeConfig.homeHero,
+    })
+  : null
 ---
 
 <html
   lang="en"
   dir="ltr"
   style={themeStyleVars}
+  class:list={[isHomepage && hasCustomBrandPlugin && 'home-intro-animating']}
+  data-theme-id={resolvedThemeId || undefined}
   data-page={isHomepage ? 'home' : undefined}
   data-has-header-breadcrumbs={hasHeaderBreadcrumbs ? 'true' : undefined}
 >
   <head>
+    {isSetupNeeded && Astro.url.pathname !== '/setup/' && <meta http-equiv="refresh" content="0;url=/setup/" />}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+
     {
       googleFontsStylesheetHref && (
         <>
@@ -482,10 +452,10 @@ const siteHeroSwitcherPageData = JSON.stringify({
       )
     }
 
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
-    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=7" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
-    <link rel="shortcut icon" href="/favicon.ico?v=7" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=6" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=6" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=6" />
+    <link rel="shortcut icon" href="/favicon.ico?v=6" />
     <meta name="apple-mobile-web-app-title" content={siteConfig.composerName} />
     <link rel="manifest" href="/site.webmanifest" />
 
@@ -496,9 +466,51 @@ const siteHeroSwitcherPageData = JSON.stringify({
       image={image}
       imageAlt={imageAlt}
       author={author}
+      robots={robots}
     />
     <GoogleAnalytics />
     <ClientRouter />
+    <script is:inline>
+    (function(){
+      // Studio preview bridge — self-activating: only runs inside the studio
+      // preview iframe (detected by query param + being in a frame).
+      if(window.parent===window)return;
+      if(!new URLSearchParams(location.search).has('cmsLivePreview'))return;
+      if(window.__pvBridge)return;
+      window.__pvBridge=true;
+
+      // Report navigations to studio shell (fires on initial load + after View Transitions)
+      document.addEventListener('astro:page-load',function(){
+        var is404=!!document.querySelector('.not-found-section');
+        window.parent.postMessage({type:'preview-navigate',pathname:location.pathname,is404:is404},location.origin);
+      });
+
+      // Intercept link clicks — let studio shell check unsaved changes BEFORE navigating
+      document.addEventListener('click',function(e){
+        var t=e.target.closest('a[href]');
+        if(!t)return;
+        if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey)return;
+        if(t.target==='_blank'||t.hasAttribute('download'))return;
+        var h=t.getAttribute('href');
+        if(!h||h.charAt(0)==='#'||h.indexOf('mailto:')===0||h.indexOf('tel:')===0)return;
+        try{var u=new URL(h,location.href);if(u.origin!==location.origin)return}catch(x){return}
+        e.preventDefault();e.stopImmediatePropagation();
+        window.parent.postMessage({type:'preview-request-navigate',pathname:u.pathname},location.origin);
+      },true);
+
+      // Receive navigation commands from studio shell.
+      // Use location.replace() to avoid polluting the session history — all
+      // frames share a single history stack and iframe entries would break
+      // parent back/forward navigation.
+      window.addEventListener('message',function(e){
+        if(e.origin!==location.origin)return;
+        if(e.data&&e.data.type==='preview-do-navigate'){
+          window.location.replace(e.data.pathname+(e.data.pathname.indexOf('?')===-1?'?':'&')+'cmsLivePreview=1');
+        }
+      });
+    })();
+    </script>
+    {resolvedThemeCustomCss && <style id="site-theme-custom-css" is:inline set:html={resolvedThemeCustomCss} />}
     <noscript>
       <style>
         html[data-page='home'] [data-brand-link] {
@@ -510,62 +522,105 @@ const siteHeroSwitcherPageData = JSON.stringify({
   <body data-page={isHomepage ? 'home' : undefined} class:list={[bodyClass]}>
     <a class="skip-link" href={`#${skipTargetId}`}>Skip to main content</a>
 
-    <header class="site-header" aria-label="Site header">
-      <div class="brand-slot">
-        <BrandRenderer brandConfig={brandConfig} composerName={siteConfig.composerName} isHomepage={isHomepage} />
-      </div>
-
-      <nav class="desktop-nav" aria-label="Primary navigation">
-        <ul>
-          {
-            primaryNavLinks.map((link) => {
-              const href = resolveNavHref(link, currentPath)
-              const isCurrent = !link.anchorTarget && currentPath.startsWith(link.href)
-              return (
-                <li>
-                  <a href={href} aria-current={isCurrent ? 'page' : undefined}>
-                    {link.label}
-                  </a>
-                </li>
-              )
-            })
-          }
-        </ul>
-      </nav>
-
-      <button
-        type="button"
-        class="menu-search-toggle"
-        data-works-search-modal-toggle
-        data-mobile-header-search-toggle
-        aria-controls="works-search-modal mobile-menu-modal"
-        aria-expanded="false"
-        aria-label="Open search"
-      >
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
-          <circle cx="11" cy="11" r="6.5"></circle>
-          <path d="M16.2 16.2L21 21"></path>
-        </svg>
-      </button>
-
-      <div class="menu-toggle-slot" data-menu-toggle-slot>
-        <button
-          type="button"
-          class="menu-toggle"
-          data-menu-toggle
-          aria-controls="mobile-menu-modal"
-          aria-expanded="false"
-          aria-label="Open menu"
-        >
-          <span class="sr-only">Menu</span>
-          <span class="menu-toggle-icon" aria-hidden="true">
-            <span class="menu-toggle-line menu-toggle-line-top"></span>
-            <span class="menu-toggle-line menu-toggle-line-middle"></span>
-            <span class="menu-toggle-line menu-toggle-line-bottom"></span>
-          </span>
-        </button>
-      </div>
-    </header>
+    {
+      visibleBlocks.has('header') && (
+        <header class="site-header" aria-label="Site header">
+          {breakpointOrder.map((bp) => {
+            const config = responsiveHeaders[bp]
+            const slots: { position: SlotPosition; order: number; elements: HeaderElement[] }[] = [
+              { position: 'left', order: 1, elements: config.left },
+              { position: 'center', order: 2, elements: config.center },
+              { position: 'right', order: 3, elements: config.right },
+            ]
+            return (
+              <div class="header-layout" data-header-layout={bp}>
+                {slots.map(({ position, order, elements }) => {
+                  if (elements.length === 0) return null
+                  return (
+                    <div class="header-slot" data-slot={position} style={`order: ${order}`}>
+                      {elements.map((element) => {
+                        if (element === 'brand-logo') {
+                          return (
+                            <div class="brand-slot">
+                              <BrandRenderer
+                                brandConfig={brandConfig}
+                                composerName={siteConfig.composerName}
+                                isHomepage={isHomepage}
+                              />
+                            </div>
+                          )
+                        }
+                        if (element === 'main-menu') {
+                          return (
+                            <nav class="desktop-nav" aria-label="Primary navigation">
+                              <ul>
+                                {primaryNavLinks.map((link) => {
+                                  const href = resolveNavHref(link, currentPath)
+                                  const isCurrent = !link.anchorTarget && currentPath.startsWith(link.href)
+                                  return (
+                                    <li>
+                                      <a href={href} aria-current={isCurrent ? 'page' : undefined}>
+                                        {link.label}
+                                      </a>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            </nav>
+                          )
+                        }
+                        if (element === 'site-search') {
+                          return (
+                            <button
+                              type="button"
+                              class="menu-search-toggle"
+                              data-works-search-modal-toggle
+                              {...(anyHasMobileMenu ? { 'data-mobile-header-search-toggle': '' } : {})}
+                              aria-controls={
+                                anyHasMobileMenu ? 'works-search-modal mobile-menu-modal' : 'works-search-modal'
+                              }
+                              aria-expanded="false"
+                              aria-label="Open search"
+                            >
+                              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                                <circle cx="11" cy="11" r="6.5" />
+                                <path d="M16.2 16.2L21 21" />
+                              </svg>
+                            </button>
+                          )
+                        }
+                        if (element === 'mobile-menu') {
+                          return (
+                            <div class="menu-toggle-slot" data-menu-toggle-slot>
+                              <button
+                                type="button"
+                                class="menu-toggle"
+                                data-menu-toggle
+                                aria-controls="mobile-menu-modal"
+                                aria-expanded="false"
+                                aria-label="Open menu"
+                              >
+                                <span class="sr-only">Menu</span>
+                                <span class="menu-toggle-icon" aria-hidden="true">
+                                  <span class="menu-toggle-line menu-toggle-line-top" />
+                                  <span class="menu-toggle-line menu-toggle-line-middle" />
+                                  <span class="menu-toggle-line menu-toggle-line-bottom" />
+                                </span>
+                              </button>
+                            </div>
+                          )
+                        }
+                        return null
+                      })}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </header>
+      )
+    }
 
     {
       hasHeaderBreadcrumbs && (
@@ -577,63 +632,71 @@ const siteHeroSwitcherPageData = JSON.stringify({
 
     <script is:inline id="site-search-data" type="application/json" set:html={serializedSearchItems} />
     <script is:inline id="music-search-data" type="application/json" set:html={serializedMusicSearchItems} />
-    <script is:inline id="site-theme-config-data" type="application/json" set:html={siteThemeData} />
-    <script is:inline id="site-hero-switcher-page-data" type="application/json" set:html={siteHeroSwitcherPageData} />
+    {
+      heroToolbarData && (
+        <script is:inline id="site-hero-switcher-page-data" type="application/json" set:html={heroToolbarData} />
+      )
+    }
+    {
+      themeToolbarData && (
+        <script is:inline id="site-theme-config-data" type="application/json" set:html={themeToolbarData} />
+      )
+    }
 
-    <dialog class="mobile-menu-modal" id="mobile-menu-modal" aria-label="Mobile navigation menu">
-      <nav class="mobile-menu-nav" data-mobile-menu-nav aria-label="Mobile navigation" tabindex="-1">
-        <ul>
-          {
-            primaryNavLinks.map((link) => {
-              const href = resolveNavHref(link, currentPath)
-              return (
-                <li>
-                  <a class="mobile-menu-link" href={href}>
-                    {link.label}
+    {
+      visibleBlocks.has('header') && anyHasMobileMenu && (
+        <dialog class="mobile-menu-modal" id="mobile-menu-modal" aria-label="Mobile navigation menu">
+          <nav class="mobile-menu-nav" data-mobile-menu-nav aria-label="Mobile navigation" tabindex="-1">
+            <ul>
+              {primaryNavLinks.map((link) => {
+                const href = resolveNavHref(link, currentPath)
+                return (
+                  <li>
+                    <a class="mobile-menu-link" href={href}>
+                      {link.label}
+                    </a>
+                  </li>
+                )
+              })}
+              <li class="mobile-menu-social">
+                {socialLinks.map((link) => (
+                  <a href={link.url} rel="noreferrer noopener" target="_blank" aria-label={link.platform}>
+                    <SocialIcon icon={link.platform} />
+                    <span class="sr-only">{link.platform}</span>
                   </a>
-                </li>
-              )
-            })
-          }
-          <li class="mobile-menu-social">
-            {
-              socialLinks.map((link) => (
-                <a href={link.url} rel="noreferrer noopener" target="_blank" aria-label={link.platform}>
-                  <SocialIcon icon={link.platform} />
-                  <span class="sr-only">{link.platform}</span>
-                </a>
-              ))
-            }
-          </li>
-        </ul>
-      </nav>
+                ))}
+              </li>
+            </ul>
+          </nav>
 
-      <section class="mobile-menu-search" data-mobile-menu-search aria-label="Search" hidden>
-        <div data-mobile-menu-search-scope="site">
-          <WorksSearch
-            mode="site"
-            dataScriptId="site-search-data"
-            idPrefix="mobile-menu-search-site"
-            placeholder="Search..."
-            autofocus={false}
-            showInitialResults={true}
-            initialResultsLimit={10}
-          />
-        </div>
-        <div data-mobile-menu-search-scope="music" hidden aria-hidden="true">
-          <WorksSearch
-            mode="site"
-            dataScriptId="music-search-data"
-            idPrefix="mobile-menu-search-music"
-            label="Search works"
-            placeholder="Enter keywords..."
-            autofocus={false}
-            showInitialResults={true}
-            initialResultsLimit={10}
-          />
-        </div>
-      </section>
-    </dialog>
+          <section class="mobile-menu-search" data-mobile-menu-search aria-label="Search" hidden>
+            <div data-mobile-menu-search-scope="site">
+              <WorksSearch
+                mode="site"
+                dataScriptId="site-search-data"
+                idPrefix="mobile-menu-search-site"
+                placeholder="Search..."
+                autofocus={false}
+                showInitialResults={true}
+                initialResultsLimit={10}
+              />
+            </div>
+            <div data-mobile-menu-search-scope="music" hidden aria-hidden="true">
+              <WorksSearch
+                mode="site"
+                dataScriptId="music-search-data"
+                idPrefix="mobile-menu-search-music"
+                label="Search works"
+                placeholder="Enter keywords..."
+                autofocus={false}
+                showInitialResults={true}
+                initialResultsLimit={10}
+              />
+            </div>
+          </section>
+        </dialog>
+      )
+    }
 
     <dialog class="works-search-modal" id="works-search-modal" aria-label="Search">
       <div class="works-search-modal-panel" tabindex="-1">
@@ -696,7 +759,7 @@ const siteHeroSwitcherPageData = JSON.stringify({
           ]}
           style={pageHeroStyle}
           data-page-hero-id={pageHero?.id || undefined}
-          data-page-hero-page={pageHero?.pageKey || toolbarHeroPageKey}
+          data-page-hero-page={pageKey || undefined}
           transition:animate="fade"
         >
           <slot />
@@ -704,12 +767,48 @@ const siteHeroSwitcherPageData = JSON.stringify({
       )
     }
 
-    <footer class="site-footer">
-      <p>&copy; {year} {siteConfig.copyrightHolder}</p>
-      <div class="footer-links">
-        {footerLinks.map((link) => <a href={link.href}>{link.label}</a>)}
-      </div>
-    </footer>
+    {
+      visibleBlocks.has('footer') && (
+        <footer class="site-footer">
+          {footerBlockConfig.leftSlot === 'copyright' && (
+            <p style="order: 1">
+              &copy; {year} {copyrightConfig.copyrightHolder || siteConfig.composerName}
+            </p>
+          )}
+          {footerBlockConfig.leftSlot === 'footer-menu' && (
+            <div class="footer-links" style="order: 1">
+              {footerMenuConfig.links.map((link) => (
+                <a href={link.href}>{link.label}</a>
+              ))}
+            </div>
+          )}
+          {footerBlockConfig.centerSlot === 'copyright' && (
+            <p style="order: 2">
+              &copy; {year} {copyrightConfig.copyrightHolder || siteConfig.composerName}
+            </p>
+          )}
+          {footerBlockConfig.centerSlot === 'footer-menu' && (
+            <div class="footer-links" style="order: 2">
+              {footerMenuConfig.links.map((link) => (
+                <a href={link.href}>{link.label}</a>
+              ))}
+            </div>
+          )}
+          {footerBlockConfig.rightSlot === 'copyright' && (
+            <p style="order: 3">
+              &copy; {year} {copyrightConfig.copyrightHolder || siteConfig.composerName}
+            </p>
+          )}
+          {footerBlockConfig.rightSlot === 'footer-menu' && (
+            <div class="footer-links" style="order: 3">
+              {footerMenuConfig.links.map((link) => (
+                <a href={link.href}>{link.label}</a>
+              ))}
+            </div>
+          )}
+        </footer>
+      )
+    }
 
     <div data-featured-player-persist transition:persist>
       <div data-featured-player-dock>
@@ -818,12 +917,6 @@ const siteHeroSwitcherPageData = JSON.stringify({
         data-featured-recordings-data
         set:html={serializedFeaturedPlayerRecordings}
       />
-      <script
-        is:inline
-        type="application/json"
-        data-audio-player-controls
-        set:html={serializedSiteAudioPlayerControls}
-      />
       <audio
         id="featured-track-player"
         preload="none"
@@ -902,7 +995,7 @@ const siteHeroSwitcherPageData = JSON.stringify({
               </span>
             </div>
             <a
-              href="/works/"
+              href="/music/"
               class="featured-control featured-control-bounce fixed-player-bar-info"
               data-fixed-bar-link-icon
               aria-label="More details for featured work"
@@ -971,25 +1064,28 @@ const siteHeroSwitcherPageData = JSON.stringify({
 
     <slot name="body-overlays" />
     <slot name="body-scripts" />
-    <ul class="social-strip" aria-label="Social links">
-      {
-        socialLinks.map((link) => (
-          <li>
-            <a href={link.url} rel="noreferrer noopener" target="_blank" aria-label={link.platform}>
-              <SocialIcon icon={link.platform} />
-              <span class="sr-only">{link.platform}</span>
-            </a>
-          </li>
-        ))
-      }
-    </ul>
-    <script src="../scripts/works-search.ts"></script>
-    <script src="../scripts/works-search-modal.ts"></script>
+    {
+      visibleBlocks.has('social-media') && (
+        <ul class="social-strip" aria-label="Social links">
+          {socialLinks.map((link) => (
+            <li>
+              <a href={link.url} rel="noreferrer noopener" target="_blank" aria-label={link.platform}>
+                <SocialIcon icon={link.platform} />
+                <span class="sr-only">{link.platform}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
     <script src="../scripts/external-link-icons.ts"></script>
     <script src="../scripts/youtube-lightbox.ts"></script>
     <script src="../scripts/immersive/menu-standalone.ts"></script>
     <script src="../scripts/immersive/index.ts"></script>
     <script src="../scripts/focus-policy-global.ts"></script>
+    <script src="../scripts/contact-form.ts"></script>
+    <script src="../scripts/perusal-gate.ts"></script>
+    <script src="../scripts/cross-tab-audio.ts"></script>
 
     <script is:inline>
       document.addEventListener('astro:page-load', () => {
@@ -1148,74 +1244,6 @@ const siteHeroSwitcherPageData = JSON.stringify({
       })
     </script>
 
-    <script is:inline>
-      ;(() => {
-        if (window.__devToolbarCanvasRepairBound) return
-        window.__devToolbarCanvasRepairBound = true
-
-        const findCanvasForApp = (shadowRoot, appId) =>
-          Array.from(shadowRoot.querySelectorAll('astro-dev-toolbar-app-canvas')).find(
-            (canvas) => canvas instanceof HTMLElement && canvas.dataset.appId === appId,
-          ) ?? null
-
-        const ensureDevToolbarCanvases = () => {
-          const toolbar = document.querySelector('astro-dev-toolbar')
-          if (!(toolbar instanceof HTMLElement)) return
-          const shadowRoot = toolbar.shadowRoot
-          if (!shadowRoot) return
-
-          const apps = Array.isArray(toolbar.apps) ? toolbar.apps : []
-          if (apps.length === 0) return
-
-          let recreatedCanvas = false
-
-          for (const app of apps) {
-            const appId = typeof app?.id === 'string' ? app.id : ''
-            if (!appId) continue
-
-            if (!findCanvasForApp(shadowRoot, appId)) {
-              const appCanvas = document.createElement('astro-dev-toolbar-app-canvas')
-              appCanvas.dataset.appId = appId
-              shadowRoot.append(appCanvas)
-              recreatedCanvas = true
-            }
-          }
-
-          if (!recreatedCanvas) return
-
-          const initApp = typeof toolbar.initApp === 'function' ? toolbar.initApp.bind(toolbar) : null
-          const setAppStatus = typeof toolbar.setAppStatus === 'function' ? toolbar.setAppStatus.bind(toolbar) : null
-
-          if (initApp) {
-            for (const app of apps) {
-              try {
-                initApp(app)
-              } catch {}
-            }
-          }
-
-          if (setAppStatus) {
-            for (const app of apps) {
-              try {
-                setAppStatus(app, Boolean(app?.active))
-              } catch {}
-            }
-          }
-        }
-
-        const scheduleRepair = () => {
-          window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => {
-              ensureDevToolbarCanvases()
-            })
-          })
-        }
-
-        document.addEventListener('astro:after-swap', scheduleRepair)
-        document.addEventListener('astro:page-load', scheduleRepair)
-        scheduleRepair()
-      })()
-    </script>
 
   </body>
 </html>

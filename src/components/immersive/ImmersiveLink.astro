@@ -3,8 +3,6 @@ interface Props {
   href: string
   class?: string
   isExternal?: boolean
-  isButton?: boolean
-  buttonVariant?: 'primary' | 'inline' | 'control'
   [key: string]: unknown
 }
 
@@ -12,20 +10,12 @@ const {
   href,
   class: className,
   isExternal = false,
-  isButton = false,
-  buttonVariant = 'primary',
   ...rest
 } = Astro.props
 
 const externalAttrs = isExternal ? { target: '_blank', rel: 'noreferrer noopener' } : {}
-
-const buttonClass = isButton
-  ? `immersive-btn immersive-btn-${buttonVariant}`
-  : undefined
-
-const classes = [buttonClass, className].filter(Boolean).join(' ') || undefined
 ---
 
-<a href={href} class={classes} {...externalAttrs} {...rest}>
+<a href={href} class={className} {...externalAttrs} {...rest}>
   <slot />
 </a>

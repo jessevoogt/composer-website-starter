@@ -1,404 +1,139 @@
-# Setup Guide
+# Composer Website Starter
 
-This guide explains how to set up the composer portfolio site.
+A production-ready starter for composers who want to launch and maintain their own portfolio site with an editor-friendly workflow.
 
-## Features
+Built with [Astro 5](https://astro.build/) and [Keystatic](https://keystatic.com/), this starter includes:
+- Setup wizard for first-time project configuration
+- Composer-focused content model (works, perusal scores, social, contact)
+- Accessible front-end and content editing workflow
+- Optional PHP API for contact and score-access email flows
 
-- Audio player that keeps playing as you navigate from page to page
-- Perusal Score viewer, with workflow from pdf file to images with watermark added automatically. It is also possible to have the site ONLY be a list of scores that open this score viewer. Perusal Score also has its own audio player that plays the audio for that work (all movements if multiple).
-- Contact form (UI only - no actual processing logic), which can be configured just to be an email address
-- A few basic preconfigured starter themes and customization capability of colors and fonts
-- Social Media preview image generation from assets (this is the image that shows when you share your site with Facebook or Instagram for example)
-- Custom logo
-- Ability to set background image and theme via dev tools directly on the site when run locally in dev mode
-- Home Page: Split-page Hero
-- Home Page: Featured Recordings section (optional)
-- Home Page: Select Items section (optional)
-- simple local-only workflow with conventions-based source folder structure to house raw assets like wav, mp3, jpg, png, and pdf scores
-- Push-button Build / Preview / Publish via buttons in the header of the CMS (keystatic)
+## 1. What this starter is, who it is for, and the workflow
 
-## What is NOT supported
+This starter is for:
+- Composers who want a professional website without rebuilding a CMS from scratch
+- Developers/freelancers delivering composer sites repeatedly
+- Teams that want content editing in Keystatic after initial setup
 
-- Any back-end forms (these would have to be implemented separately on your server to handle the contact form)
-- WYSIWIG editing - you edit in the local CMS (or just editing yaml directly) and then save while running dev, and it will hot-reload the localhost:4321 Astro website to show the changes
+Typical workflow:
+1. Run setup wizard once (`npm run dev`) to configure identity, theme, homepage, about page, starter works, and forms.
+2. Keep building content through Keystatic (`/keystatic/`) or by editing YAML/MDX in `source/`.
+3. Preview locally, then run `npm run build`.
+4. Deploy via built-in SFTP deploy (`npm run deploy`) or any alternative deployment strategy.
 
-## Prerequisites
+## Quick start
 
-- **Node.js** 22.x (see `.nvmrc` for exact version)
-- **npm** 10+
-- **ffmpeg** (optional — needed for WAV/AIFF/FLAC audio conversion and duration detection)
-
-## Quick Start
-
-```sh
-# 1. Install dependencies
+```bash
+git clone <your-repo-url> my-composer-site
+cd my-composer-site
 npm install
-
-# 2. Start the dev server (opens browser + Keystatic CMS)
 npm run dev
 ```
 
-This will launch the starter website at `http://localhost:4321/`
-You can open `http://localhost:4322/keystatic` to configure your site using the CMS interface.
-This CMS is also available via a button in the Astro Dev Tools, which will link directly
-to the settings page for that page.
+Setup wizard opens on first run (default `http://127.0.0.1:3456/`), then the Astro app runs at `http://127.0.0.1:4321/`.
 
-## Source Template Workflow
-
-- `source-template/` is committed starter content.
-- `source/` is your local working copy. `npm install` auto-runs `init:source`, which initializes `source/` (if missing) and keeps it out of `git status` via `.git/info/exclude` (so Keystatic local mode can still read it).
-- `npm run dev`, `npm run build`, and ingest commands auto-run `init:source` if `source/` is missing.
-- To reset your local content back to defaults, run `npm run init:source:reset`.
-- If you intentionally want to commit `source/` in your own repo, remove the `source/` rule from `.git/info/exclude`.
-
-## Configuration
-
-All composer-specific data lives in the local `source/` folder. You can edit these files directly (they're YAML) or use the Keystatic GUI at `/keystatic`.
-
-### Site Identity (`source/site/site.yaml`)
-
-| Field                  | Description                                                       |
-| ---------------------- | ----------------------------------------------------------------- |
-| `composerName`         | Your full name (used throughout the site)                         |
-| `siteTitle`            | Browser tab title (e.g. "Jane Doe - Composer")                    |
-| `siteDescription`      | Default meta description for search engines                       |
-| `siteUrl`              | Canonical URL (e.g. `https://janedoe.com`)                        |
-| `email`                | Contact email shown on the contact page                           |
-| `copyrightHolder`      | Footer copyright name (defaults to composer name)                 |
-| `googleAnalyticsId`    | GA4 Measurement ID (e.g. `G-XXXXXXXXXX`). Leave blank to disable. |
-| `perusalScoreOnlyMode` | `true` = minimal site with only perusal score pages               |
-
-### Navigation (`source/site/navigation.yaml`)
-
-Customise which menu items appear in the header and footer:
-
-```yaml
-mainNavFontSizePx: 15
-
-menuItems:
-  - label: Works
-    href: /works/
-    enabled: true
-    order: 0
-  - label: About
-    href: /about/
-    enabled: true
-    order: 1
-  - label: Contact
-    href: /contact/
-    enabled: true
-    order: 2
-
-footerLinks:
-  - label: Accessibility
-    href: /accessibility-statement/
-  - label: Sitemap
-    href: /sitemap/
+Re-run setup wizard later:
+```bash
+npm run setup
 ```
 
-Set `enabled: false` to hide a menu item without removing it.
-Set `mainNavFontSizePx` to change desktop header menu text size.
+## 2. Prerequisites
 
-### Social Media (`source/site/social.yaml`)
+Minimum/recommended local tooling:
+- **Node.js**: `22.21.1+` (project ships with `.nvmrc`)
+- **npm**: `10+`
+- **Git**: recommended for version control
 
-```yaml
-links:
-  - platform: instagram
-    url: https://www.instagram.com/yourhandle/
-    enabled: true
-  - platform: youtube
-    url: https://www.youtube.com/@yourchannel
-    enabled: true
+Install/update guides:
+- Node.js download/docs: [https://nodejs.org/en/download](https://nodejs.org/en/download)
+- npm docs: [https://docs.npmjs.com/downloading-and-installing-node-js-and-npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- nvm (recommended for managing Node versions): [https://github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
+
+For optional form/perusal backend:
+- **PHP**: `8.1+` (see `api/composer.json`)
+- **Composer**: `2+`
+- **SendGrid account**: required for email delivery in the provided backend implementation
+
+## 3. Manual setup required for form integration (SendGrid + PHP backend)
+
+The front-end form UI is included by default, but actual email delivery requires backend configuration.
+
+This project's API implementation is designed around:
+- SendGrid email delivery
+- Apache + PHP hosting (via `api/.htaccess` rewrite rules)
+
+### Backend setup steps
+
+1. Create env file:
+```bash
+cp api/.env.example api/.env
 ```
-
-Supported platforms: `instagram`, `youtube`, `facebook`, `soundcloud`, `twitter`, `linkedin`, `tiktok`, `bandcamp`.
-
-### Share Buttons (`source/site/sharing.yaml`)
-
-Controls which share buttons appear on work detail pages:
-
-```yaml
-enabledShares:
-  - facebook
-  - twitter
-  - email
-  - copy-link
+2. Fill required values in `api/.env`:
+   - `SENDGRID_API_KEY`
+   - `FROM_EMAIL` (must be a verified SendGrid sender)
+   - `CONTACT_RECIPIENT`
+   - `FRONTEND_URL`
+   - `HMAC_SECRET` (must match perusal token secret used by the site)
+3. Install PHP deps if needed:
+```bash
+cd api
+composer install
 ```
+4. Set your frontend API endpoint in `source/site/site.yaml` (`apiEndpoint`).
+5. Deploy `api/` to a PHP host and ensure routing points requests to `api/public/index.php`.
 
-Options: `facebook`, `twitter`, `threads`, `bluesky`, `email`, `copy-link`, `linkedin`.
+### Important hosting assumption
 
-### Audio Player (`source/site/audio-player.yaml`)
+The included API expects Apache-style behavior (`.htaccess`, `mod_rewrite`) and direct PHP execution.
 
-Controls the featured audio player shown on work pages:
+If you deploy on another stack (Nginx, Caddy, serverless functions, etc.), you must adapt:
+- URL rewrites/routing
+- Access restrictions for private paths (`api/src`, `api/vendor`, `api/storage`, `.env`)
+- Environment variable loading and runtime config
 
-```yaml
-hideFeaturedPlayerControls: false
-enableTrackTextScroll: true
-forceHideControls:
-  previousTrack: false
-  playPause: false
-  nextTrack: false
-  seek: false
-  mute: false
-  volume: false
-  currentTime: false
-  duration: false
-  trackDetails: false
-  trackText: false
-```
+The SendGrid integration in `api/src/Mailer.php` can be replaced or extended for another provider.
 
-A separate config at `source/pages/perusal-scores/audio-player.yaml` controls the audio player on perusal score pages. Values set to `inherit` fall back to the site-wide player config above.
+## 4. Deployment feature (SFTP + deploy manifest) and alternatives
 
-### Theme (`source/site/theme.yaml`)
-
-Theme colors and typography live in `source/site/theme.yaml` (or the **Theme** singleton in Keystatic).
-
-- `fontBody` and `fontHeading` can be switched to bundled local fonts, `system-ui`, or supported Google Fonts.
-- When a Google Font is selected, the site injects the required `fonts.googleapis.com` stylesheet automatically.
-
-### Brand / Logo (`source/branding/brand-logo.yaml`)
-
-Use this config to control text fallback and image sizing metadata for the header logo.
-
-```yaml
-firstName: Jane
-lastName: Doe
-logoImageAlt: Jane Doe logo # optional
-logoWidth: 180 # optional, px
-logoHeight: 52 # optional, px
-```
-
-- Add an image named `logo.*` inside `source/branding/` to enable image logo mode automatically.
-- Supported `logo.*` formats: `.svg`, `.ico`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.avif`, `.gif`.
-- If no `logo.*` file exists, the site falls back to text logo mode (`firstName` + `lastName`).
-- `logoWidth` and `logoHeight` are optional pixel controls exposed in Keystatic (Brand / Logo).
-
-### Branding Assets (`source/branding/`)
-
-Place your favicon, logo, and social preview images here:
-
-- `favicon.svg` — SVG favicon
-- `favicon.ico` — ICO fallback
-- `favicon-96x96.png` — 96px PNG favicon
-- `apple-touch-icon.png` — 180px Apple touch icon
-- `web-app-manifest-192x192.png` — PWA icon (192px)
-- `web-app-manifest-512x512.png` — PWA icon (512px)
-- `logo.svg` (or `.ico`, `.png`, `.jpg`, `.jpeg`, `.webp`, `.avif`, `.gif`) — optional header logo (auto-detected by `logo.*` filename)
-- `social-preview-image.png` — Open Graph image
-- `social-preview-image.svg` — SVG version of the social preview
-
-`source/branding/` is the source of truth. During `npm run ingest:assets` (and therefore `npm run dev` / `npm run build`), files are copied from `source/branding/` to `public/`.
-
-#### Social Preview Auto-Generation
-
-Social preview files are handled by `scripts/generate-social-preview-image.mjs`:
-
-- If both `source/branding/social-preview-image.svg` and `.png` exist, the script leaves them as-is.
-- If one exists and the other is missing, it generates the missing one from the existing file.
-- If both are missing, it generates both from:
-  - `source/site/site.yaml` (`composerName`, `siteUrl`)
-  - `source/site/theme.yaml` (theme colors/fonts)
-  - `source/branding/favicon.svg` (or `favicon-96x96.png`) as a large monotone watermark behind the centered text
-
-Run manually:
-
-```sh
-npm run generate:social-image
-```
-
-Force a full regeneration of both source files:
-
-```sh
-npm run generate:social-image -- --force
-```
-
-After generation, the script mirrors `source/branding/social-preview-image.{svg,png}` to `public/social-preview-image.{svg,png}`.
-
-### Hero Images (`source/home/hero/`)
-
-Hero images for the homepage background. Convention: `NN-slug.jpg` with an optional `NN-slug.yaml` sidecar.
-
-**Image file** (e.g. `01-concert-hall.jpg`):
-
-- Name format: two-digit prefix for sort order, then a slug
-- Supported formats: `.jpg`, `.jpeg`, `.png`, `.webp`
-
-**Sidecar YAML** (e.g. `01-concert-hall.yaml`):
-
-```yaml
-label: Concert Hall
-alt: Grand concert hall with a piano on stage.
-credit: 'Photo by Someone on Unsplash'
-position: 50% 58%
-filter: ''
-```
-
-**Hero config** (`hero-config.yaml`):
-
-```yaml
-preferredHeroId: concert-hall # slug of the preferred default hero
-fallbackHeroId: inside-piano # fallback if preferred not found
-defaultFilter: saturate(0.72) contrast(1.06) brightness(0.72)
-```
-
-### Home: Hero (`source/pages/home/hero.yaml`)
-
-```yaml
-heroTitle: '' # Defaults to composer name
-heroSubtitle: Composer
-heroTagline: “A strikingly original voice — lyrical, atmospheric, and quietly unforgettable.”
-listenNowText: Listen Now
-searchMusicText: Search Music
-preferredHeroId: ''
-heroImageColumnSide: left
-heroImageColumnWidthPercent: 41
-```
-
-### Home: Featured Recording (`source/pages/home/featured-recording.yaml`)
-
-```yaml
-featuredPlayerImageColumnSide: right
-featuredPlayerImageColumnWidthPercent: 58
-```
-
-### Home: Select Works (`source/pages/home/select-works.yaml`)
-
-```yaml
-selectWorksLabel: Select Works
-selectWorksRandomize: true
-selectWorksShowAll: false
-selectWorksMaxItems: 16 # omit for no max
-selectWorksExcludeFeaturedWork: true
-```
-
-### Home: SEO (`source/pages/home/seo.yaml`)
-
-```yaml
-metaTitle: '' # Defaults to "Composer Name — Subtitle"
-metaDescription: '' # Defaults to site description
-searchResultText: ''
-```
-
-### Home: Contact (`source/pages/home/contact.yaml`)
-
-```yaml
-hideContactSection: false
-contactIntro: '' # Optional override; blank = use Contact Page introText
-contactEmailLeadText: '' # Optional override; blank = use Contact Page contactEmailLeadText
-```
-
-### Contact Page (`source/pages/contact.yaml`)
-
-```yaml
-title: Contact
-metaTitle: '' # Defaults to "Contact Composer Name"
-metaDescription: ''
-introText: For score inquiries...
-contactEmailLeadText: ''
-contactEmailLinkText: '' # Blank = show the email address
-contactFormEnabled: false # Set true when a form handler is wired up
-contactFormNameLabel: Name
-contactFormNamePlaceholder: What should I call you?
-contactFormEmailLabel: Email
-contactFormEmailPlaceholder: you@domain.com
-contactFormMessageLabel: Message
-contactFormMessagePlaceholder: Enter your message here...
-contactFormSubmitText: Send
-```
-
-### Works Page (`source/pages/works.yaml`)
-
-```yaml
-title: Works
-introText: '' # Blank = "A showcase of compositions by [composer name]."
-hideIntroText: false
-workLabelSingular: work
-workLabelPlural: works
-searchLabel: Search works
-searchPlaceholder: Enter keywords...
-preferredHeroId: hall
-```
-
-### About Page (`source/pages/about/`)
-
-- `about.yaml` — bio text, meta description, profile image alt text
-- `profile.jpg` (or `.png`, `.webp`) — your profile photo
-
-The bio uses Keystatic's rich text editor and supports paragraphs (separated by blank lines), bold, italic, and links.
-
-## Adding Works
-
-Works live in `source/works/`. Each work has its own folder containing:
-
-- `work.yaml` — metadata (title, description, tags, recordings, etc.)
-- `thumbnail.{jpg,png,webp}` — work thumbnail image
-- `score.pdf` — perusal score (optional)
-- `recordings/` — recording audio and photos
-
-Use Keystatic at `/keystatic` → Works to manage these through the GUI.
-
-After adding or modifying works, run:
-
-```sh
-npm run ingest:works    # Process works into content collections
-npm run build           # Rebuild the site
-```
-
-## Deployment
-
-### SFTP Deploy
-
-Configure in `source/site/deploy.yaml` (via Keystatic → Deployment):
-
-```yaml
-sftpHost: your-server.com
-sftpUser: username
-sftpRemotePath: /public_html
-sftpPort: 22
-sftpSkipAudio: false
-```
-
-The SFTP password is retrieved from a platform-specific secure store:
-
-**macOS** — stored in Keychain:
-
-```sh
-security add-generic-password -a "username" -s "your-server.com" -w
-```
-
-**Windows / Linux** — set the `SFTP_PASSWORD` environment variable:
-
-```sh
-export SFTP_PASSWORD="your-password"         # Linux / macOS fallback
-$env:SFTP_PASSWORD = "your-password"         # PowerShell
-set SFTP_PASSWORD=your-password              # cmd.exe
-```
-
-Then deploy:
-
-```sh
+Built-in deployment command:
+```bash
 npm run build
-npm run deploy           # Upload changed files
-npm run deploy -- --dry-run  # Preview what would change
+npm run deploy
 ```
 
-### Perusal-Score-Only Mode
+It reads config from `source/site/deploy.yaml` and uses SFTP credentials from macOS Keychain.
 
-If you already have a main website and only need perusal score hosting:
+### Deploy manifest (faster incremental deploys)
 
-1. Set `perusalScoreOnlyMode: true` in Keystatic → Site Identity
-2. Build and deploy as normal
-3. The site will show a minimal index linking to each work's perusal score
+The script maintains `.deploy-manifest.json` with file hashes and sizes.
+- Unchanged files are skipped
+- Only new/changed files are uploaded
+- This significantly reduces upload time for iterative deployments
 
-## Build Pipeline
+Useful deploy flags:
+- `npm run deploy -- --dry-run` preview what would upload (no network)
+- `npm run deploy -- --verify` compare local output vs remote files
+- `npm run deploy -- --force` re-upload everything (reset manifest behavior)
 
+### Alternatives to SFTP deploy
+
+If you do not want to use built-in SFTP deploy:
+1. **Static-only hosting** (no PHP features): upload `dist/` to platforms like Netlify, Vercel, Cloudflare Pages, or GitHub Pages.
+2. **Split deploy**: deploy `dist/` with any CI/CD workflow and deploy `api/` separately to your PHP host.
+3. **Custom transport**: use rsync/SSH, Git-based deploys, or your hosting provider's pipeline.
+
+If you use an alternative deploy path, you can ignore `npm run deploy` and `source/site/deploy.yaml`.
+
+## Core commands
+
+```bash
+npm run dev          # first run opens setup wizard, then Astro + Keystatic
+npm run setup        # re-open setup wizard
+npm run build        # production build
+npm run preview      # preview production build
+npm run deploy       # built-in SFTP deploy (optional)
 ```
-lint  →  init:source  →  ingest:assets  →  generate:data  →  lint  →  astro build
-  ↓            ↓               ↓                 ↓              ↓           ↓
-tsc,      Creates local    Copies hero,      Generates work   tsc,      Builds static
-eslint,   source/ from     branding, and     images, perusal  eslint,   HTML output
-astro     source-template/ profile assets;   score data, and  astro
-check                      auto-generates    search index     check
-                           missing social
-                           preview assets
-```
+
+## License
+
+MIT

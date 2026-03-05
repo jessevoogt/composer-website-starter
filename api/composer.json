@@ -1,0 +1,16 @@
+{
+  "name": "composer-portfolio/api",
+  "description": "Lightweight API backend for the composer portfolio site. Handles perusal score magic-link emails and contact form delivery via SendGrid.",
+  "type": "project",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.1",
+    "sendgrid/sendgrid": "^8.1",
+    "vlucas/phpdotenv": "^5.6"
+  },
+  "autoload": {
+    "psr-4": {
+      "CmsAcc\\": "src/"
+    }
+  }
+}

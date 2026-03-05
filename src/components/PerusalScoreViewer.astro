@@ -7,12 +7,13 @@ interface Props {
   pageCount: number
   pageHashes?: string[]
   hideBuiltinNav?: boolean
+  hasPdf?: boolean
 }
 
 const siteConfig = getSiteConfig()
 const siteDomain = siteConfig.siteUrl ? new URL(siteConfig.siteUrl).hostname : 'the composer website'
 const printMessage = `Printing of perusal scores is not permitted. Visit ${siteDomain} to view the score online.`
-const { title, slug, pageCount, pageHashes = [], hideBuiltinNav = false } = Astro.props
+const { title, slug, pageCount, pageHashes = [], hideBuiltinNav = false, hasPdf = false } = Astro.props
 const pages = Array.from({ length: pageCount }, (_, i) => ({
   src:
     typeof pageHashes[i] === 'string' && pageHashes[i].length > 0
@@ -104,7 +105,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
   </div>
 
   <p class="perusal-score-notice">
-    This score is provided for perusal purposes only. Printing and downloading are disabled.
+    {hasPdf ? 'This score is provided for perusal purposes only.' : 'This score is provided for perusal purposes only. Printing and downloading are disabled.'}
   </p>
   <p class="sr-only">End of perusal score — {pageCount} pages shown</p>
 </section>
@@ -114,6 +115,28 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
   const viewerCleanups = new Map<HTMLElement, () => void>()
 
   function initScoreViewer(viewer: HTMLElement): void {
+    const perusalPageEl = viewer.closest<HTMLElement>('[data-perusal-page]')
+    console.debug('[PSV] initScoreViewer called', {
+      hasExistingCleanup: viewerCleanups.has(viewer),
+      scoreReady: viewer.dataset.scoreReady,
+      inlineOpacity: viewer.style.opacity,
+      gateState: perusalPageEl?.dataset.perusalGateState,
+      revealState: perusalPageEl?.dataset.perusalRevealState,
+    })
+
+    // If the viewer is already fully initialized (e.g., astro:page-load re-fire
+    // on a full page load), skip teardown+rebuild entirely.  The existing
+    // page-flip instance, event listeners, and state are still valid.
+    // Tearing them down causes a visual flash: page-flip is destroyed, the
+    // underlying spread layout (pages 1-2 side-by-side) is briefly visible,
+    // then a new page-flip instance is created ~20ms later.
+    // On View Transition swaps, the new DOM element will have
+    // scoreReady='false' and no registered cleanup, so this guard won't fire.
+    if (viewer.dataset.scoreReady === 'true' && viewerCleanups.has(viewer)) {
+      console.debug('[PSV] initScoreViewer: already initialized with active cleanup, skipping re-init')
+      return
+    }
+
     viewerCleanups.get(viewer)?.()
     viewerCleanups.delete(viewer)
 
@@ -153,10 +176,49 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
     const useStaticSpreadOnly = pageCount <= 2
     const staticSpreadPageCount = pageCount === 2 ? 2 : 1
 
+    const _t0 = performance.now()
+    const _ts = (): string => `+${(performance.now() - _t0).toFixed(0)}ms`
+
     const announceReady = (): void => {
-      if (viewer.dataset.scoreReady === 'true') return
+      if (viewer.dataset.scoreReady === 'true') {
+        console.debug(`[PSV ${_ts()}] announceReady: already ready, skipping`)
+        return
+      }
+      const revealPending = isRevealPending()
+      console.debug(`[PSV ${_ts()}] announceReady: scoreReady=true, revealPending=${revealPending}`)
       viewer.dataset.scoreReady = 'true'
       if (nav && !useStaticSpreadOnly) nav.hidden = false
+
+      if (revealPending) {
+        // The page-level reveal system is still active (loading overlay visible).
+        // Pre-apply a transition so that when reveal() sets state='ready' and the
+        // CSS opacity:0 rule stops matching, the viewer fades in smoothly rather
+        // than appearing instantly.
+        //
+        // Remove the inline opacity:0 that was set at init time — the CSS rule
+        // (reveal-state='loading' → opacity:0) still hides the viewer, so this
+        // won't flash.  But the inline style MUST be gone before the CSS rule is
+        // removed, otherwise it overrides the cascade and blocks the transition.
+        // onRevealComplete() cleans up the transition property after the fade.
+        console.debug(`[PSV ${_ts()}] announceReady: clearing inline opacity, pre-applying ${REVEAL_FADE_IN_MS}ms transition for reveal fade-in`)
+        viewer.style.removeProperty('opacity')
+        viewer.style.transition = `opacity ${REVEAL_FADE_IN_MS}ms ease`
+      } else {
+        // No reveal system active — fade in directly with inline opacity.
+        // Brief settle delay so page-flip's pseudo-cover pages and final layout
+        // are fully painted before anything is visible.
+        setTimeout(() => {
+          console.debug(`[PSV ${_ts()}] announceReady timer: setting opacity=1, transition=${CROSSFADE_MS}ms`)
+          viewer.style.transition = `opacity ${CROSSFADE_MS}ms ease`
+          viewer.style.opacity = '1'
+          setTimeout(() => {
+            console.debug(`[PSV ${_ts()}] announceReady cleanup: removing transition+opacity`)
+            viewer.style.removeProperty('transition')
+            viewer.style.removeProperty('opacity')
+          }, CROSSFADE_MS)
+        }, 100)
+      }
+
       viewer.dispatchEvent(new CustomEvent('perusal-score-viewer-ready', { bubbles: true }))
     }
     const announceLoadProgress = (loaded: number, timedOut = false): void => {
@@ -194,7 +256,22 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
     let pageJumpOptionsSignature = ''
     let modePreference: ViewerModePreference = 'auto'
     const perusalPage = viewer.closest<HTMLElement>('[data-perusal-page]')
+    const flipAnimationEnabled = perusalPage?.dataset.perusalFlipEnabled !== 'false'
     const initialModeControl = perusalPage?.querySelector<HTMLElement>('[data-perusal-view-mode]')
+
+    function isRevealPending(): boolean {
+      return (
+        perusalPage?.dataset.perusalRevealEnabled === 'true' &&
+        perusalPage?.dataset.perusalRevealState !== 'ready'
+      )
+    }
+
+    function isGatingActive(): boolean {
+      return (
+        perusalPage?.dataset.perusalGatingEnabled === 'true' &&
+        perusalPage?.dataset.perusalGateState !== 'unlocked'
+      )
+    }
 
     function normalizeModePreference(value: unknown): ViewerModePreference {
       if (value === 'spreads' || value === 'single') return value
@@ -293,21 +370,23 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
     function getSpreadSizeForCurrentViewport(): number {
       if (pageCount <= 1) return 1
       if (modePreference === 'single') return 1
+      if (isSinglePageDeviceContext()) return 1
       if (modePreference === 'spreads') {
         if (useStaticSpreadOnly) return staticSpreadPageCount
         return 2
       }
-      if (isSinglePageDeviceContext()) return 1
       if (useStaticSpreadOnly) return staticSpreadPageCount
       return wideViewport.matches ? 2 : 1
     }
 
     function shouldUseFlipMode(): boolean {
+      if (!flipAnimationEnabled) return false
       if (useStaticSpreadOnly) return false
       if (prefersReducedMotion.matches) return false
       if (modePreference === 'single') return false
+      if (isSinglePageDeviceContext()) return false
       if (modePreference === 'spreads') return true
-      return wideViewport.matches && !isSinglePageDeviceContext()
+      return wideViewport.matches
     }
 
     function updateLayoutDataset(mode: 'spread' | 'flip'): void {
@@ -729,6 +808,11 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
       normalizeCurrentPageForSpread()
       viewer.setAttribute('data-score-mode', 'spread')
       updateLayoutDataset('spread')
+      if (!flipAnimationEnabled) {
+        viewer.setAttribute('data-score-fade-transition', '')
+      } else {
+        viewer.removeAttribute('data-score-fade-transition')
+      }
       showSpread()
 
       // Defensive post-flip pass: some destroy paths can mutate page nodes on the
@@ -809,7 +893,50 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
     }
     viewer.addEventListener('keydown', onBookletKeydown)
 
+    // Click/tap navigation on pages when flip animation is disabled.
+    // In double-spread: left page → prev, right page → next.
+    // In single-page: left half → prev, right half → next.
+    // Not focusable — purely a pointer convenience; keyboard/screen-reader users
+    // use the dedicated prev/next buttons and arrow keys.
+    const onBookletClick = (e: MouseEvent): void => {
+      if (flipAnimationEnabled) return
+      if (viewer.getAttribute('data-score-mode') !== 'spread') return
+
+      const page = (e.target as HTMLElement).closest<HTMLElement>('.score-page[data-visible]')
+      if (!page) return
+
+      if (pagesPerSpread >= 2) {
+        // Double spread: determine position among visible pages
+        const visiblePages = sourcePageElements.filter((el) => el.hasAttribute('data-visible'))
+        const index = visiblePages.indexOf(page)
+        if (index === 0 && visiblePages.length > 1) {
+          goPrev()
+        } else {
+          goNext()
+        }
+      } else {
+        // Single page: left half → prev, right half → next
+        const rect = page.getBoundingClientRect()
+        const clickX = e.clientX - rect.left
+        if (clickX < rect.width / 2) {
+          goPrev()
+        } else {
+          goNext()
+        }
+      }
+    }
+    booklet?.addEventListener('click', onBookletClick)
+
     // Initialize in spread mode first so there is always a rendered fallback.
+    // Keep the viewer hidden until announceReady() fires — this prevents
+    // flashes of spread-mode pages before page-flip adds its pseudo-cover
+    // padding and finishes initializing.
+    // Skip on re-init (astro:page-load) when the viewer is already visible —
+    // announceReady() guards against double-fire via scoreReady, so blanking
+    // here would leave the viewer at opacity 0 with no recovery path.
+    if (viewer.dataset.scoreReady !== 'true') {
+      viewer.style.opacity = '0'
+    }
     pagesPerSpread = getSpreadSizeForCurrentViewport()
     viewer.setAttribute('data-score-mode', 'spread')
     updateLayoutDataset('spread')
@@ -940,6 +1067,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
         destroyPageFlip(false)
         viewer.setAttribute('data-score-mode', 'flip')
         updateLayoutDataset('flip')
+        viewer.removeAttribute('data-score-fade-transition')
 
         // Show all pages so page-flip can measure them
         sourcePageElements.forEach((el) => {
@@ -991,41 +1119,125 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
       }
     }
 
-    async function syncViewerMode(): Promise<void> {
+    // ── Crossfade helper for mode transitions ────────────────────────
+    // Fades the viewer out, runs the switch, then fades back in.
+    // Applied to the viewer element (not the booklet) because page-flip's
+    // destroy() strips inline styles from the booklet during teardown,
+    // which would wipe an opacity:0 and flash unstyled pages.
+    // Skipped on initial load and when reduced-motion is preferred.
+    const CROSSFADE_MS = 150
+    const REVEAL_FADE_IN_MS = 400
+
+    function fadeViewerOut(): Promise<void> {
+      console.debug(`[PSV ${_ts()}] fadeViewerOut: setting opacity=0`)
+      viewer.style.transition = `opacity ${CROSSFADE_MS}ms ease`
+      viewer.style.opacity = '0'
+      return new Promise((resolve) => setTimeout(resolve, CROSSFADE_MS))
+    }
+
+    function fadeViewerIn(): void {
+      console.debug(`[PSV ${_ts()}] fadeViewerIn: scheduling opacity=1 in 100ms`)
+      // Brief settle delay so page-flip / spread layout finishes painting
+      // before the viewer fades back in — avoids last-frame flashes.
+      setTimeout(() => {
+        console.debug(`[PSV ${_ts()}] fadeViewerIn timer: setting opacity=1`)
+        viewer.style.opacity = '1'
+        // Remove inline transition after fade-in completes so it doesn't
+        // interfere with other layout changes (resize, page-flip, etc.).
+        setTimeout(() => {
+          const revealPending = isRevealPending()
+          console.debug(`[PSV ${_ts()}] fadeViewerIn cleanup: revealPending=${revealPending}, viewer.style.opacity="${viewer.style.opacity}"`)
+          viewer.style.removeProperty('transition')
+          if (!revealPending) {
+            viewer.style.removeProperty('opacity')
+          }
+        }, CROSSFADE_MS)
+      }, 100)
+    }
+
+    async function syncViewerMode(crossfade = false): Promise<void> {
+      // Don't run while gating hides the viewer with visibility:hidden —
+      // page-flip initializes broken inside a hidden ancestor, and
+      // announceReady() would fire prematurely before the gate resolves.
+      // onGateRevealed() will re-trigger this after the gate clears.
+      if (isGatingActive()) {
+        console.debug(`[PSV ${_ts()}] syncViewerMode: gating active, deferring`, {
+          gateState: perusalPage?.dataset.perusalGateState,
+        })
+        return
+      }
+
       const syncToken = ++layoutSyncToken
       ensureSourcePagesReady()
 
+      const isInitialLoad = viewer.dataset.scoreReady !== 'true'
+      const shouldCrossfade = crossfade && !isInitialLoad && !prefersReducedMotion.matches
+
+      console.debug(`[PSV ${_ts()}] syncViewerMode: running`, {
+        syncToken,
+        crossfade,
+        shouldCrossfade,
+        modePreference,
+        portrait: portraitViewport.matches,
+        wide: wideViewport.matches,
+        shouldFlip: shouldUseFlipMode(),
+        spreadSize: getSpreadSizeForCurrentViewport(),
+        flipDisabled: flipDisabledForSession,
+        scoreReady: viewer.dataset.scoreReady,
+        revealState: perusalPage?.dataset.perusalRevealState,
+        viewerOpacity: viewer.style.opacity,
+        viewerVisibility: getComputedStyle(viewer).visibility,
+      })
+
+      if (shouldCrossfade) {
+        await fadeViewerOut()
+        if (syncToken !== layoutSyncToken) {
+          console.debug(`[PSV ${_ts()}] syncViewerMode: aborted after fadeOut (token ${syncToken} stale, now ${layoutSyncToken})`)
+          return
+        }
+      }
+
       if (!shouldUseFlipMode() || flipDisabledForSession) {
+        console.debug(`[PSV ${_ts()}] syncViewerMode: → spread mode`)
         applySpreadMode(getSpreadSizeForCurrentViewport())
+        if (shouldCrossfade) fadeViewerIn()
         announceReady()
         return
       }
 
       if (pageFlipInstance) {
+        console.debug(`[PSV ${_ts()}] syncViewerMode: → existing flip instance`)
         updatePageFlipIndicator()
         updatePageFlipNavButtons()
+        if (shouldCrossfade) fadeViewerIn()
         announceReady()
         return
       }
 
+      console.debug(`[PSV ${_ts()}] syncViewerMode: → enabling flip mode`)
       applySpreadMode(getSpreadSizeForCurrentViewport())
       const didEnableFlip = await enableFlipMode(syncToken)
-      if (syncToken !== layoutSyncToken) return
+      if (syncToken !== layoutSyncToken) {
+        console.debug(`[PSV ${_ts()}] syncViewerMode: aborted after enableFlipMode (token ${syncToken} stale, now ${layoutSyncToken})`)
+        return
+      }
 
       if (!didEnableFlip) {
+        console.debug(`[PSV ${_ts()}] syncViewerMode: flip failed, falling back to spread`)
         applySpreadMode(getSpreadSizeForCurrentViewport())
       }
 
+      if (shouldCrossfade) fadeViewerIn()
       announceReady()
     }
 
-    const scheduleViewerModeSync = (): void => {
+    const scheduleViewerModeSync = (crossfade = false): void => {
       if (resizeSyncFrame) {
         window.cancelAnimationFrame(resizeSyncFrame)
       }
       resizeSyncFrame = window.requestAnimationFrame(() => {
         resizeSyncFrame = 0
-        void syncViewerMode()
+        void syncViewerMode(crossfade)
       })
     }
 
@@ -1040,13 +1252,18 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
 
     const onModePreferenceChange = (event: Event): void => {
       if (!(event instanceof CustomEvent)) return
-      const detail = event.detail as { mode?: unknown; viewer?: unknown } | undefined
+      const detail = event.detail as { mode?: unknown; viewer?: unknown; userInitiated?: unknown } | undefined
       if (detail?.viewer instanceof HTMLElement && detail.viewer !== viewer) return
 
       const nextMode = normalizeModePreference(detail?.mode)
       if (nextMode === modePreference) return
+      console.debug(`[PSV ${_ts()}] onModePreferenceChange: ${modePreference} → ${nextMode}`, { userInitiated: detail?.userInitiated })
       modePreference = nextMode
-      scheduleViewerModeSync()
+      // Only crossfade when the user explicitly changed the dropdown —
+      // viewport-triggered re-dispatches must not fade or the viewer can
+      // get stuck at opacity 0 when rAF debouncing cancels the fade-in.
+      const crossfade = detail?.userInitiated === true
+      scheduleViewerModeSync(crossfade)
     }
 
     wideViewport.addEventListener('change', onViewportChange)
@@ -1058,6 +1275,80 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
     window.visualViewport?.addEventListener('resize', onVisualViewportResize)
     document.addEventListener('perusal-score-view-mode-change', onModePreferenceChange)
 
+    // Clean up leftover inline styles once the page-level reveal system
+    // finishes.  announceReady() pre-applies a CSS transition so the viewer
+    // fades in when the CSS opacity:0 rule is removed; this handler cleans
+    // up that transition after the fade completes.  For the legacy path
+    // (no reveal system), announceReady() pins inline opacity:1 — this
+    // handler removes it once the reveal is done.
+    let revealObserver: MutationObserver | null = null
+    if (perusalPage?.dataset.perusalRevealEnabled === 'true') {
+      const onRevealComplete = (): void => {
+        console.debug(`[PSV ${_ts()}] onRevealComplete: viewer.style.opacity="${viewer.style.opacity}", transition="${viewer.style.transition}", computed=${getComputedStyle(viewer).opacity}, visibility=${getComputedStyle(viewer).visibility}`)
+        if (viewer.style.opacity === '1') {
+          viewer.style.removeProperty('opacity')
+          console.debug(`[PSV ${_ts()}] onRevealComplete: removed inline opacity`)
+        }
+        // Clean up the reveal fade-in transition after it completes.
+        // announceReady() pre-applies this when the reveal system is pending,
+        // so that removing the CSS opacity:0 rule triggers a smooth fade.
+        if (viewer.style.transition) {
+          console.debug(`[PSV ${_ts()}] onRevealComplete: scheduling transition cleanup in ${REVEAL_FADE_IN_MS}ms`)
+          setTimeout(() => {
+            viewer.style.removeProperty('transition')
+            console.debug(`[PSV ${_ts()}] onRevealComplete: transition cleaned up`)
+          }, REVEAL_FADE_IN_MS)
+        }
+      }
+      if (perusalPage.dataset.perusalRevealState === 'ready') {
+        console.debug(`[PSV ${_ts()}] reveal already ready at init time`)
+        onRevealComplete()
+      } else {
+        revealObserver = new MutationObserver(() => {
+          if (perusalPage.dataset.perusalRevealState === 'ready') {
+            revealObserver!.disconnect()
+            revealObserver = null
+            console.debug(`[PSV ${_ts()}] revealObserver: state→ready, calling onRevealComplete`)
+            onRevealComplete()
+          }
+        })
+        revealObserver.observe(perusalPage, {
+          attributes: true,
+          attributeFilter: ['data-perusal-reveal-state'],
+        })
+      }
+    }
+
+    // ⚠️  CRITICAL — syncViewerMode() must NOT run while gating hides the viewer.
+    //
+    // When perusal score gating is active, the viewer area has `visibility: hidden`
+    // via CSS (perusal-score.astro).  Page-flip initializes broken inside a
+    // visibility-hidden ancestor, and announceReady() would fire prematurely
+    // (before the gate resolves), exhausting the one-shot reveal system.
+    //
+    // The guard lives inside syncViewerMode() itself (via isGatingActive()) so
+    // that ALL callers — initial load, viewport changes, mode preference changes,
+    // compact-controls sync — are protected.  The `perusal-gate-revealed` event
+    // (dispatched by perusal-gate.ts after token verification) re-triggers
+    // syncViewerMode() once `data-perusal-gate-state` is already 'unlocked',
+    // so isGatingActive() passes and initialization proceeds normally.
+    const onGateRevealed = (): void => {
+      console.debug(`[PSV ${_ts()}] onGateRevealed: gateState=${perusalPage?.dataset.perusalGateState}, revealState=${perusalPage?.dataset.perusalRevealState}, scoreReady=${viewer.dataset.scoreReady}`)
+      destroyPageFlip(false)
+      scheduleViewerModeSync()
+    }
+    document.addEventListener('perusal-gate-revealed', onGateRevealed)
+
+    console.debug(`[PSV ${_ts()}] init: calling syncViewerMode()`, {
+      gateState: perusalPage?.dataset.perusalGateState,
+      gatingEnabled: perusalPage?.dataset.perusalGatingEnabled,
+      revealState: perusalPage?.dataset.perusalRevealState,
+      revealEnabled: perusalPage?.dataset.perusalRevealEnabled,
+      scoreReady: viewer.dataset.scoreReady,
+      modePreference,
+      portrait: portraitViewport.matches,
+      wide: wideViewport.matches,
+    })
     void syncViewerMode()
 
     // Casual protection: block right-click on the viewer
@@ -1078,8 +1369,16 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
     }
     document.addEventListener('keydown', onDocKeydown)
 
-    // Register cleanup for this viewer (called on astro:before-swap)
+    // Register cleanup for this viewer (called on astro:before-swap or re-init)
     viewerCleanups.set(viewer, () => {
+      console.debug(`[PSV ${_ts()}] cleanup: tearing down`)
+      if (revealObserver) {
+        revealObserver.disconnect()
+        revealObserver = null
+      }
+      prevBtn.removeEventListener('click', goPrev)
+      nextBtn.removeEventListener('click', goNext)
+      booklet?.removeEventListener('click', onBookletClick)
       wideViewport.removeEventListener('change', onViewportChange)
       compactIndicatorViewport.removeEventListener('change', onViewportChange)
       portraitViewport.removeEventListener('change', onViewportChange)
@@ -1088,6 +1387,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
       window.removeEventListener('resize', onViewportChange)
       window.visualViewport?.removeEventListener('resize', onVisualViewportResize)
       document.removeEventListener('perusal-score-view-mode-change', onModePreferenceChange)
+      document.removeEventListener('perusal-gate-revealed', onGateRevealed)
       viewer.removeEventListener('keydown', onBookletKeydown)
       document.removeEventListener('keydown', onDocKeydown)
       if (pageJumpDropdown) {
@@ -1097,6 +1397,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
         window.cancelAnimationFrame(resizeSyncFrame)
         resizeSyncFrame = 0
       }
+      layoutSyncToken++
       destroyPageFlip(false)
     })
   }
@@ -1112,13 +1413,21 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAllScoreViewers, { once: true })
+    console.debug('[PSV] readyState=loading, deferring to DOMContentLoaded')
+    document.addEventListener('DOMContentLoaded', () => {
+      console.debug('[PSV] DOMContentLoaded → initAllScoreViewers')
+      initAllScoreViewers()
+    }, { once: true })
   } else {
+    console.debug('[PSV] readyState=' + document.readyState + ' → initAllScoreViewers (immediate)')
     initAllScoreViewers()
   }
 
   // Re-initialize on every page load (including View Transitions navigations)
-  document.addEventListener('astro:page-load', initAllScoreViewers)
+  document.addEventListener('astro:page-load', () => {
+    console.debug('[PSV] astro:page-load → initAllScoreViewers')
+    initAllScoreViewers()
+  })
 </script>
 
 <style is:global>
@@ -1142,7 +1451,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
       border-color 0.15s ease;
     cursor: pointer;
     border: 1px solid var(--line);
-    border-radius: 0.375rem;
+    border-radius: var(--radius-sm);
     background: var(--bg);
     padding: 0.5em 0.75em;
     min-width: 44px;
@@ -1222,7 +1531,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
   }
 
   .score-page-padding {
-    background: #10161d;
+    background: var(--bg);
   }
 
   .score-page-padding::after {
@@ -1231,7 +1540,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
 
   .score-page-padding-sheet {
     display: block;
-    background: #10161d;
+    background: var(--bg);
     width: 100%;
     height: 100%;
   }
@@ -1245,6 +1554,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
 
   [data-score-mode='spread'][data-score-layout='double'] .score-booklet {
     grid-template-columns: 1fr 1fr;
+    margin: 0 auto;
   }
 
   [data-score-mode='spread'][data-score-layout='single'] .score-booklet {
@@ -1253,6 +1563,7 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
 
   [data-score-mode='spread'] .score-page {
     display: none;
+    background: transparent;
   }
 
   [data-score-mode='spread'] .score-page[data-visible] {
@@ -1282,6 +1593,35 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
     pointer-events: auto;
   }
 
+  /* ── Click-to-navigate cursor (page-flip animation disabled) ── */
+
+  [data-score-fade-transition][data-score-mode='spread'] .score-page[data-visible]::after {
+    cursor: pointer;
+  }
+
+  /* ── Fade transition for spread mode (page-flip animation disabled) ── */
+
+  [data-score-fade-transition][data-score-mode='spread'] .score-page {
+    display: block;
+    opacity: 0;
+    visibility: hidden;
+    position: absolute;
+    pointer-events: none;
+  }
+
+  [data-score-fade-transition][data-score-mode='spread'] .score-page[data-visible] {
+    opacity: 1;
+    visibility: visible;
+    position: relative;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    [data-score-fade-transition][data-score-mode='spread'] .score-page {
+      transition: opacity 0.2s ease;
+    }
+  }
+
   /* ── Flip mode (StPageFlip active) ───────────────────────────────── */
 
   /* Allow PageFlip to receive touch/pointer events directly */
@@ -1292,6 +1632,37 @@ const pages = Array.from({ length: pageCount }, (_, i) => ({
   [data-score-mode='flip'] .score-booklet {
     display: block;
     position: relative;
+  }
+
+  /* Spine lines on page inner edges — placed on pages so they move
+     naturally with the flip animation instead of sitting at a fixed
+     z-index on the booklet. Left page gets a 1px right-edge line,
+     right page gets a 1px left-edge line → 2px total spine. */
+  [data-score-mode='flip'] .stf__item.--left:not(.score-page-padding)::before,
+  [data-score-mode='flip'] .stf__item.--right:not(.score-page-padding)::before {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--surface, #1a1a2e);
+    pointer-events: none;
+  }
+
+  [data-score-mode='flip'] .stf__item.--left:not(.score-page-padding)::before {
+    right: 0;
+  }
+
+  [data-score-mode='flip'] .stf__item.--right:not(.score-page-padding)::before {
+    left: 0;
+  }
+
+  /* Hide spine lines in portrait (single-page) flip view */
+  @media (orientation: portrait) {
+    [data-score-mode='flip'] .stf__item::before {
+      display: none;
+    }
   }
 
   /* ── Notice ──────────────────────────────────────────────────────── */

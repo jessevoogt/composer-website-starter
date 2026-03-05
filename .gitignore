@@ -3,12 +3,9 @@ dist
 
 # dependencies
 node_modules/
-.snowpack/
 
 # logs
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # environment variables
 .env
@@ -18,10 +15,8 @@ yarn-error.log*
 # macOS-specific files
 .DS_Store
 
-# vscode settings and dictionaries
+# IDE settings
 .vscode
-
-# webstorm settings and dictionaries
 .idea
 
 # package lock
@@ -30,10 +25,17 @@ package-lock.json
 # astro build files
 .astro
 
-# cursor rules
-.cursor/rules
+# Local composer content is initialized by init-source.mjs.
+# Keep source/ visible to Keystatic local storage (it respects .gitignore).
+# If this project is in a Git repo, init-source.mjs adds source/ to
+# .git/info/exclude instead of .gitignore.
 
-# Local composer runtime manifests
-# source/ is excluded from git status via .git/info/exclude (set by init:source).
+# Generated manifests
 .ingest-manifest.json
 .deploy-manifest.json
+
+# Private PDF scores (generated at build time)
+private/
+
+# Starter kit output (if re-generating)
+.starter-kit/

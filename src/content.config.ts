@@ -41,9 +41,23 @@ export const sheetMusicSchema = z.object({
   tooltip: z.string().optional(),
 }).or(sheetMusicUrlSchema)
 
+export const movementSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+})
+
+export const performanceSchema = z.object({
+  date: z.string().optional(),
+  venue: z.string().optional(),
+  performers: z.array(z.string()).default([]),
+  notes: z.string().optional(),
+})
+
 export type RecordingLinkType = z.infer<typeof recordingLinkSchema>
 export type RecordingImageType = z.infer<typeof recordingImageSchema>
 export type RecordingType = z.infer<typeof recordingSchema>
+export type MovementType = z.infer<typeof movementSchema>
+export type PerformanceType = z.infer<typeof performanceSchema>
 
 
 const works = defineCollection({
@@ -66,15 +80,17 @@ const works = defineCollection({
     completionDate: z.string().optional(),
     difficulty: z.string().optional(),
     programNote: z.string().optional(),
+    movements: z.array(movementSchema).default([]),
     hasPerusalScore: z.boolean().optional(),
+    perusalScoreGated: z.enum(['', 'gated', 'ungated']).default(''),
+    pdfWatermarkedOverride: z.enum(['', 'enabled', 'disabled']).default(''),
+    pdfOriginalOverride: z.enum(['', 'enabled', 'disabled']).default(''),
+    pdfWatermarkedGatedOverride: z.enum(['', 'gated', 'ungated']).default(''),
+    pdfOriginalGatedOverride: z.enum(['', 'gated', 'ungated']).default(''),
+    preferredHeroId: z.string().optional(),
     sheetMusic: z.array(sheetMusicSchema).default([]),
     recordings: z.array(recordingSchema).default([]),
-    performances: z.array(z.object({
-      date: z.string().optional(),
-      venue: z.string().optional(),
-      performers: z.array(z.string()).default([]),
-      notes: z.string().optional(),
-    })).default([]),
+    performances: z.array(performanceSchema).default([]),
   }),
 })
 

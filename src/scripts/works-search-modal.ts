@@ -3,7 +3,6 @@
  * Handles opening/closing the global search dialog and focus management.
  */
 
-import './works-search' // Ensure search combobox initializes (co-loaded with modal)
 import { focusTextInput } from './focus-policy'
 import { trackAnalyticsEvent } from './analytics-events'
 import { isNavigationPending, onNavigationFailed } from './navigation-intent'

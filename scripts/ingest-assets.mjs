@@ -5,7 +5,7 @@
  * Runs before dev / build. Handles three categories:
  *
  * 1. Hero images:    source/home/hero/*.{jpg,png,webp} → public/hero/
- * 2. Branding:       source/branding/*.{svg,ico,png,jpg,jpeg,webp,avif,gif} → public/
+ * 2. Branding:       source/branding/*.{svg,ico,png,jpg,webp} → public/
  * 3. Profile image:  source/pages/about/profile.{jpg,png,webp} → src/assets/img/
  *
  * Only copies when the source is newer or the target is missing.
@@ -13,7 +13,6 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -24,11 +23,10 @@ const PUBLIC_DIR = path.join(root, 'public')
 const ASSETS_IMG_DIR = path.join(root, 'src', 'assets', 'img')
 
 const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
-const BRANDING_EXTS = new Set(['.svg', '.ico', '.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif'])
+const BRANDING_EXTS = new Set(['.svg', '.ico', '.png', '.jpg', '.jpeg', '.webp'])
 
 let copied = 0
 let skipped = 0
-let removed = 0
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -56,58 +54,35 @@ function copyFile(src, dest, label) {
   }
 }
 
-function ensureSocialPreviewAssets() {
-  const brandingDir = path.join(SOURCE_ROOT, 'branding')
-  const socialSvgPath = path.join(brandingDir, 'social-preview-image.svg')
-  const socialPngPath = path.join(brandingDir, 'social-preview-image.png')
-  const hasSvg = fs.existsSync(socialSvgPath)
-  const hasPng = fs.existsSync(socialPngPath)
-
-  if (hasSvg && hasPng) return
-
-  const scriptPath = path.join(root, 'scripts', 'generate-social-preview-image.mjs')
-  const result = spawnSync(process.execPath, [scriptPath], { stdio: 'inherit' })
-  if (result.status !== 0) {
-    throw new Error('[ingest-assets] Failed to auto-generate social preview image assets.')
-  }
-}
-
 // ─── 1. Hero images ──────────────────────────────────────────────────────
 
 function ingestHeroImages() {
-  const heroSourceDir = path.join(SOURCE_ROOT, 'home', 'hero')
+  const heroesSourceDir = path.join(SOURCE_ROOT, 'heroes')
   const heroTargetDir = path.join(PUBLIC_DIR, 'hero')
 
-  if (!fs.existsSync(heroSourceDir)) {
-    console.log('[ingest-assets] No hero source directory found, skipping.')
+  if (!fs.existsSync(heroesSourceDir)) {
+    console.log('[ingest-assets] No heroes source directory found, skipping.')
     return
   }
 
   ensureDir(heroTargetDir)
 
-  const files = fs.readdirSync(heroSourceDir)
-  const imageFiles = files.filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
-  const sourceImageSet = new Set(imageFiles)
+  const entries = fs.readdirSync(heroesSourceDir, { withFileTypes: true }).filter((d) => d.isDirectory())
 
-  for (const file of imageFiles) {
-    const src = path.join(heroSourceDir, file)
-    const dest = path.join(heroTargetDir, file)
-    copyFile(src, dest, `hero/${file}`)
-  }
+  for (const entry of entries) {
+    const slug = entry.name
+    const slugDir = path.join(heroesSourceDir, slug)
+    const targetSlugDir = path.join(heroTargetDir, slug)
+    ensureDir(targetSlugDir)
 
-  // Keep public/hero in sync with source/home/hero by pruning stale images.
-  const targetFiles = fs.readdirSync(heroTargetDir)
-  const staleFiles = targetFiles.filter(
-    (f) =>
-      IMAGE_EXTS.has(path.extname(f).toLowerCase()) &&
-      fs.statSync(path.join(heroTargetDir, f)).isFile() &&
-      !sourceImageSet.has(f),
-  )
+    const files = fs.readdirSync(slugDir)
+    const imageFiles = files.filter((f) => IMAGE_EXTS.has(path.extname(f).toLowerCase()))
 
-  for (const file of staleFiles) {
-    fs.rmSync(path.join(heroTargetDir, file))
-    console.log(`  × removed hero/${file}`)
-    removed++
+    for (const file of imageFiles) {
+      const src = path.join(slugDir, file)
+      const dest = path.join(targetSlugDir, file)
+      copyFile(src, dest, `hero/${slug}/${file}`)
+    }
   }
 }
 
@@ -159,9 +134,8 @@ function ingestProfileImage() {
 
 console.log('[ingest-assets] Copying source assets…')
 
-ensureSocialPreviewAssets()
 ingestHeroImages()
 ingestBrandingAssets()
 ingestProfileImage()
 
-console.log(`[ingest-assets] Done. Copied: ${copied}  Up to date: ${skipped}  Removed: ${removed}`)
+console.log(`[ingest-assets] Done. Copied: ${copied}  Up to date: ${skipped}`)

@@ -1,0 +1,46 @@
+metaTitle: FirstName LastName — Composer
+metaDescription: >-
+  Contemporary music by FirstName LastName. Explore compositions, listen to
+  recordings, and get in touch.
+searchResultText: >-
+  Contemporary music by FirstName LastName. Explore compositions, recordings,
+  and featured works.
+sections:
+  - block:
+      discriminant: hero
+      value:
+        heroTitle: FirstName LastName
+        heroSubtitle: Composer
+        heroTagline: Original music for acoustic instruments and ensembles.
+        heroTaglineAsBlockquote: false
+        heroTaglineCitation: ''
+        actions:
+          listenNow:
+            visible: true
+            label: Listen Now
+          searchMusic:
+            visible: true
+            label: Search Music
+        preferredHeroId: hall
+        fallbackHeroId: score
+        defaultFilter: saturate(0.72) contrast(1.06) brightness(0.72)
+  - block:
+      discriminant: featured-work
+      value:
+        sectionTitle: Featured Recording
+        activeSectionTitle: Currently Playing
+        buttonText: More Details
+  - block:
+      discriminant: select-works
+      value:
+        sectionTitle: Select Works
+        ignoreSelected: false
+        showAllIfNoSelected: true
+        sortOrder: random
+  - block:
+      discriminant: contact
+      value:
+        contactIntro: >-
+          Whether you are interested in a score, a performance, or something
+          else, I would be glad to hear from you.
+        sectionTitle: Contact

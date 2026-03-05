@@ -2,9 +2,14 @@
 import SiteLayout from '@layouts/SiteLayout.astro'
 import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
 import { getCollection } from 'astro:content'
-import { getSiteConfig } from '@/utils/source-config'
+import { getSiteConfig, getSitemapPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
 
 const siteConfig = getSiteConfig()
+const sitemapPage = getSitemapPage()
+const { pageHero } = resolvePageHero(sitemapPage.preferredHeroId)
+const pageTitle = sitemapPage.title || 'Sitemap'
+const pageSubtitle = sitemapPage.subtitle || 'A comprehensive overview of all pages and content available on this website, organized for easy navigation.'
 const works = await getCollection('works')
 
 const staticPages = [
@@ -14,13 +19,13 @@ const staticPages = [
     description: `Welcome — explore compositions, recordings, and more from ${siteConfig.composerName}.`,
   },
   {
-    title: 'Works',
-    url: '/works/',
+    title: 'Music',
+    url: '/music/',
     description: 'A collection of select compositions',
   },
   {
-    title: 'Works tags',
-    url: '/works/browse/',
+    title: 'Music tags',
+    url: '/music/browse/',
     description: 'Browse all available works tags grouped by category.',
   },
   {
@@ -37,12 +42,14 @@ const staticPages = [
 ---
 
 <SiteLayout
-  title="Sitemap"
+  title={pageTitle}
   description="Complete site map showing all pages, works, and sections available on this website."
+  pageHero={pageHero}
+  pageKey="sitemap"
 >
   <ImmersivePageHeader
-    title="Sitemap"
-    subtitle="A comprehensive overview of all pages and content available on this website, organized for easy navigation."
+    title={pageTitle}
+    subtitle={pageSubtitle}
   />
 
   <section style="margin-top: var(--space-l);">
@@ -74,7 +81,7 @@ const staticPages = [
             works.map((project) => (
               <article class="sitemap-card">
                 <h3>
-                  <a href={`/works/${project.id}/`}>{project.data.title}</a>
+                  <a href={`/music/${project.id}/`}>{project.data.title}</a>
                 </h3>
                 <p>{project.data.description}</p>
                 <div style="font-size: 0.82rem;">
@@ -82,7 +89,7 @@ const staticPages = [
                     Instrumentation: <span style="font-weight: 500;">{project.data.instrumentation.join(', ')}</span>
                   </p>
                   <p>
-                    URL: <code>/works/{project.id}/</code>
+                    URL: <code>/music/{project.id}/</code>
                   </p>
                 </div>
               </article>

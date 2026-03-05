@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Setup Wizard</title>
+  <style>
+    /* Default CSS custom properties (normally provided by PerusalLayout / site.css) */
+    :root {
+      /* Spacing scale (Utopia fluid) */
+      --space-3xs: clamp(0.25rem, 0.2283rem + 0.1087vw, 0.3125rem);
+      --space-2xs: clamp(0.5rem, 0.4565rem + 0.2174vw, 0.625rem);
+      --space-xs: clamp(0.75rem, 0.6848rem + 0.3261vw, 0.9375rem);
+      --space-s: clamp(1rem, 0.913rem + 0.4348vw, 1.25rem);
+      --space-m: clamp(1.5rem, 1.3696rem + 0.6522vw, 1.875rem);
+      --space-l: clamp(2rem, 1.8261rem + 0.8696vw, 2.5rem);
+      --space-xl: clamp(3rem, 2.7391rem + 1.3043vw, 3.75rem);
+
+      /* Font size scale (Utopia fluid) */
+      --font-size--2: clamp(0.6944rem, 0.6498rem + 0.2232vw, 0.8rem);
+      --font-size--1: clamp(0.8333rem, 0.7716rem + 0.3087vw, 1rem);
+      --font-size-0: clamp(1rem, 0.913rem + 0.4348vw, 1.25rem);
+      --font-size-1: clamp(1.2rem, 1.0783rem + 0.6087vw, 1.5625rem);
+      --font-size-3: clamp(1.728rem, 1.4961rem + 1.1594vw, 2.4414rem);
+
+      /* Colors (overridden when a theme preset is selected) */
+      --bg: #10161d;
+      --bg-soft: #141b23;
+      --ink: #ecf2f7;
+      --ink-soft: #aab8c4;
+      --accent: #97c6de;
+      --button-bg: #89b9d3;
+      --button-ink: #08131d;
+
+      /* Font families */
+      --font-body: system-ui, sans-serif;
+      --font-heading: system-ui, sans-serif;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+  </style>
+  <style>{{WIZARD_CSS}}</style>
+  <style>
+    /* Standalone layout overrides: full-width sticky header, constrained content */
+    [data-standalone].setup-wizard {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: clip;
+    }
+
+    [data-standalone] .setup-wizard__content {
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    [data-standalone] .setup-wizard__footer-inner {
+      max-width: 48rem;
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: var(--space-s);
+      padding-right: var(--space-s);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    [data-standalone] .setup-wizard__steps {
+      flex-shrink: 0;
+      background: var(--bg);
+      padding: var(--space-xs) var(--space-m);
+      margin-bottom: 0;
+      border-bottom-color: color-mix(in srgb, var(--ink-soft) 40%, transparent);
+      justify-content: center;
+    }
+
+    /* Show all tabs on desktop — override the SCSS media query that hides non-active tabs */
+    @media (min-width: 640px) {
+      [data-standalone] .setup-wizard__tab:not(.setup-wizard__tab--active) {
+        display: flex;
+      }
+      [data-standalone] .setup-wizard__step-progress {
+        display: none;
+      }
+    }
+
+    [data-standalone] .setup-wizard__panel {
+      max-width: 48rem;
+      margin-left: auto;
+      margin-right: auto;
+      padding: var(--space-m) var(--space-s);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    [data-standalone] .setup-wizard__error {
+      max-width: 48rem;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+      box-sizing: border-box;
+      padding-left: var(--space-s);
+      padding-right: var(--space-s);
+    }
+
+    /* ── Label row + regenerate button ────────────────────────────── */
+    .setup-wizard__label-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-xs);
+    }
+
+    .setup-wizard__regenerate-btn {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: var(--font-size--2, 0.75rem);
+      font-family: var(--font-body, inherit);
+      cursor: pointer;
+      padding: 0.15em 0.4em;
+      white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+
+    .setup-wizard__regenerate-btn:hover {
+      opacity: 0.8;
+    }
+
+    .setup-wizard__regenerate-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    /* ── Markdown toolbar ───────────────────────────────────────────── */
+    .setup-wizard__md-toolbar {
+      display: flex;
+      gap: var(--space-3xs);
+      margin-bottom: var(--space-3xs);
+    }
+
+    .setup-wizard__md-btn {
+      background: color-mix(in srgb, var(--ink-soft) 15%, transparent);
+      color: var(--ink);
+      border: 1px solid color-mix(in srgb, var(--ink-soft) 30%, transparent);
+      padding: 0.25em 0.6em;
+      font-size: var(--font-size--1);
+      cursor: pointer;
+      line-height: 1.3;
+      min-width: 2rem;
+      text-align: center;
+      transition: background-color 0.15s ease;
+    }
+
+    .setup-wizard__md-btn:hover {
+      background: color-mix(in srgb, var(--ink-soft) 25%, transparent);
+    }
+
+    .setup-wizard__md-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    /* ── Loading spinner ────────────────────────────────────────────── */
+    .setup-wizard__spinner {
+      display: flex;
+      justify-content: center;
+      padding: var(--space-l) 0;
+    }
+
+    .setup-wizard__spinner-ring {
+      width: 3rem;
+      height: 3rem;
+      border: 3px solid color-mix(in srgb, var(--ink-soft) 20%, transparent);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: wizard-spin 0.8s linear infinite;
+    }
+
+    @keyframes wizard-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body style="margin: 0; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font-body, system-ui, sans-serif);">
+  <div class="setup-wizard" data-wizard data-standalone>
+    <!-- Step indicator / tab list -->
+    <nav class="setup-wizard__steps" role="tablist" aria-label="Setup wizard steps">
+      <button role="tab" id="tab-identity" aria-selected="true" aria-controls="panel-identity" class="setup-wizard__tab setup-wizard__tab--active" data-step-index="0" tabindex="0">
+        <span class="setup-wizard__tab-number">1</span>
+        <span class="setup-wizard__tab-label">Identity</span>
+      </button>
+      <button role="tab" id="tab-theme" aria-selected="false" aria-controls="panel-theme" class="setup-wizard__tab" data-step-index="1" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">2</span>
+        <span class="setup-wizard__tab-label">Theme</span>
+      </button>
+      <button role="tab" id="tab-branding" aria-selected="false" aria-controls="panel-branding" class="setup-wizard__tab" data-step-index="2" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">3</span>
+        <span class="setup-wizard__tab-label">Branding</span>
+      </button>
+      <button role="tab" id="tab-hero" aria-selected="false" aria-controls="panel-hero" class="setup-wizard__tab" data-step-index="3" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">4</span>
+        <span class="setup-wizard__tab-label">Homepage</span>
+      </button>
+      <button role="tab" id="tab-about" aria-selected="false" aria-controls="panel-about" class="setup-wizard__tab" data-step-index="4" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">5</span>
+        <span class="setup-wizard__tab-label">About</span>
+      </button>
+      <button role="tab" id="tab-work" aria-selected="false" aria-controls="panel-work" class="setup-wizard__tab" data-step-index="5" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">6</span>
+        <span class="setup-wizard__tab-label">Work</span>
+      </button>
+      <button role="tab" id="tab-social" aria-selected="false" aria-controls="panel-social" class="setup-wizard__tab" data-step-index="6" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">7</span>
+        <span class="setup-wizard__tab-label">Social</span>
+      </button>
+      <button role="tab" id="tab-forms" aria-selected="false" aria-controls="panel-forms" class="setup-wizard__tab" data-step-index="7" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">8</span>
+        <span class="setup-wizard__tab-label">Forms</span>
+      </button>
+      <button role="tab" id="tab-deploy" aria-selected="false" aria-controls="panel-deploy" class="setup-wizard__tab" data-step-index="8" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">9</span>
+        <span class="setup-wizard__tab-label">Deploy</span>
+      </button>
+      <button role="tab" id="tab-done" aria-selected="false" aria-controls="panel-done" class="setup-wizard__tab" data-step-index="9" tabindex="-1" disabled>
+        <span class="setup-wizard__tab-number">10</span>
+        <span class="setup-wizard__tab-label">Done</span>
+      </button>
+      <span class="setup-wizard__step-progress" aria-live="polite" data-step-progress>Step 1 of 10</span>
+    </nav>
+
+    <!-- Scrollable content area -->
+    <main class="setup-wizard__content">
+
+    <!-- Error region -->
+    <div class="setup-wizard__error" role="alert" aria-live="polite" data-error-region hidden></div>
+
+    <!-- Step 1: Identity -->
+    <section role="tabpanel" id="panel-identity" aria-labelledby="tab-identity" class="setup-wizard__panel" data-step="0">
+      <h1 class="setup-wizard__title">Welcome! Let's set up your site.</h1>
+      <p class="setup-wizard__description">We'll start with the basics. What's your name?</p>
+
+      <div class="setup-wizard__form">
+        <div class="setup-wizard__field-row">
+          <div class="setup-wizard__field">
+            <label for="setup-first-name" class="setup-wizard__label">First name</label>
+            <input type="text" id="setup-first-name" class="setup-wizard__input" value="{{FIRST_NAME}}" autocomplete="given-name" required />
+          </div>
+          <div class="setup-wizard__field">
+            <label for="setup-last-name" class="setup-wizard__label">Last name</label>
+            <input type="text" id="setup-last-name" class="setup-wizard__input" value="{{LAST_NAME}}" autocomplete="family-name" required />
+          </div>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-email" class="setup-wizard__label">Email address</label>
+          <input type="email" id="setup-email" class="setup-wizard__input" value="{{EMAIL}}" autocomplete="email" required />
+          <p class="setup-wizard__hint" id="email-hint">Used for contact form submissions. Shown on the contact page if the form is disabled.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-site-url" class="setup-wizard__label">Website URL</label>
+          <input type="url" id="setup-site-url" class="setup-wizard__input" value="{{SITE_URL}}" placeholder="https://yourname.com" required />
+          <p class="setup-wizard__hint" id="url-hint">Your production URL (e.g. https://yourname.com). Used for SEO meta tags and sitemaps.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-site-title" class="setup-wizard__label">Site title</label>
+          <input type="text" id="setup-site-title" class="setup-wizard__input" value="{{SITE_TITLE}}" placeholder="Auto-generated from your name" />
+          <p class="setup-wizard__hint" id="title-hint">Shown in the browser tab. Leave blank for "Name &mdash; Composer".</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-site-description" class="setup-wizard__label">Site description</label>
+          <textarea id="setup-site-description" class="setup-wizard__input setup-wizard__textarea" rows="2">{{SITE_DESCRIPTION}}</textarea>
+          <p class="setup-wizard__hint" id="description-hint">Used in search engine results. Leave blank for a sensible default.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Step 2: Theme -->
+    <section role="tabpanel" id="panel-theme" aria-labelledby="tab-theme" class="setup-wizard__panel" data-step="1" hidden>
+      <h1 class="setup-wizard__title">Pick a visual theme</h1>
+      <p class="setup-wizard__description">Choose a preset. You can fine-tune colors and typography later in the Theme Studio.</p>
+
+      <div class="setup-wizard__preset-grid" role="radiogroup" aria-label="Theme presets">
+        {{PRESET_CARDS}}
+      </div>
+
+    </section>
+
+    <!-- Step 3: Branding -->
+    <section role="tabpanel" id="panel-branding" aria-labelledby="tab-branding" class="setup-wizard__panel" data-step="2" hidden>
+      <h1 class="setup-wizard__title">Brand assets</h1>
+      <p class="setup-wizard__description">Configure your logo, favicon, and social media preview image. Defaults are generated from your name and theme.</p>
+
+      <div class="setup-wizard__form">
+        <!-- Logo mode -->
+        <fieldset class="setup-wizard__fieldset">
+          <legend class="setup-wizard__legend">Logo</legend>
+          <p class="setup-wizard__hint">How your brand appears in the site header.</p>
+
+          <div class="setup-wizard__radio-group">
+            <label class="setup-wizard__radio-label">
+              <input type="radio" name="setup-logo-mode" value="text" class="setup-wizard__radio" checked />
+              <span>Text (your name, styled with your theme fonts)</span>
+            </label>
+            <label class="setup-wizard__radio-label">
+              <input type="radio" name="setup-logo-mode" value="custom" class="setup-wizard__radio" />
+              <span>Custom logo image</span>
+            </label>
+          </div>
+
+          <!-- Text logo preview (visible when "Text" mode selected) -->
+          <div class="setup-wizard__text-logo-preview" data-text-logo-preview>
+            <span class="setup-wizard__text-logo-name" data-text-logo-first></span>
+            <span class="setup-wizard__text-logo-name" data-text-logo-last></span>
+          </div>
+
+          <div class="setup-wizard__conditional" data-logo-custom-section hidden>
+            <div class="setup-wizard__file-upload setup-wizard__file-upload--dropzone" data-file-upload="logo">
+              <div class="setup-wizard__file-preview" data-file-preview hidden>
+                <img src="" alt="Logo preview" class="setup-wizard__file-preview-img" />
+              </div>
+              <div class="setup-wizard__dropzone-placeholder" data-dropzone-placeholder>
+                <span class="setup-wizard__dropzone-icon" aria-hidden="true">&#128444;</span>
+                <span>Drag &amp; drop your logo here, or</span>
+              </div>
+              <input type="file" id="setup-logo-file" class="setup-wizard__file-input" accept="image/svg+xml,image/png,image/jpeg,image/webp" />
+              <label for="setup-logo-file" class="setup-wizard__file-button">Choose logo</label>
+              <span class="setup-wizard__file-name" data-file-name>No file selected</span>
+            </div>
+            <p class="setup-wizard__hint">
+              Recommended: SVG for best quality at any size. If using PNG/JPG, aim for at least 400px wide on a transparent background.
+              Choose colors that work on both dark and light backgrounds (for email headers, etc.).
+            </p>
+          </div>
+        </fieldset>
+
+        <!-- Favicon -->
+        <fieldset class="setup-wizard__fieldset">
+          <legend class="setup-wizard__legend">Favicon</legend>
+          <p class="setup-wizard__hint">The small icon shown in browser tabs and bookmarks.</p>
+
+          <div class="setup-wizard__branding-preview" data-favicon-preview>
+            <img src="" alt="Favicon preview" style="width: 96px; height: 96px; border: 1px solid var(--text-muted, #666); border-radius: 4px;" />
+          </div>
+
+          <div class="setup-wizard__radio-group">
+            <label class="setup-wizard__radio-label">
+              <input type="radio" name="setup-favicon-mode" value="generated" class="setup-wizard__radio" checked />
+              <span>Auto-generate from your initials (shown above)</span>
+            </label>
+            <label class="setup-wizard__radio-label">
+              <input type="radio" name="setup-favicon-mode" value="custom" class="setup-wizard__radio" />
+              <span>Upload custom favicon</span>
+            </label>
+          </div>
+
+          <div class="setup-wizard__conditional" data-favicon-custom-section hidden>
+            <div class="setup-wizard__file-upload setup-wizard__file-upload--dropzone" data-file-upload="favicon">
+              <div class="setup-wizard__file-preview" data-file-preview hidden>
+                <img src="" alt="Favicon preview" class="setup-wizard__file-preview-img" />
+              </div>
+              <div class="setup-wizard__dropzone-placeholder" data-dropzone-placeholder>
+                <span class="setup-wizard__dropzone-icon" aria-hidden="true">&#128444;</span>
+                <span>Drag &amp; drop your favicon here, or</span>
+              </div>
+              <input type="file" id="setup-favicon-file" class="setup-wizard__file-input" accept="image/svg+xml,image/png" />
+              <label for="setup-favicon-file" class="setup-wizard__file-button">Choose favicon</label>
+              <span class="setup-wizard__file-name" data-file-name>No file selected</span>
+            </div>
+            <p class="setup-wizard__hint">SVG recommended. If PNG, use 96×96px minimum.</p>
+          </div>
+        </fieldset>
+
+        <!-- Social preview -->
+        <fieldset class="setup-wizard__fieldset">
+          <legend class="setup-wizard__legend">Social media preview</legend>
+          <p class="setup-wizard__hint">The image shown when your site is shared on social media (Open Graph).</p>
+
+          <div class="setup-wizard__branding-preview" data-social-preview>
+            <img src="" alt="Social preview" style="width: 100%; max-width: 600px; border: 1px solid var(--text-muted, #666); border-radius: 4px;" />
+          </div>
+
+          <div class="setup-wizard__radio-group">
+            <label class="setup-wizard__radio-label">
+              <input type="radio" name="setup-social-mode" value="generated" class="setup-wizard__radio" checked />
+              <span>Auto-generate from your name and theme (shown above)</span>
+            </label>
+            <label class="setup-wizard__radio-label">
+              <input type="radio" name="setup-social-mode" value="custom" class="setup-wizard__radio" />
+              <span>Upload custom image</span>
+            </label>
+          </div>
+
+          <div class="setup-wizard__conditional" data-social-custom-section hidden>
+            <div class="setup-wizard__file-upload setup-wizard__file-upload--dropzone" data-file-upload="social-preview">
+              <div class="setup-wizard__file-preview" data-file-preview hidden>
+                <img src="" alt="Social preview" class="setup-wizard__file-preview-img" />
+              </div>
+              <div class="setup-wizard__dropzone-placeholder" data-dropzone-placeholder>
+                <span class="setup-wizard__dropzone-icon" aria-hidden="true">&#128444;</span>
+                <span>Drag &amp; drop your image here, or</span>
+              </div>
+              <input type="file" id="setup-social-file" class="setup-wizard__file-input" accept="image/png,image/jpeg,image/webp" />
+              <label for="setup-social-file" class="setup-wizard__file-button">Choose image</label>
+              <span class="setup-wizard__file-name" data-file-name>No file selected</span>
+            </div>
+            <p class="setup-wizard__hint">Recommended: 1200×630px PNG or JPG.</p>
+          </div>
+        </fieldset>
+      </div>
+
+    </section>
+
+    <!-- Step 4: Homepage (Hero + Tagline) -->
+    <section role="tabpanel" id="panel-hero" aria-labelledby="tab-hero" class="setup-wizard__panel" data-step="3" hidden>
+      <h1 class="setup-wizard__title">Set up your homepage</h1>
+      <p class="setup-wizard__description">Choose a hero image and set the tagline that appears below your name.</p>
+
+      {{HERO_SECTION}}
+
+      <div class="setup-wizard__tagline-section">
+        <div class="setup-wizard__field">
+          <div class="setup-wizard__label-row">
+            <label for="setup-hero-tagline" class="setup-wizard__label">Tagline</label>
+            <button type="button" class="setup-wizard__regenerate-btn" data-tagline-regenerate aria-label="Generate a new tagline suggestion">
+              &#x21bb; Suggest another
+            </button>
+          </div>
+          <textarea id="setup-hero-tagline" class="setup-wizard__input setup-wizard__textarea" rows="2" placeholder="e.g., Music for curious ears.">{{HERO_TAGLINE}}</textarea>
+          <p class="setup-wizard__hint" id="tagline-hint">Appears below your name on the homepage. Click &ldquo;Suggest another&rdquo; for ideas.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label class="setup-wizard__toggle-label">
+            <input type="checkbox" id="setup-tagline-blockquote" class="setup-wizard__checkbox" {{TAGLINE_BQ_CHECKED}} />
+            <span>Display as a quote</span>
+          </label>
+          <p class="setup-wizard__hint">Renders the tagline as a styled blockquote with an optional citation.</p>
+        </div>
+
+        <div class="setup-wizard__field setup-wizard__citation-field" data-citation-field {{CITATION_FIELD_HIDDEN}}>
+          <label for="setup-tagline-citation" class="setup-wizard__label">Citation</label>
+          <input type="text" id="setup-tagline-citation" class="setup-wizard__input" value="{{TAGLINE_CITATION}}" placeholder="e.g., &mdash; Program note for Lumina" />
+          <p class="setup-wizard__hint" id="citation-hint">Attributed source shown below the quote.</p>
+        </div>
+      </div>
+
+      <!-- Hero layout -->
+      <fieldset class="setup-wizard__fieldset">
+        <legend class="setup-wizard__legend">Hero layout</legend>
+        <div class="setup-wizard__field-row">
+          <div class="setup-wizard__field">
+            <label for="setup-hero-layout" class="setup-wizard__label">Layout mode</label>
+            <select id="setup-hero-layout" class="setup-wizard__select">
+              <option value="columns" selected>Columns (text + image side by side)</option>
+              <option value="stacked">Stacked (text above image)</option>
+              <option value="text-only">Text only (no hero image)</option>
+              <option value="image-only">Image only (full-bleed)</option>
+              <option value="centered-image">Centered image</option>
+            </select>
+          </div>
+          <div class="setup-wizard__field" data-hero-image-position-field>
+            <label for="setup-hero-image-position" class="setup-wizard__label">Image position</label>
+            <select id="setup-hero-image-position" class="setup-wizard__select">
+              <option value="left" selected>Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- CTA buttons -->
+      <fieldset class="setup-wizard__fieldset">
+        <legend class="setup-wizard__legend">Call-to-action buttons</legend>
+        <p class="setup-wizard__hint">Buttons shown below the tagline on the homepage.</p>
+
+        <div class="setup-wizard__field">
+          <label class="setup-wizard__toggle-label">
+            <input type="checkbox" id="setup-cta-listen" class="setup-wizard__checkbox" checked />
+            <span>Show &ldquo;Listen Now&rdquo; button</span>
+          </label>
+          <div class="setup-wizard__conditional" data-cta-listen-label>
+            <label for="setup-cta-listen-text" class="setup-wizard__label">Button label</label>
+            <input type="text" id="setup-cta-listen-text" class="setup-wizard__input setup-wizard__input--narrow" value="Listen Now" placeholder="Listen Now" />
+          </div>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label class="setup-wizard__toggle-label">
+            <input type="checkbox" id="setup-cta-search" class="setup-wizard__checkbox" checked />
+            <span>Show &ldquo;Search Music&rdquo; button</span>
+          </label>
+          <div class="setup-wizard__conditional" data-cta-search-label>
+            <label for="setup-cta-search-text" class="setup-wizard__label">Button label</label>
+            <input type="text" id="setup-cta-search-text" class="setup-wizard__input setup-wizard__input--narrow" value="Search Music" placeholder="Search Music" />
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- SEO metadata -->
+      <fieldset class="setup-wizard__fieldset">
+        <legend class="setup-wizard__legend">SEO metadata</legend>
+        <div class="setup-wizard__field">
+          <label for="setup-meta-title" class="setup-wizard__label">Page title <span class="setup-wizard__optional">(optional)</span></label>
+          <input type="text" id="setup-meta-title" class="setup-wizard__input" value="" placeholder="Auto-generated from your name" />
+          <p class="setup-wizard__hint">Shown in browser tabs and search results. Leave blank for &ldquo;Name &mdash; Composer&rdquo;.</p>
+        </div>
+        <div class="setup-wizard__field">
+          <label for="setup-meta-description" class="setup-wizard__label">Meta description <span class="setup-wizard__optional">(optional)</span></label>
+          <textarea id="setup-meta-description" class="setup-wizard__input setup-wizard__textarea" rows="2" placeholder="Auto-generated"></textarea>
+          <p class="setup-wizard__hint">Search engine snippet. Leave blank for a sensible default.</p>
+        </div>
+      </fieldset>
+
+    </section>
+
+    <!-- Step 4: About Page -->
+    <section role="tabpanel" id="panel-about" aria-labelledby="tab-about" class="setup-wizard__panel" data-step="4" hidden>
+      <h1 class="setup-wizard__title">Your about page</h1>
+      <p class="setup-wizard__description">Add a profile photo and a short biography. You can refine this later in Keystatic.</p>
+
+      <div class="setup-wizard__form">
+        <div class="setup-wizard__field">
+          <label for="setup-profile-image" class="setup-wizard__label">Profile photo <span class="setup-wizard__optional">(optional)</span></label>
+          <div class="setup-wizard__file-upload" data-file-upload="profile-image">
+            <div class="setup-wizard__file-preview" data-file-preview hidden>
+              <img src="" alt="Profile image preview" class="setup-wizard__file-preview-img" />
+            </div>
+            <input type="file" id="setup-profile-image" accept="image/jpeg,image/png,image/webp" class="setup-wizard__file-input" />
+            <label for="setup-profile-image" class="setup-wizard__file-button">Choose image</label>
+            <span class="setup-wizard__file-name" data-file-name>No file selected</span>
+          </div>
+          <p class="setup-wizard__hint">A portrait or headshot works best. Any size is fine &mdash; it will be resized automatically. You can add one later in Keystatic if you don't have one now.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-profile-alt" class="setup-wizard__label">Image alt text</label>
+          <input type="text" id="setup-profile-alt" class="setup-wizard__input" value="{{PROFILE_ALT}}" placeholder="e.g., Portrait of composer Jane Doe" />
+          <p class="setup-wizard__hint">Describes the image for screen readers and accessibility.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-about-body" class="setup-wizard__label">Biography</label>
+          <div class="setup-wizard__md-toolbar" role="toolbar" aria-label="Formatting options" aria-controls="setup-about-body">
+            <button type="button" class="setup-wizard__md-btn" data-md-action="bold" title="Bold (wrap in **)" aria-label="Bold">
+              <strong>B</strong>
+            </button>
+            <button type="button" class="setup-wizard__md-btn" data-md-action="italic" title="Italic (wrap in *)" aria-label="Italic">
+              <em>I</em>
+            </button>
+            <button type="button" class="setup-wizard__md-btn" data-md-action="link" title="Insert link [text](url)" aria-label="Insert link">
+              &#128279;
+            </button>
+          </div>
+          <textarea id="setup-about-body" class="setup-wizard__input setup-wizard__textarea setup-wizard__textarea--tall" rows="8" placeholder="Write a few paragraphs about yourself, your music, and your artistic interests. Separate paragraphs with a blank line. Markdown links are supported: [text](url)">{{ABOUT_BODY}}</textarea>
+          <p class="setup-wizard__hint">Supports Markdown: **bold**, *italic*, [link text](url). Separate paragraphs with a blank line.</p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Step 5: First Work -->
+    <section role="tabpanel" id="panel-work" aria-labelledby="tab-work" class="setup-wizard__panel" data-step="5" hidden>
+      <h1 class="setup-wizard__title">Add your first work</h1>
+      <p class="setup-wizard__description">Add a composition to get your site looking great right away. You can add more works later through Keystatic.</p>
+
+      <fieldset class="setup-wizard__fieldset">
+        <legend class="setup-wizard__legend">Work options</legend>
+        <div class="setup-wizard__field">
+          <label class="setup-wizard__toggle-label">
+            <input type="checkbox" id="setup-include-starters" class="setup-wizard__checkbox" checked />
+            <span>Include starter works</span>
+          </label>
+          <p class="setup-wizard__hint">Copies two example works into your project so you can see the full site layout before adding your own. You can delete them later.</p>
+        </div>
+        <div class="setup-wizard__field">
+          <label class="setup-wizard__toggle-label">
+            <input type="checkbox" id="setup-add-first-work" class="setup-wizard__checkbox" checked />
+            <span>Add first work now</span>
+          </label>
+          <p class="setup-wizard__hint">When turned off, this step won&rsquo;t create a work.</p>
+        </div>
+      </fieldset>
+
+      <div class="setup-wizard__form" data-work-fields>
+        <div class="setup-wizard__field">
+          <label for="setup-work-title" class="setup-wizard__label">Title</label>
+          <input type="text" id="setup-work-title" class="setup-wizard__input" placeholder="e.g., Nocturne in G Minor" required />
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-subtitle" class="setup-wizard__label">
+            Subtitle <span class="setup-wizard__optional">(optional)</span>
+          </label>
+          <input type="text" id="setup-work-subtitle" class="setup-wizard__input" placeholder="e.g., for solo piano" />
+          <p class="setup-wizard__hint">Typically the instrumentation. Appears below the title on work pages.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-description" class="setup-wizard__label">Short description</label>
+          <textarea id="setup-work-description" class="setup-wizard__input setup-wizard__textarea" rows="2" placeholder="A one-sentence summary of the piece." required></textarea>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-thumbnail" class="setup-wizard__label">Thumbnail image</label>
+          <div class="setup-wizard__file-upload setup-wizard__file-upload--dropzone" data-file-upload="work-thumbnail">
+            <div class="setup-wizard__file-preview" data-file-preview hidden>
+              <img src="" alt="Thumbnail preview" class="setup-wizard__file-preview-img" />
+            </div>
+            <div class="setup-wizard__dropzone-placeholder" data-dropzone-placeholder>
+              <span class="setup-wizard__dropzone-icon" aria-hidden="true">&#128444;</span>
+              <span>Drag &amp; drop thumbnail image here, or</span>
+            </div>
+            <input type="file" id="setup-work-thumbnail" accept="image/jpeg,image/png,image/webp" class="setup-wizard__file-input" required />
+            <label for="setup-work-thumbnail" class="setup-wizard__file-button">Choose image</label>
+            <span class="setup-wizard__file-name" data-file-name>No file selected</span>
+          </div>
+          <p class="setup-wizard__hint">A photo or artwork representing this work. Large images are resized automatically.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-instrumentation" class="setup-wizard__label">
+            Instrumentation <span class="setup-wizard__optional">(optional)</span>
+          </label>
+          <input type="text" id="setup-work-instrumentation" class="setup-wizard__input" placeholder="e.g., flute, clarinet, piano" />
+          <p class="setup-wizard__hint">Comma-separated list of instruments. Used for filtering and search.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-audio" class="setup-wizard__label">
+            Recording <span class="setup-wizard__optional">(optional)</span>
+          </label>
+          <div class="setup-wizard__file-upload setup-wizard__file-upload--dropzone" data-file-upload="work-audio">
+            <div class="setup-wizard__dropzone-placeholder" data-dropzone-placeholder>
+              <span class="setup-wizard__dropzone-icon" aria-hidden="true">&#127911;</span>
+              <span>Drag &amp; drop recording here, or</span>
+            </div>
+            <input type="file" id="setup-work-audio" accept=".wav,.mp3,.aiff,.flac,audio/wav,audio/mpeg,audio/aiff,audio/flac" class="setup-wizard__file-input" />
+            <label for="setup-work-audio" class="setup-wizard__file-button">Choose audio file</label>
+            <span class="setup-wizard__file-name" data-file-name>No file selected</span>
+          </div>
+          <p class="setup-wizard__hint">A WAV, MP3, AIFF, or FLAC file. WAV files are automatically converted to MP3 during the build.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-youtube" class="setup-wizard__label">
+            YouTube link <span class="setup-wizard__optional">(optional)</span>
+          </label>
+          <input type="url" id="setup-work-youtube" class="setup-wizard__input" placeholder="https://www.youtube.com/watch?v=..." />
+          <p class="setup-wizard__hint">If provided, this must be a valid URL.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-score" class="setup-wizard__label">
+            PDF score <span class="setup-wizard__optional">(optional)</span>
+          </label>
+          <div class="setup-wizard__file-upload setup-wizard__file-upload--dropzone" data-file-upload="work-score">
+            <div class="setup-wizard__dropzone-placeholder" data-dropzone-placeholder>
+              <span class="setup-wizard__dropzone-icon" aria-hidden="true">&#128196;</span>
+              <span>Drag &amp; drop PDF score here, or</span>
+            </div>
+            <input type="file" id="setup-work-score" accept=".pdf,application/pdf" class="setup-wizard__file-input" />
+            <label for="setup-work-score" class="setup-wizard__file-button">Choose PDF</label>
+            <span class="setup-wizard__file-name" data-file-name>No file selected</span>
+          </div>
+          <p class="setup-wizard__hint">A PDF of the score. Made available as downloadable sheet music.</p>
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-work-sheetmusic-url" class="setup-wizard__label">
+            Sheet music link <span class="setup-wizard__optional">(optional)</span>
+          </label>
+          <input type="url" id="setup-work-sheetmusic-url" class="setup-wizard__input" placeholder="https://www.example.com/score" />
+          <p class="setup-wizard__hint">If provided, this must be a valid URL.</p>
+        </div>
+      </div>
+
+      <p class="setup-wizard__skip-note" data-work-fields>
+        After setup, you can manage works through Keystatic, or copy the example folders in <code>source/works-templates/</code>.
+      </p>
+
+    </section>
+
+    <!-- Step 6: Social -->
+    <section role="tabpanel" id="panel-social" aria-labelledby="tab-social" class="setup-wizard__panel" data-step="6" hidden>
+      <h1 class="setup-wizard__title">Add your social links</h1>
+      <p class="setup-wizard__description">Toggle on the platforms you use and enter your profile URLs. Skip any you don't need.</p>
+
+      <div class="setup-wizard__social-list">
+        {{SOCIAL_ROWS}}
+      </div>
+
+    </section>
+
+    <!-- Step 7: Forms -->
+    <section role="tabpanel" id="panel-forms" aria-labelledby="tab-forms" class="setup-wizard__panel" data-step="7" hidden>
+      <h1 class="setup-wizard__title">Contact &amp; score request forms</h1>
+      <p class="setup-wizard__description">These are optional. You can configure them now or later in Keystatic.</p>
+
+      <div class="setup-wizard__forms-section">
+        <!-- Contact form -->
+        <div class="setup-wizard__form-group">
+          <div class="setup-wizard__form-toggle-row">
+            <label class="setup-wizard__toggle-label">
+              <input type="checkbox" id="setup-contact-form-enabled" class="setup-wizard__checkbox" {{CONTACT_FORM_CHECKED}} />
+              <span>Enable the contact form</span>
+            </label>
+          </div>
+
+          <div class="setup-wizard__form-details" data-contact-details {{CONTACT_DETAILS_HIDDEN}}>
+            <p class="setup-wizard__info-text">
+              Visitors can send you a message directly from your site. Submissions are handled by the PHP API backend, or you can use a webhook as an interim or backup solution.
+            </p>
+            <div class="setup-wizard__field">
+              <label for="setup-contact-webhook" class="setup-wizard__label">Webhook URL <span class="setup-wizard__optional">(optional)</span></label>
+              <input type="url" id="setup-contact-webhook" class="setup-wizard__input" value="{{CONTACT_WEBHOOK_URL}}" placeholder="https://hook.us1.make.com/..." />
+              <p class="setup-wizard__hint" id="contact-webhook-hint">
+                A webhook receives a copy of each submission as a POST request &mdash; useful if you don't have the API server set up yet, or as a backup. Services like Make.com, Zapier, or n8n can forward webhooks to email, Slack, or a spreadsheet.
+              </p>
+            </div>
+          </div>
+
+          <p class="setup-wizard__form-disabled-note" data-contact-disabled-note {{CONTACT_DISABLED_NOTE_HIDDEN}}>
+            Visitors will see your email address as a mailto link instead.
+          </p>
+        </div>
+
+        <!-- Perusal access -->
+        <div class="setup-wizard__form-group">
+          <div class="setup-wizard__form-toggle-row">
+            <label class="setup-wizard__toggle-label">
+              <input type="checkbox" id="setup-perusal-gating-enabled" class="setup-wizard__checkbox" {{PERUSAL_GATING_CHECKED}} />
+              <span>Enable perusal score gating</span>
+            </label>
+          </div>
+
+          <div class="setup-wizard__form-details" data-perusal-details {{PERUSAL_DETAILS_HIDDEN}}>
+            <p class="setup-wizard__info-text">
+              Visitors must request access to view perusal scores. They receive a time-limited magic link via email.
+            </p>
+            <div class="setup-wizard__field">
+              <label for="setup-perusal-webhook" class="setup-wizard__label">Webhook URL <span class="setup-wizard__optional">(optional)</span></label>
+              <input type="url" id="setup-perusal-webhook" class="setup-wizard__input" value="{{PERUSAL_WEBHOOK_URL}}" placeholder="https://hook.us1.make.com/..." />
+              <p class="setup-wizard__hint" id="perusal-webhook-hint">
+                Same concept as above &mdash; receives a copy of each perusal request.
+              </p>
+            </div>
+
+            <div class="setup-wizard__field">
+              <div class="setup-wizard__label-row">
+                <label for="setup-perusal-token-secret" class="setup-wizard__label">Token secret</label>
+                <button type="button" class="setup-wizard__regenerate-btn" data-token-regenerate aria-label="Generate a new random token secret">
+                  &#x21bb; Regenerate
+                </button>
+              </div>
+              <input type="text" id="setup-perusal-token-secret" class="setup-wizard__input" value="{{PERUSAL_TOKEN_SECRET}}" />
+              <p class="setup-wizard__hint" id="perusal-token-hint">
+                A crypto-secure random string used to sign magic-link tokens. Auto-generated for you.
+              </p>
+            </div>
+
+            <div class="setup-wizard__field">
+              <label for="setup-perusal-expiration" class="setup-wizard__label">Token expiration (days)</label>
+              <input type="number" id="setup-perusal-expiration" class="setup-wizard__input setup-wizard__input--narrow" value="{{PERUSAL_EXPIRATION_DAYS}}" min="1" max="365" />
+              <p class="setup-wizard__hint" id="perusal-exp-hint">
+                How long a magic link stays valid after it's sent.
+              </p>
+            </div>
+          </div>
+
+          <p class="setup-wizard__form-disabled-note" data-perusal-disabled-note {{PERUSAL_DISABLED_NOTE_HIDDEN}}>
+            Perusal scores will be freely accessible without gating.
+          </p>
+        </div>
+      </div>
+
+      <p class="setup-wizard__skip-note">
+        You can configure all of these settings (and email templates) later under Settings in Keystatic.
+      </p>
+
+    </section>
+
+    <!-- Step 8: Deployment -->
+    <section role="tabpanel" id="panel-deploy" aria-labelledby="tab-deploy" class="setup-wizard__panel" data-step="8" hidden>
+      <h1 class="setup-wizard__title">Deployment</h1>
+      <p class="setup-wizard__description">
+        Deploy your site to a server via SFTP. This is optional &mdash; you can set it up later.
+      </p>
+
+      <div class="setup-wizard__form">
+        <div class="setup-wizard__field">
+          <label for="setup-sftp-host" class="setup-wizard__label">SFTP host</label>
+          <input type="text" id="setup-sftp-host" class="setup-wizard__input" value="{{SFTP_HOST}}" placeholder="e.g., your-server.com or 123.45.67.89" />
+        </div>
+
+        <div class="setup-wizard__field">
+          <label for="setup-sftp-user" class="setup-wizard__label">SFTP username</label>
+          <input type="text" id="setup-sftp-user" class="setup-wizard__input" value="{{SFTP_USER}}" placeholder="e.g., webuser" />
+        </div>
+
+        <div class="setup-wizard__field-row">
+          <div class="setup-wizard__field">
+            <label for="setup-sftp-path" class="setup-wizard__label">Remote path</label>
+            <input type="text" id="setup-sftp-path" class="setup-wizard__input" value="{{SFTP_PATH}}" placeholder="/public_html" />
+          </div>
+          <div class="setup-wizard__field">
+            <label for="setup-sftp-port" class="setup-wizard__label">Port</label>
+            <input type="number" id="setup-sftp-port" class="setup-wizard__input setup-wizard__input--narrow" value="{{SFTP_PORT}}" min="1" max="65535" />
+          </div>
+        </div>
+
+        <p class="setup-wizard__hint" data-deploy-password-hint>
+          Your SFTP password is stored securely in your system keychain, never on disk.
+          See <code>docs/DEPLOYMENT.md</code> in your project for the full deployment guide.
+        </p>
+      </div>
+
+      <p class="setup-wizard__skip-note">
+        You can also configure this later in Keystatic under Settings &gt; Deploy.
+      </p>
+
+    </section>
+
+    <!-- Step 9: Done (standalone version — shows finalize progress then result) -->
+    <section role="tabpanel" id="panel-done" aria-labelledby="tab-done" class="setup-wizard__panel" data-step="9" hidden>
+      <div data-finalize-indicator>
+        <h1 class="setup-wizard__title">Preparing your site&hellip;</h1>
+        <p class="setup-wizard__description">Running the content pipeline. This may take a moment.</p>
+        <div class="setup-wizard__spinner" role="status" aria-label="Loading">
+          <div class="setup-wizard__spinner-ring"></div>
+        </div>
+      </div>
+      <div data-done-content hidden>
+        <h1 class="setup-wizard__title">You're all set!</h1>
+        <p class="setup-wizard__description">Your site is configured and ready. The dev server will start automatically in a moment&hellip;</p>
+
+        <ul class="setup-wizard__next-steps">
+          <li><strong>Keystatic CMS</strong> at <code>/keystatic/</code> &mdash; manage content visually</li>
+          <li><strong>Theme Studio</strong> &mdash; fine-tune colors and fonts from the dev toolbar</li>
+          <li><strong>Add more works</strong> &mdash; via Keystatic or by copying folders in <code>source/works-templates/</code></li>
+        </ul>
+      </div>
+    </section>
+
+    </main>
+
+    <!-- Shared navigation footer -->
+    <footer class="setup-wizard__footer" data-wizard-footer>
+      <div class="setup-wizard__footer-inner">
+        <button type="button" class="setup-wizard__btn setup-wizard__btn--secondary" data-action="back" data-footer-back hidden>Back</button>
+        <div class="setup-wizard__footer-end">
+          <button type="button" class="setup-wizard__btn setup-wizard__btn--primary" data-action="next" data-footer-next>Next: Choose a theme</button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Inject data for client-side script -->
+  <script type="application/json" id="setup-font-data">{{FONT_DATA}}</script>
+  <script type="application/json" id="setup-presets-data">{{PRESETS_DATA}}</script>
+  <script type="application/json" id="setup-hero-data">{{HERO_DATA}}</script>
+  <script type="application/json" id="setup-border-radius-options">{{BORDER_RADIUS_DATA}}</script>
+  <script type="application/json" id="setup-homepage-data">{{HOMEPAGE_DATA}}</script>
+  <script type="application/json" id="setup-forms-data">{{FORMS_DATA}}</script>
+  <script type="application/json" id="setup-about-data">{{ABOUT_DATA}}</script>
+  <script type="application/json" id="setup-deploy-data">{{DEPLOY_DATA}}</script>
+  <script>{{WIZARD_JS}}</script>
+</body>
+</html>

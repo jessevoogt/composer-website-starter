@@ -1,0 +1,35 @@
+---
+import { Icon } from 'astro-icon/components'
+import { UI_ICONS, type UiIconName } from './icon-map'
+
+interface Props {
+  /** Registry key (e.g. 'chevronLeft') or raw Lucide name (e.g. 'lucide:heart') */
+  name: UiIconName | (string & {})
+  /** CSS size value, default '1em' */
+  size?: string
+  /** SVG stroke width, default 1.8 (project standard) */
+  strokeWidth?: number
+  class?: string
+  /** If set, icon gets role="img" with this label; otherwise aria-hidden="true" */
+  label?: string
+  [key: string]: unknown
+}
+
+const { name, size = '1em', strokeWidth = 1.8, class: className, label, ...rest } = Astro.props
+
+const iconName = name in UI_ICONS ? UI_ICONS[name as UiIconName] : name
+
+const a11yAttrs = label
+  ? { role: 'img' as const, 'aria-label': label }
+  : { 'aria-hidden': 'true' as const }
+---
+
+<Icon
+  name={iconName}
+  width={size}
+  height={size}
+  stroke-width={strokeWidth}
+  class={className}
+  {...a11yAttrs}
+  {...rest}
+/>

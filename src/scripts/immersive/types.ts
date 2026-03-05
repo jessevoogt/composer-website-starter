@@ -26,18 +26,17 @@ export interface ClientRecordingEntry {
   featured: boolean
 }
 
+export type ClientSelectWorksSortOrder = 'selected-order' | 'random' | 'newest' | 'oldest' | 'title'
+
 /** Shape of the JSON data block embedded in the page. */
 export interface ImmersivePageData {
   imageCredits: { hero: string; listen: string }
   heroVariants: ClientHeroVariant[]
   fallbackHeroSrc: string
   defaultHeroFilter: string
+  selectWorksSortOrder: ClientSelectWorksSortOrder
   featuredRecordingPool: ClientRecordingEntry[]
   fallbackFeaturedRecording: ClientRecordingEntry | null
-  selectWorksBehavior: {
-    randomize: boolean
-    removeFeaturedWorkFromList: boolean
-  }
   devMode: boolean
   heroVariantEventName: string
 }

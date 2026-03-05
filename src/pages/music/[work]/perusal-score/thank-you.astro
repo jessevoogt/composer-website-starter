@@ -1,0 +1,98 @@
+---
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ThankYouCard from '@components/ThankYouCard.astro'
+import { getCollection } from 'astro:content'
+import prepareWorks, { type WorkWithImage } from '@/utils/prepareWorks'
+import perusalScores from '@/utils/perusal-scores'
+import { getPerusalThankYouPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
+
+const config = getPerusalThankYouPage()
+const { pageHero } = resolvePageHero(config.preferredHeroId)
+
+export async function getStaticPaths() {
+  const works = await getCollection('works')
+  const { works: preparedWorks } = prepareWorks(works)
+
+  return preparedWorks
+    .filter((work) => work.data.hasPerusalScore && perusalScores[work.id])
+    .map((work) => ({
+      params: { work: work.id },
+      props: { work },
+    }))
+}
+
+interface Props {
+  work: WorkWithImage
+}
+
+const { work } = Astro.props
+const workDetailUrl = `/music/${work.id}/`
+const messageHtml = config.message.replace('{{workTitle}}', `<em>${work.data.title}</em>`)
+const buttonLabel = config.buttonLabel.replace('{{workTitle}}', work.data.title)
+---
+
+<SiteLayout
+  title={`Thank You — ${work.data.title}`}
+  description={`Your perusal score access request for ${work.data.title} has been received.`}
+  url={`/music/${work.id}/perusal-score/thank-you/`}
+  robots="noindex, nofollow"
+  pageContentClass="page-content-thank-you"
+  pageHero={pageHero}
+  pageKey="perusal-thank-you"
+  customBreadcrumbLabels={{
+    [work.id]: work.data.title,
+    'perusal-score': 'Perusal Score',
+    'thank-you': 'Thank You',
+  }}
+>
+  <ThankYouCard headingId="thank-you-heading" heading={config.heading}>
+    <p set:html={messageHtml} />
+
+    <a slot="actions" href={workDetailUrl} class="ty-btn ty-btn-back">
+      <svg
+        class="ty-btn-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M5 12h13"></path>
+        <path d="m13 6 6 6-6 6"></path>
+      </svg>
+      <span class="ty-btn-label">{buttonLabel}</span>
+    </a>
+  </ThankYouCard>
+</SiteLayout>
+
+<script is:inline define:vars={{ workId: work.id }}>
+  document.addEventListener('astro:page-load', function onThankYouLoad() {
+    const STORAGE_PREFIX = 'perusal_gate:'
+    const accessGrantedUrl = '/music/' + workId + '/perusal-score/access-granted/'
+
+    // If user already has a token, redirect to the access-granted page.
+    // Replace history so Back skips past thank-you to the works page.
+    if (localStorage.getItem(STORAGE_PREFIX + workId)) {
+      window.location.replace(accessGrantedUrl)
+      return
+    }
+
+    // Listen for token arriving from another tab (e.g. user clicked the email link).
+    // The `storage` event fires when a *different* tab modifies localStorage.
+    window.addEventListener('storage', function onTokenFromOtherTab(event) {
+      if (event.key === STORAGE_PREFIX + workId && event.newValue) {
+        window.location.replace(accessGrantedUrl)
+      }
+    })
+
+    // Fire GA conversion event (email path — user must check inbox)
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'perusal_gate_conversion', {
+        work_id: workId,
+      })
+    }
+  })
+</script>

@@ -5,73 +5,235 @@ const isPerusalOnlyMode = checkPerusalMode().perusalScoreOnlyMode
 // In perusal-only mode, render a minimal page — skip all the heavyweight imports
 import SiteLayout from '@layouts/SiteLayout.astro'
 import ContactForm from '@components/ContactForm.astro'
+import Button from '@components/ui/Button.astro'
+import ButtonLink from '@components/ui/ButtonLink.astro'
+import CarouselButton from '@components/ui/CarouselButton.astro'
+import PlayButton from '@components/ui/PlayButton.astro'
 import { getCollection } from 'astro:content'
 import { Image } from 'astro:assets'
 import prepareWorks from '@/utils/prepareWorks'
 import worksImages from '@/utils/works-images'
 import {
   getSiteConfig,
-  getHomePage,
+  getThemeConfig,
   getContactPage,
   getHeroVariants,
-  getHeroConfig,
+  getHomeHero,
+  getHomeSeo,
+  getHomeContact,
+  getHomeFeaturedWork,
+  getHomeSelectWorks,
+  getHomeLayout,
   type HeroVariant,
 } from '@/utils/source-config'
 
-type ImageData = typeof worksImages[number]['data']
+type ImageData = (typeof worksImages)[number]['data']
 import { asDate, flattenRecordingEntries } from '@/utils/immersive-helpers'
 import perusalScores from '@/utils/perusal-scores'
 import type { ClientRecordingEntry } from '../scripts/immersive/types'
 
 const siteConfig = getSiteConfig()
-const homePage = getHomePage()
+const themeConfig = getThemeConfig()
+const homeHero = getHomeHero()
+const homeSeo = getHomeSeo()
+const homeContact = getHomeContact()
+const homeFeaturedWork = getHomeFeaturedWork()
+const homeSelectWorks = getHomeSelectWorks()
+const homeLayout = getHomeLayout()
+const sectionOrder = homeLayout.sections.map((s) => s.key)
+const visibleSections = new Set(sectionOrder)
 const contactPage = getContactPage()
 const heroVariants = getHeroVariants()
-const heroConfig = getHeroConfig()
 
-const heroTagline = homePage.heroTagline
-const contactIntro = homePage.contactIntro || contactPage.introText
-const contactEmailLeadText = homePage.contactEmailLeadText || contactPage.contactEmailLeadText
-const contactEmailLinkText = contactPage.contactEmailLinkText || siteConfig.email
-const isHeroSectionVisible = !homePage.hideHeroSection
-const isFeaturedRecordingSectionVisible = !homePage.hideFeaturedRecordingSection
-const isSelectWorksSectionVisible = !homePage.hideSelectWorksSection
-const isContactSectionVisible = !homePage.hideContactSection
-const hideHeroTitle = homePage.hideHeroTitle
-const hideHeroSubtitle = homePage.hideHeroSubtitle
-const showHeroIdentityLine = !hideHeroTitle || !hideHeroSubtitle
-const featuredSectionTitle = homePage.featuredSectionTitle
-const featuredMoreDetailsText = homePage.featuredMoreDetailsText
-const homeContactFormProps = {
-  nameLabel: contactPage.contactFormNameLabel,
-  namePlaceholder: contactPage.contactFormNamePlaceholder,
-  emailLabel: contactPage.contactFormEmailLabel,
-  emailPlaceholder: contactPage.contactFormEmailPlaceholder,
-  messageLabel: contactPage.contactFormMessageLabel,
-  messagePlaceholder: contactPage.contactFormMessagePlaceholder,
-  submitText: contactPage.contactFormSubmitText,
-}
+const heroTitle = homeHero.heroTitle.trim()
+const heroSubtitle = homeHero.heroSubtitle.trim()
+const heroTagline = homeHero.heroTagline.trim()
+const heroTaglineIsBlockquote = homeHero.heroTaglineAsBlockquote
+const heroTaglineCitation = homeHero.heroTaglineCitation.trim()
+const hasHeroSubtitle = heroSubtitle.length > 0
+const hasHeroTagline = heroTagline.length > 0
+const contactIntro = homeContact.contactIntro
+const contactSectionTitle = homeContact.sectionTitle || 'Contact'
+const featuredSectionTitle = homeFeaturedWork.sectionTitle || 'Featured Recording'
+const featuredActiveSectionTitle = homeFeaturedWork.activeSectionTitle || 'Currently Playing'
+const featuredButtonText = homeFeaturedWork.buttonText || 'More Details'
+const selectWorksSectionTitle = homeSelectWorks.sectionTitle || 'Select Works'
+const selectWorksSortOrder = homeSelectWorks.sortOrder
 const defaultListenImage = {
   src: heroVariants.find((v) => v.id === 'manuscript')?.src ?? heroVariants[0]?.src ?? '',
   alt: heroVariants.find((v) => v.id === 'manuscript')?.alt ?? '',
   position: heroVariants.find((v) => v.id === 'manuscript')?.position ?? '50% 50%',
 }
-const defaultHeroFilter = heroConfig.defaultFilter
-const fallbackHeroSrc = heroVariants.find((v) => v.id === heroConfig.fallbackHeroId)?.src ?? heroVariants[0]?.src ?? ''
+const defaultHeroFilter = homeHero.defaultFilter
+const fallbackHeroSrc = heroVariants.find((v) => v.id === homeHero.fallbackHeroId)?.src ?? heroVariants[0]?.src ?? ''
 const CONTACT_FORM_ENABLED = contactPage.contactFormEnabled
 
 const isDevMode = import.meta.env.DEV
 const heroVariantEventName = 'jv:immersive:hero-variant:set'
 
-const preferredHeroId = homePage.preferredHeroId || heroConfig.preferredHeroId
-const preferredHeroIndex = heroVariants.findIndex((variant) => variant.id === preferredHeroId)
+const preferredHeroIndex = heroVariants.findIndex((variant) => variant.id === homeHero.preferredHeroId)
 const defaultHeroIndex = preferredHeroIndex >= 0 ? preferredHeroIndex : 0
 const heroImage: HeroVariant = heroVariants[defaultHeroIndex] ?? heroVariants[0]!
 
-function clampPercent(value: number, min: number, max: number, fallback: number): number {
-  if (!Number.isFinite(value)) return fallback
-  return Math.min(max, Math.max(min, Math.round(value)))
+const HERO_STAGE_WIDTH_BY_SPLIT = {
+  'text-wide': 'min(40vw, 44rem)',
+  balanced: 'min(50vw, 52rem)',
+  'image-wide': 'min(60vw, 60rem)',
+} as const
+
+const HERO_TITLE_SIZE_BY_SCALE = {
+  small: 'clamp(0.74rem, 0.74rem + 0.14vw, 0.86rem)',
+  default: 'clamp(0.82rem, 0.82rem + 0.18vw, 0.95rem)',
+  large: 'clamp(0.9rem, 0.86rem + 0.28vw, 1.08rem)',
+  dramatic: 'clamp(1rem, 0.94rem + 0.38vw, 1.22rem)',
+} as const
+
+const HERO_TAGLINE_SIZE_BY_SCALE = {
+  small: 'clamp(1.36rem, 2.7vw, 3rem)',
+  default: 'clamp(1.62rem, 3.2vw, 3.72rem)',
+  large: 'clamp(1.9rem, 3.9vw, 4.4rem)',
+  dramatic: 'clamp(2.15rem, 4.6vw, 5rem)',
+} as const
+
+const HERO_CITATION_SIZE_BY_SCALE = {
+  small: 'clamp(0.76rem, 0.76rem + 0.12vw, 0.88rem)',
+  default: 'clamp(0.82rem, 0.82rem + 0.18vw, 0.98rem)',
+  large: 'clamp(0.9rem, 0.88rem + 0.22vw, 1.08rem)',
+  dramatic: 'clamp(1rem, 0.96rem + 0.3vw, 1.18rem)',
+} as const
+
+const HERO_CONTENT_GLOW_WIDTH_BY_INTENSITY = {
+  none: '0px',
+  subtle: 'clamp(1.5rem, 3vw, 2.4rem)',
+  medium: 'clamp(2.2rem, 4.6vw, 3.6rem)',
+  strong: 'clamp(3rem, 6vw, 4.8rem)',
+} as const
+
+const HERO_CONTENT_GLOW_STOPS_BY_INTENSITY = {
+  subtle: ['32%', '14%', '4%'],
+  medium: ['42%', '18%', '6%'],
+  strong: ['54%', '24%', '8%'],
+} as const
+
+function buildHeroDirectionalGlow(
+  intensity: 'subtle' | 'medium' | 'strong',
+  imagePosition: 'left' | 'right',
+  glowSide: 'content' | 'image',
+): string {
+  const direction =
+    glowSide === 'content'
+      ? imagePosition === 'right'
+        ? '270deg'
+        : '90deg'
+      : imagePosition === 'right'
+        ? '90deg'
+        : '270deg'
+  const [start, mid, fade] = HERO_CONTENT_GLOW_STOPS_BY_INTENSITY[intensity]
+
+  return `linear-gradient(
+    ${direction},
+    color-mix(in srgb, var(--split-line-base) ${start}, transparent) 0%,
+    color-mix(in srgb, var(--split-line-base) ${mid}, transparent) 24%,
+    color-mix(in srgb, var(--split-line-base) ${fade}, transparent) 58%,
+    transparent 100%
+  )`
 }
+
+const themeHomeHero = themeConfig.homeHero
+const heroLayoutMode = themeHomeHero.layout.mode
+const heroImagePosition = themeHomeHero.layout.columnsImagePosition
+const heroColumnSplit = themeHomeHero.layout.columnSplit
+const heroStackedImageOrder = themeHomeHero.layout.stackedImageOrder
+const heroStageWidth = HERO_STAGE_WIDTH_BY_SPLIT[heroColumnSplit]
+const heroShowsBackdrop = heroLayoutMode !== 'text-only'
+const heroUsesImageColumn =
+  heroLayoutMode === 'columns' || heroLayoutMode === 'stacked' || heroLayoutMode === 'image-only'
+const heroShowsCopy = heroLayoutMode !== 'image-only'
+const heroListenButtonStyle = themeHomeHero.actions.listenNow
+const heroSearchButtonStyle = themeHomeHero.actions.searchMusic
+const heroListenButtonVariant = heroListenButtonStyle === 'inline' ? 'inline' : 'primary'
+const heroSearchButtonVariant =
+  heroSearchButtonStyle === 'outline' || heroSearchButtonStyle === 'solid' ? 'primary' : 'inline'
+const heroListenButtonLabel = homeHero.actions.listenNow.label.trim() || 'Listen Now'
+const heroSearchButtonLabel = homeHero.actions.searchMusic.label.trim() || 'Search Music'
+const showHeroListenButton = heroShowsCopy && homeHero.actions.listenNow.visible
+const showHeroSearchButton = heroShowsCopy && homeHero.actions.searchMusic.visible
+const showHeroActions = showHeroListenButton || showHeroSearchButton
+const heroAccessibleTitle = [heroTitle, heroSubtitle].filter(Boolean).join(' - ')
+const heroDividerColor = themeHomeHero.divider.color.trim()
+const heroDividerVisible = themeHomeHero.divider.visible
+const heroDividerThickness = heroDividerVisible ? `${themeHomeHero.divider.widthPx}px` : '0px'
+const heroDividerOpacity = heroDividerVisible ? '0.3' : '0'
+const heroDividerGlowMode = heroDividerVisible ? themeHomeHero.divider.glow : 'none'
+const heroDividerGlowSide = themeHomeHero.divider.glowSide
+const heroBalancedGlowMode =
+  heroLayoutMode === 'columns' &&
+  heroDividerVisible &&
+  heroDividerGlowMode !== 'none' &&
+  heroDividerGlowSide === 'balanced'
+    ? heroDividerGlowMode
+    : null
+const heroBalancedGlow = heroBalancedGlowMode
+  ? {
+      width: HERO_CONTENT_GLOW_WIDTH_BY_INTENSITY[heroBalancedGlowMode],
+      imageGradient: buildHeroDirectionalGlow(heroBalancedGlowMode, heroImagePosition, 'image'),
+      contentGradient: buildHeroDirectionalGlow(heroBalancedGlowMode, heroImagePosition, 'content'),
+    }
+  : null
+const heroDirectionalGlowSide =
+  heroLayoutMode === 'columns' &&
+  heroDividerVisible &&
+  heroDividerGlowMode !== 'none' &&
+  heroDividerGlowSide !== 'balanced'
+    ? heroDividerGlowSide
+    : null
+const heroDirectionalGlowMode = heroDirectionalGlowSide && heroDividerGlowMode !== 'none' ? heroDividerGlowMode : null
+const heroDirectionalGlow =
+  heroDirectionalGlowSide && heroDirectionalGlowMode
+    ? {
+        side: heroDirectionalGlowSide,
+        width: HERO_CONTENT_GLOW_WIDTH_BY_INTENSITY[heroDirectionalGlowMode],
+        gradient: buildHeroDirectionalGlow(heroDirectionalGlowMode, heroImagePosition, heroDirectionalGlowSide),
+      }
+    : null
+const heroRootStyle = [
+  `--hero-image-filter: ${heroImage.filter}`,
+  `--hero-image-scale-x: ${themeHomeHero.mirrorImage ? '-1' : '1'}`,
+  `--stage-width: ${heroStageWidth}`,
+  `--listen-left: ${heroStageWidth}`,
+  `--hero-title-size: ${HERO_TITLE_SIZE_BY_SCALE[themeHomeHero.typography.titleScale]}`,
+  `--hero-tagline-size: ${HERO_TAGLINE_SIZE_BY_SCALE[themeHomeHero.typography.taglineScale]}`,
+  `--hero-citation-size: ${HERO_CITATION_SIZE_BY_SCALE[themeHomeHero.typography.citationScale]}`,
+  `--split-line-thickness: ${heroDividerThickness}`,
+  `--split-line-opacity: ${heroDividerOpacity}`,
+  ...(heroDividerColor ? [`--split-line-base: ${heroDividerColor}`] : []),
+  ...(heroBalancedGlow
+    ? [
+        `--split-line-glow-shadow: none`,
+        `--hero-split-line-image-glow-width: ${heroBalancedGlow.width}`,
+        `--hero-split-line-image-glow: ${heroBalancedGlow.imageGradient}`,
+        `--hero-split-line-content-glow-width: ${heroBalancedGlow.width}`,
+        `--hero-split-line-content-glow: ${heroBalancedGlow.contentGradient}`,
+      ]
+    : heroDirectionalGlow
+      ? [
+          `--split-line-glow-shadow: none`,
+          ...(heroDirectionalGlow.side === 'image'
+            ? [
+                `--hero-split-line-image-glow-width: ${heroDirectionalGlow.width}`,
+                `--hero-split-line-image-glow: ${heroDirectionalGlow.gradient}`,
+                `--hero-split-line-content-glow-width: 0px`,
+                `--hero-split-line-content-glow: none`,
+              ]
+            : [
+                `--hero-split-line-image-glow-width: 0px`,
+                `--hero-split-line-image-glow: none`,
+                `--hero-split-line-content-glow-width: ${heroDirectionalGlow.width}`,
+                `--hero-split-line-content-glow: ${heroDirectionalGlow.gradient}`,
+              ]),
+        ]
+      : []),
+].join('; ')
 
 function resolveImagePath(value: string | undefined): string {
   if (!value) return ''
@@ -89,6 +251,7 @@ function resolveImageData(value: string | undefined): ImageData | null {
 
 const worksCollection = await getCollection('works')
 const { works: worksWithImages } = prepareWorks(worksCollection)
+type HomeSelectWorkEntry = (typeof worksWithImages)[number]
 
 const recordingEntries: ClientRecordingEntry[] = flattenRecordingEntries(
   worksWithImages,
@@ -97,12 +260,13 @@ const recordingEntries: ClientRecordingEntry[] = flattenRecordingEntries(
   perusalScores,
 )
 
-const fallbackFeaturedRecording: ClientRecordingEntry =
-  recordingEntries.find((entry) => entry.workId === 'crepusculaire' && entry.mp3) ??
+const fallbackFeaturedRecording: ClientRecordingEntry = recordingEntries.find(
+  (entry) => entry.workId === 'crepusculaire' && entry.mp3,
+) ??
   recordingEntries.find((entry) => entry.mp3) ?? {
     key: 'fallback-0',
     workId: 'fallback',
-    workHref: '/works/',
+    workHref: '/music/',
     title: 'Featured Recording',
     performer: 'Performer to be announced',
     instrumentation: '',
@@ -123,406 +287,425 @@ const listenImage = {
   position: initialFeaturedRecording.imagePosition,
 }
 
-const listenNowText = homePage.listenNowText.trim() || 'Listen Now'
-const searchMusicText = homePage.searchMusicText.trim() || 'Search Music'
-const hasSearchMusicAction = !homePage.hideSearchMusicButton
-const heroPrimaryActionHref = isFeaturedRecordingSectionVisible
-  ? '#listen'
-  : isSelectWorksSectionVisible
-    ? '#works-title'
-    : isContactSectionVisible
-      ? '#contact'
-      : '#home-content-start'
-const heroImageColumnSide = homePage.heroImageColumnSide === 'right' ? 'right' : 'left'
-const heroImageColumnWidthPercent = clampPercent(homePage.heroImageColumnWidthPercent, 25, 75, 41)
-const featuredPlayerImageColumnSide = homePage.featuredPlayerImageColumnSide === 'left' ? 'left' : 'right'
-const featuredPlayerImageColumnWidthPercent = clampPercent(homePage.featuredPlayerImageColumnWidthPercent, 30, 75, 58)
-const isHeroImageRight = heroImageColumnSide === 'right'
-const isFeaturedImageLeft = featuredPlayerImageColumnSide === 'left'
-const featuredPlayerImageWidthRatio = featuredPlayerImageColumnWidthPercent / 100
-const featuredPlayerImageGutterAdjust = Number((2 * featuredPlayerImageWidthRatio - 1).toFixed(4))
-const immersiveRootStyle = [
-  `--hero-image-filter: ${heroImage.filter}`,
-  `--hero-image-column-width: ${heroImageColumnWidthPercent}%`,
-  `--featured-image-column-width: ${featuredPlayerImageColumnWidthPercent}%`,
-  `--featured-image-column-gutter-adjust: ${featuredPlayerImageGutterAdjust}`,
-].join('; ')
-
 const imageCredits = {
   hero: heroImage.credit,
   listen: 'Featured recording image from work/recording metadata.',
 }
 const heroVariantsForClient = isDevMode ? heroVariants : []
 
-const selectWorksLabel = homePage.selectWorksLabel.trim()
-const hasVisibleSelectWorksLabel = selectWorksLabel.length > 0
-const selectWorksA11yLabel = hasVisibleSelectWorksLabel ? selectWorksLabel : 'Select Works'
-const selectWorksMaxItems =
-  typeof homePage.selectWorksMaxItems === 'number' && homePage.selectWorksMaxItems > 0
-    ? homePage.selectWorksMaxItems
-    : null
+function compareWorkByTitle(left: HomeSelectWorkEntry, right: HomeSelectWorkEntry): number {
+  return left.data.title.localeCompare(right.data.title)
+}
+
+function compareWorkByNewest(left: HomeSelectWorkEntry, right: HomeSelectWorkEntry): number {
+  const dateDifference = asDate(right.data.completionDate) - asDate(left.data.completionDate)
+  if (dateDifference !== 0) {
+    return dateDifference
+  }
+
+  return compareWorkByTitle(left, right)
+}
+
+function compareWorkByOldest(left: HomeSelectWorkEntry, right: HomeSelectWorkEntry): number {
+  const dateDifference = asDate(left.data.completionDate) - asDate(right.data.completionDate)
+  if (dateDifference !== 0) {
+    return dateDifference
+  }
+
+  return compareWorkByTitle(left, right)
+}
+
+function compareWorkBySelectedOrder(left: HomeSelectWorkEntry, right: HomeSelectWorkEntry): number {
+  const leftOrder = typeof left.data.selectedOrder === 'number' ? left.data.selectedOrder : Number.MAX_SAFE_INTEGER
+  const rightOrder = typeof right.data.selectedOrder === 'number' ? right.data.selectedOrder : Number.MAX_SAFE_INTEGER
+
+  if (leftOrder !== rightOrder) {
+    return leftOrder - rightOrder
+  }
+
+  return compareWorkByNewest(left, right)
+}
+
+function shuffleItems<T>(items: T[]): T[] {
+  const shuffled = [...items]
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!]
+  }
+
+  return shuffled
+}
+
+function orderSelectedWorks(items: HomeSelectWorkEntry[]): HomeSelectWorkEntry[] {
+  switch (selectWorksSortOrder) {
+    case 'selected-order':
+      return [...items].sort(compareWorkBySelectedOrder)
+    case 'newest':
+      return [...items].sort(compareWorkByNewest)
+    case 'oldest':
+      return [...items].sort(compareWorkByOldest)
+    case 'title':
+      return [...items].sort(compareWorkByTitle)
+    case 'random':
+    default:
+      return shuffleItems(items)
+  }
+}
 
 const selectedPool = worksWithImages.filter((work) => work.data.selected)
-const selectedWorksSource = homePage.selectWorksShowAll
+const selectedWorksSource = homeSelectWorks.ignoreSelected
   ? worksWithImages
   : selectedPool.length > 0
     ? selectedPool
-    : worksWithImages
+    : homeSelectWorks.showAllIfNoSelected
+      ? worksWithImages
+      : []
 
-const orderedSelectedWorks = [...selectedWorksSource]
-  .sort((left, right) => {
-    const leftOrder = typeof left.data.selectedOrder === 'number' ? left.data.selectedOrder : Number.MAX_SAFE_INTEGER
-    const rightOrder = typeof right.data.selectedOrder === 'number' ? right.data.selectedOrder : Number.MAX_SAFE_INTEGER
-
-    if (leftOrder !== rightOrder) {
-      return leftOrder - rightOrder
-    }
-
-    return asDate(right.data.completionDate) - asDate(left.data.completionDate)
-  })
-const limitedSelectedWorks = typeof selectWorksMaxItems === 'number'
-  ? orderedSelectedWorks.slice(0, selectWorksMaxItems)
-  : orderedSelectedWorks
-
-const selectedWorks = limitedSelectedWorks
+const selectedWorks = orderSelectedWorks(selectedWorksSource)
+  .slice(0, 16)
   .map((work) => ({
     workId: work.id,
     title: work.data.title,
     detail: work.data.instrumentation.length > 0 ? work.data.instrumentation.join(', ') : 'Composition',
-    href: `/works/${work.id}/`,
+    href: `/music/${work.id}/`,
     image: work.featuredImage?.src ?? work.data.thumbnail?.src ?? '',
     imageData: work.featuredImage ?? resolveImageData(work.data.thumbnail?.src),
     imageAlt: work.data.thumbnail?.alt ?? `${work.data.title} artwork`,
   }))
-
-const homeSkipTargetId = isHeroSectionVisible
-  ? 'home-title'
-  : isFeaturedRecordingSectionVisible
-    ? 'listen-title'
-    : isSelectWorksSectionVisible
-      ? 'works-title'
-      : isContactSectionVisible
-        ? 'contact-title'
-        : 'home-content-start'
 
 const pageData = JSON.stringify({
   imageCredits,
   heroVariants: heroVariantsForClient,
   fallbackHeroSrc,
   defaultHeroFilter,
+  selectWorksSortOrder,
   featuredRecordingPool,
   fallbackFeaturedRecording,
   devMode: isDevMode,
   heroVariantEventName,
-  selectWorksBehavior: {
-    randomize: homePage.selectWorksRandomize,
-    removeFeaturedWorkFromList: homePage.selectWorksExcludeFeaturedWork,
-  },
 })
 ---
 
-{isPerusalOnlyMode ? (
-  <PerusalOnlyIndex />
-) : (
-<SiteLayout
-  title={homePage.metaTitle || `${siteConfig.composerName} — ${homePage.heroSubtitle}`}
-  description={homePage.metaDescription || siteConfig.siteDescription}
-  isHomepage={true}
-  skipTargetId={homeSkipTargetId}
->
-  <div
-    class="immersive-home"
-    data-immersive-root
-    data-active-hero={heroImage.id}
-    data-page-hero-page="home"
-    data-hero-image-side={heroImageColumnSide}
-    style={immersiveRootStyle}
-  >
-    <div id="home-content-start" tabindex="-1" class="sr-only">Homepage content</div>
-    <div class="stage-backdrop" aria-hidden="true">
-      <img
-        class="stage-backdrop-image"
-        src={heroImage.src}
-        alt=""
-        loading="eager"
-        decoding="async"
-        width="1200"
-        height="1700"
-        style={`object-position: ${heroImage.position};`}
-      />
-      <div class="stage-backdrop-scrim"></div>
-    </div>
+{
+  isPerusalOnlyMode ? (
+    <PerusalOnlyIndex />
+  ) : (
+    <SiteLayout
+      title={homeSeo.metaTitle || `${siteConfig.composerName} — ${homeHero.heroSubtitle}`}
+      description={homeSeo.metaDescription || siteConfig.siteDescription}
+      isHomepage={true}
+      skipTargetId="home-title"
+    >
+      <div
+        class="immersive-home"
+        data-immersive-root
+        data-active-hero={heroImage.id}
+        data-hero-layout={heroLayoutMode}
+        data-hero-image-position={heroImagePosition}
+        data-hero-stacked-order={heroStackedImageOrder}
+        data-hero-divider-glow={heroDividerGlowMode}
+        data-hero-divider-glow-side={heroDividerGlowSide}
+        style={heroRootStyle}
+      >
+        {visibleSections.has('hero') && heroShowsBackdrop && (
+          <div class="stage-backdrop" aria-hidden="true">
+            <img
+              class="stage-backdrop-image"
+              src={heroImage.src}
+              alt=""
+              loading="eager"
+              decoding="async"
+              width="1200"
+              height="1700"
+              style={`object-position: ${heroImage.position};`}
+            />
+            <div class="stage-backdrop-scrim" />
+          </div>
+        )}
 
-    {isHeroSectionVisible ? (
-      <section class="masthead" data-parallax-hero aria-labelledby="home-title">
-        {!isHeroImageRight ? <div class="image-column"></div> : null}
-        <div class="content-column">
-          <div class="hero-content" data-parallax-copy>
-            {showHeroIdentityLine ? (
-              <h1 id="home-title" tabindex="-1" class="hero-idline intro-item" style="--intro-delay: 90ms">
-                {!hideHeroTitle ? <span>{homePage.heroTitle}</span> : null}
-                {!hideHeroTitle && !hideHeroSubtitle ? <span aria-hidden="true">&bull;</span> : null}
-                {!hideHeroSubtitle ? <span>{homePage.heroSubtitle}</span> : null}
-              </h1>
-            ) : (
-              <span id="home-title" tabindex="-1" aria-hidden="true"></span>
+        {sectionOrder.map((key) => (
+          <>
+            {key === 'hero' && (
+              <section
+                class="masthead"
+                data-parallax-hero
+                data-hero-layout={heroLayoutMode}
+                data-hero-image-position={heroImagePosition}
+                data-hero-stacked-order={heroStackedImageOrder}
+                aria-labelledby="home-title"
+              >
+                {heroUsesImageColumn && <div class="image-column" aria-hidden="true" />}
+
+                {heroShowsCopy ? (
+                  <div class="content-column">
+                    <div class="hero-content" data-parallax-copy>
+                      <h1 id="home-title" tabindex="-1" class="hero-idline intro-item" style="--intro-delay: 90ms">
+                        <span>{heroTitle}</span>
+                        {hasHeroSubtitle && <span aria-hidden="true">&bull;</span>}
+                        {hasHeroSubtitle && <span>{heroSubtitle}</span>}
+                      </h1>
+                      {hasHeroTagline &&
+                        (heroTaglineIsBlockquote ? (
+                          <blockquote class="hero-tagline hero-tagline-quote intro-item" style="--intro-delay: 180ms">
+                            <p class="hero-tagline-quote-text">{heroTagline}</p>
+                            {heroTaglineCitation && <cite class="hero-tagline-citation">{heroTaglineCitation}</cite>}
+                          </blockquote>
+                        ) : (
+                          <p class="hero-tagline intro-item" style="--intro-delay: 180ms">
+                            {heroTagline}
+                          </p>
+                        ))}
+                      {showHeroActions && (
+                        <div class="hero-actions intro-item" style="--intro-delay: 320ms">
+                          {showHeroListenButton && (
+                            <ButtonLink
+                              href="#listen"
+                              variant={heroListenButtonVariant}
+                              class="hero-action-listen-btn"
+                              data-hero-action-style={heroListenButtonStyle}
+                            >
+                              {heroListenButtonLabel}
+                              <span slot="append" style="display:contents">
+                                <span class="hero-action-icon hero-action-icon-listen" aria-hidden="true">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.8"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                  >
+                                    <path d="M4 12a8 8 0 0 1 16 0" />
+                                    <path d="M4.5 12h1.4c0.6 0 1.1 0.5 1.1 1.1V19c0 0.6-0.5 1.1-1.1 1.1H4.5A1.5 1.5 0 0 1 3 18.6v-5.1A1.5 1.5 0 0 1 4.5 12Z" />
+                                    <path d="M19.5 12h-1.4c-0.6 0-1.1 0.5-1.1 1.1V19c0 0.6 0.5 1.1 1.1 1.1h1.4a1.5 1.5 0 0 0 1.5-1.5v-5.1a1.5 1.5 0 0 0-1.5-1.5Z" />
+                                  </svg>
+                                </span>
+                                <span class="hero-action-icon hero-action-icon-scroll" aria-hidden="true">
+                                  <svg viewBox="0 0 20 20" fill="none">
+                                    <path d="M10 4.5V14" />
+                                    <path d="M5.75 10.75L10 15.25L14.25 10.75" />
+                                  </svg>
+                                </span>
+                                <span class="hero-action-scroll-tip" aria-hidden="true">
+                                  <svg viewBox="0 0 14 12" fill="none">
+                                    <path class="hero-action-scroll-tip-fill" d="M1 1L7 11L13 1Z" />
+                                    <path class="hero-action-scroll-tip-stroke" d="M1 1L7 11L13 1" />
+                                  </svg>
+                                </span>
+                              </span>
+                            </ButtonLink>
+                          )}
+                          {showHeroSearchButton && (
+                            <Button
+                              variant={heroSearchButtonVariant}
+                              class="hero-action-search-btn"
+                              data-hero-action-style={heroSearchButtonStyle}
+                              data-works-search-modal-toggle
+                              data-works-search-scope="music"
+                              aria-controls="works-search-modal mobile-menu-modal"
+                              aria-expanded="false"
+                            >
+                              {heroSearchButtonLabel}
+                              <span
+                                slot="icon-right"
+                                class="hero-action-icon hero-action-icon-search"
+                                aria-hidden="true"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none">
+                                  <circle cx="11" cy="11" r="6.5" />
+                                  <path d="M16.2 16.2L21 21" />
+                                </svg>
+                              </span>
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <h1 id="home-title" tabindex="-1" class="sr-only">
+                    {heroAccessibleTitle}
+                  </h1>
+                )}
+              </section>
             )}
-            <p class="hero-tagline intro-item" style="--intro-delay: 180ms">{heroTagline}</p>
-            <div class="hero-actions intro-item" style="--intro-delay: 320ms">
-              <a href={heroPrimaryActionHref} class="immersive-btn immersive-btn-primary hero-action-listen-btn">
-                <span class="immersive-btn-label">{listenNowText}</span>
-                <span class="hero-action-icon hero-action-icon-listen" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 12a8 8 0 0 1 16 0"></path>
-                    <path d="M4.5 12h1.4c0.6 0 1.1 0.5 1.1 1.1V19c0 0.6-0.5 1.1-1.1 1.1H4.5A1.5 1.5 0 0 1 3 18.6v-5.1A1.5 1.5 0 0 1 4.5 12Z"></path>
-                    <path d="M19.5 12h-1.4c-0.6 0-1.1 0.5-1.1 1.1V19c0 0.6 0.5 1.1 1.1 1.1h1.4a1.5 1.5 0 0 0 1.5-1.5v-5.1a1.5 1.5 0 0 0-1.5-1.5Z"></path>
-                  </svg>
-                </span>
-                <span class="hero-action-scroll-tip" aria-hidden="true">
-                  <svg viewBox="0 0 14 12" fill="none">
-                    <path class="hero-action-scroll-tip-fill" d="M1 1L7 11L13 1Z"></path>
-                    <path class="hero-action-scroll-tip-stroke" d="M1 1L7 11L13 1"></path>
-                  </svg>
-                </span>
-              </a>
-              {
-                hasSearchMusicAction ? (
+
+            {key === 'featured-work' && (
+              <section class="section listen-section" id="listen" aria-labelledby="listen-title">
+                <span class="listen-drift-bridge" aria-hidden="true" />
+                <div class="section-grid">
+                  <div>
+                    <h2
+                      id="listen-title"
+                      data-featured-section-title
+                      data-featured-section-default-title={featuredSectionTitle}
+                      data-featured-section-active-title={featuredActiveSectionTitle}
+                      data-featured-default-recording-key={initialFeaturedRecording.key}
+                    >
+                      {featuredSectionTitle}
+                    </h2>
+                    <p
+                      class="featured-recording-meta"
+                      data-featured-meta
+                      data-featured-meta-instrumentation={initialFeaturedRecording.instrumentation}
+                    >
+                      <span data-featured-meta-title>{initialFeaturedRecording.title}</span>
+                      <span data-featured-meta-performer>{initialFeaturedRecording.performer}</span>
+                      <span data-featured-meta-date>{initialFeaturedRecording.date}</span>
+                    </p>
+                    <p class="featured-recording-action">
+                      <ButtonLink
+                        href={initialFeaturedRecording.workHref}
+                        variant="primary"
+                        class="featured-work-link"
+                        data-featured-work-link
+                      >
+                        {featuredButtonText}
+                        <span slot="icon-right" class="featured-work-link-arrow" aria-hidden="true">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.7"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <path d="M5 12h13" />
+                            <path d="m13 6 6 6-6 6" />
+                          </svg>
+                        </span>
+                      </ButtonLink>
+                    </p>
+                  </div>
+                </div>
+                <figure
+                  class="listen-bleed"
+                  data-parallax-listen
+                  style={`--listen-image-position: ${listenImage.position};`}
+                >
+                  <img
+                    src={listenImage.src}
+                    alt={listenImage.alt}
+                    loading="lazy"
+                    decoding="async"
+                    width="900"
+                    height="620"
+                    data-featured-image
+                  />
+                  <PlayButton
+                    class="listen-bleed-trigger"
+                    innerClass="listen-bleed-trigger-inner"
+                    data-listen-trigger
+                    aria-controls="featured-track-player"
+                    aria-label="Play featured recording"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none" />
+                    </svg>
+                    <span slot="sr-label">Play featured recording</span>
+                  </PlayButton>
+                  <PlayButton
+                    class="listen-bleed-pause"
+                    innerClass="listen-bleed-pause-inner"
+                    data-bleed-pause
+                    hidden
+                    aria-label="Pause featured recording"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        class="icon-bleed-play"
+                        d="M8.8 7.4L17 12L8.8 16.6V7.4Z"
+                        fill="currentColor"
+                        stroke="none"
+                      />
+                      <path class="icon-bleed-pause" d="M9.4 7.4V16.6M14.6 7.4V16.6" />
+                    </svg>
+                    <span slot="sr-label">Toggle featured recording playback</span>
+                  </PlayButton>
                   <button
                     type="button"
-                    class="immersive-btn immersive-btn-inline hero-action-search-btn"
-                    data-works-search-modal-toggle
-                    data-works-search-scope="music"
-                    aria-controls="works-search-modal mobile-menu-modal"
-                    aria-expanded="false"
-                    aria-label={`Open ${searchMusicText}`}
+                    class="listen-bleed-nav listen-bleed-nav-prev"
+                    data-listen-prev
+                    hidden
+                    aria-label="Previous featured recording"
                   >
-                    <span class="hero-action-search-label immersive-btn-label">{searchMusicText}</span>
-                    <span class="hero-action-icon hero-action-icon-search" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none">
-                        <circle cx="11" cy="11" r="6.5"></circle>
-                        <path d="M16.2 16.2L21 21"></path>
-                      </svg>
-                    </span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m15 6-6 6 6 6" />
+                    </svg>
                   </button>
-                ) : null
-              }
-            </div>
-          </div>
-        </div>
-        {isHeroImageRight ? <div class="image-column"></div> : null}
-      </section>
-    ) : null}
+                  <button
+                    type="button"
+                    class="listen-bleed-nav listen-bleed-nav-next"
+                    data-listen-next
+                    hidden
+                    aria-label="Next featured recording"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m9 6 6 6-6 6" />
+                    </svg>
+                  </button>
+                </figure>
+              </section>
+            )}
 
-    {isFeaturedRecordingSectionVisible ? (
-    <section class="section listen-section" id="listen" aria-labelledby="listen-title" data-featured-image-side={featuredPlayerImageColumnSide}>
-      {isFeaturedImageLeft ? (
-        <figure class="listen-bleed" data-parallax-listen style={`--listen-image-position: ${listenImage.position};`}>
-          <img src={listenImage.src} alt={listenImage.alt} loading="lazy" decoding="async" width="900" height="620" data-featured-image />
-          <button type="button" class="listen-bleed-trigger" data-listen-trigger aria-controls="featured-track-player" aria-label="Play featured recording">
-            <span class="listen-bleed-trigger-inner" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
-              </svg>
-            </span>
-            <span class="sr-only">Play featured recording</span>
-          </button>
-          <button type="button" class="listen-bleed-pause" data-bleed-pause hidden aria-label="Pause featured recording">
-            <span class="listen-bleed-pause-inner" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path class="icon-bleed-play" d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
-                <path class="icon-bleed-pause" d="M9.4 7.4V16.6M14.6 7.4V16.6"></path>
-              </svg>
-            </span>
-            <span class="sr-only">Toggle featured recording playback</span>
-          </button>
-          <button
-            type="button"
-            class="listen-bleed-nav listen-bleed-nav-prev"
-            data-listen-prev
-            hidden
-            aria-label="Previous featured recording"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m15 6-6 6 6 6"></path>
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="listen-bleed-nav listen-bleed-nav-next"
-            data-listen-next
-            hidden
-            aria-label="Next featured recording"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m9 6 6 6-6 6"></path>
-            </svg>
-          </button>
-        </figure>
-      ) : null}
-
-      <div class="listen-text-column">
-        <div class="section-grid">
-          <div>
-            <h2
-              id="listen-title"
-              data-featured-section-title
-              data-featured-section-default-title={featuredSectionTitle}
-              data-featured-section-active-title="Currently Playing"
-              data-featured-default-recording-key={initialFeaturedRecording.key}
-            >
-              {featuredSectionTitle}
-            </h2>
-            <p
-              class="featured-recording-meta"
-              data-featured-meta
-              data-featured-meta-instrumentation={initialFeaturedRecording.instrumentation}
-            >
-              <span data-featured-meta-title>{initialFeaturedRecording.title}</span>
-              <span data-featured-meta-performer>{initialFeaturedRecording.performer}</span>
-              <span data-featured-meta-date>{initialFeaturedRecording.date}</span>
-            </p>
-            <p class="featured-recording-action">
-              <a href={initialFeaturedRecording.workHref} class="immersive-btn immersive-btn-primary featured-work-link" data-featured-work-link>
-                <span class="immersive-btn-label">{featuredMoreDetailsText}</span>
-                <span class="featured-work-link-arrow" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h13"></path>
-                    <path d="m13 6 6 6-6 6"></path>
-                  </svg>
-                </span>
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-      {!isFeaturedImageLeft ? (
-        <figure class="listen-bleed" data-parallax-listen style={`--listen-image-position: ${listenImage.position};`}>
-          <img src={listenImage.src} alt={listenImage.alt} loading="lazy" decoding="async" width="900" height="620" data-featured-image />
-          <button type="button" class="listen-bleed-trigger" data-listen-trigger aria-controls="featured-track-player" aria-label="Play featured recording">
-            <span class="listen-bleed-trigger-inner" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
-              </svg>
-            </span>
-            <span class="sr-only">Play featured recording</span>
-          </button>
-          <button type="button" class="listen-bleed-pause" data-bleed-pause hidden aria-label="Pause featured recording">
-            <span class="listen-bleed-pause-inner" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path class="icon-bleed-play" d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
-                <path class="icon-bleed-pause" d="M9.4 7.4V16.6M14.6 7.4V16.6"></path>
-              </svg>
-            </span>
-            <span class="sr-only">Toggle featured recording playback</span>
-          </button>
-          <button
-            type="button"
-            class="listen-bleed-nav listen-bleed-nav-prev"
-            data-listen-prev
-            hidden
-            aria-label="Previous featured recording"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m15 6-6 6 6 6"></path>
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="listen-bleed-nav listen-bleed-nav-next"
-            data-listen-next
-            hidden
-            aria-label="Next featured recording"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m9 6 6 6-6 6"></path>
-            </svg>
-          </button>
-        </figure>
-      ) : null}
-    </section>
-    ) : null}
-
-    {isSelectWorksSectionVisible ? (
-    <section class="section section-solid" aria-labelledby="works-title">
-      <div class="work-carousel" data-selected-carousel>
-        <div class="work-carousel-header">
-          <h2 id="works-title" class={hasVisibleSelectWorksLabel ? undefined : 'sr-only'}>
-            {hasVisibleSelectWorksLabel ? selectWorksLabel : 'Select Works'}
-          </h2>
-          <div class="work-carousel-controls" aria-label={`${selectWorksA11yLabel} carousel controls`}>
-            <button
-              type="button"
-              class="immersive-btn immersive-btn-control work-carousel-btn work-carousel-btn-prev"
-              data-carousel-prev
-              aria-label={`Scroll ${selectWorksA11yLabel} left`}
-            >
-              <span class="work-carousel-btn-icon work-carousel-btn-icon-prev" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m15 6-6 6 6 6"></path>
-                </svg>
-              </span>
-              <span class="immersive-btn-label">Prev</span>
-            </button>
-            <button
-              type="button"
-              class="immersive-btn immersive-btn-control work-carousel-btn work-carousel-btn-next"
-              data-carousel-next
-              aria-label={`Scroll ${selectWorksA11yLabel} right`}
-            >
-              <span class="immersive-btn-label">Next</span>
-              <span class="work-carousel-btn-icon work-carousel-btn-icon-next" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m9 6 6 6-6 6"></path>
-                </svg>
-              </span>
-            </button>
-          </div>
-        </div>
-        <p class="work-carousel-swipe-hint" aria-hidden="true">
-          <span>Swipe to see more</span>
-          <span class="work-carousel-swipe-hint-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 12h16"></path>
-              <path d="m13 7 5 5-5 5"></path>
-            </svg>
-          </span>
-        </p>
-        <div
-          class="work-carousel-frame"
-          data-carousel-frame
-          tabindex="0"
-          aria-label={`${selectWorksA11yLabel} list. Swipe or scroll horizontally, or use left and right arrow keys.`}
-        >
-          <ul class="work-grid work-carousel-track" aria-label={selectWorksA11yLabel}>
-            {
-              selectedWorks.map((work) => (
-                <li class="work-card" data-work-id={work.workId}>
-                  <a class="work-card-link" href={work.href}>
-                    <span class="work-media">
-                      {
-                        work.imageData ? (
-                          <Image
-                            src={work.imageData}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            widths={[370, 500, 740]}
-                            sizes="(max-width: 37.5rem) 100vw, (max-width: 78rem) 50vw, (max-width: 120rem) 33vw, 25vw"
-                            format="webp"
-                            quality={75}
-                          />
-                        ) : work.image ? (
-                          <img src={work.image} alt="" loading="lazy" decoding="async" width="740" height="470" />
-                        ) : (
-                          <span class="work-media-fallback" aria-hidden="true"></span>
-                        )
-                      }
-                    </span>
-                    <span class="work-card-body">
-                      <h3>{work.title}</h3>
-                      <p class="work-card-description">{work.detail}</p>
-                    </span>
-                    <span class="work-card-more" aria-hidden="true">
+            {key === 'select-works' && selectedWorks.length > 0 && (
+              <section class="section section-solid" aria-labelledby="works-title">
+                <div class="work-carousel" data-selected-carousel>
+                  <div class="work-carousel-header">
+                    <h2 id="works-title">{selectWorksSectionTitle}</h2>
+                    <div class="work-carousel-controls" aria-label="Select works carousel controls">
+                      <CarouselButton
+                        direction="prev"
+                        class="work-carousel-btn work-carousel-btn-prev"
+                        iconClass="work-carousel-btn-icon work-carousel-btn-icon-prev"
+                        data-carousel-prev
+                        aria-label="Scroll select works left"
+                      />
+                      <CarouselButton
+                        direction="next"
+                        class="work-carousel-btn work-carousel-btn-next"
+                        iconClass="work-carousel-btn-icon work-carousel-btn-icon-next"
+                        data-carousel-next
+                        aria-label="Scroll select works right"
+                      />
+                    </div>
+                  </div>
+                  <p class="work-carousel-swipe-hint" aria-hidden="true">
+                    <span>Swipe to see more</span>
+                    <span class="work-carousel-swipe-hint-icon">
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
@@ -531,38 +714,85 @@ const pageData = JSON.stringify({
                         stroke-linecap="round"
                         stroke-linejoin="round"
                       >
-                        <path d="M4 12h16"></path>
-                        <path d="m13 7 5 5-5 5"></path>
+                        <path d="M4 12h16" />
+                        <path d="m13 7 5 5-5 5" />
                       </svg>
                     </span>
-                  </a>
-                </li>
-              ))
-            }
-          </ul>
-        </div>
+                  </p>
+                  <div
+                    class="work-carousel-frame"
+                    data-carousel-frame
+                    tabindex="0"
+                    aria-label="Select works list. Swipe or scroll horizontally, or use left and right arrow keys."
+                  >
+                    <ul class="work-grid work-carousel-track" aria-label="Select works">
+                      {selectedWorks.map((work) => (
+                        <li class="work-card" data-work-id={work.workId}>
+                          <a class="work-card-link" href={work.href}>
+                            <span class="work-media">
+                              {work.imageData ? (
+                                <Image
+                                  src={work.imageData}
+                                  alt=""
+                                  loading="lazy"
+                                  decoding="async"
+                                  widths={[370, 500, 740]}
+                                  sizes="(max-width: 37.5rem) 100vw, (max-width: 78rem) 50vw, (max-width: 120rem) 33vw, 25vw"
+                                  format="webp"
+                                  quality={75}
+                                />
+                              ) : work.image ? (
+                                <img src={work.image} alt="" loading="lazy" decoding="async" width="740" height="470" />
+                              ) : (
+                                <span class="work-media-fallback" aria-hidden="true" />
+                              )}
+                            </span>
+                            <span class="work-card-body">
+                              <h3>{work.title}</h3>
+                              <p class="work-card-description">{work.detail}</p>
+                            </span>
+                            <span class="work-card-more" aria-hidden="true">
+                              <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <path d="M4 12h16" />
+                                <path d="m13 7 5 5-5 5" />
+                              </svg>
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {key === 'contact' && (
+              <section class="section section-solid" id="contact" aria-labelledby="contact-title">
+                <h2 id="contact-title">{contactSectionTitle}</h2>
+                <p class="contact-intro">{contactIntro}</p>
+                {CONTACT_FORM_ENABLED ? (
+                  <ContactForm />
+                ) : (
+                  <p class="contact-email">
+                    <a href={`mailto:${siteConfig.email}`} data-obfuscation="1">
+                      {siteConfig.email}
+                    </a>
+                  </p>
+                )}
+              </section>
+            )}
+          </>
+        ))}
       </div>
-    </section>
-    ) : null}
 
-    {isContactSectionVisible ? (
-    <section class="section section-solid" id="contact" aria-labelledby="contact-title">
-      <h2 id="contact-title">Contact</h2>
-      <p class="contact-intro">{contactIntro}</p>
-      {CONTACT_FORM_ENABLED ? (
-        <ContactForm {...homeContactFormProps} />
-      ) : (
-        <>
-          {contactEmailLeadText ? <p>{contactEmailLeadText}</p> : null}
-          <p class="contact-email">
-            <a href={`mailto:${siteConfig.email}`} data-obfuscation="1">{contactEmailLinkText}</a>
-          </p>
-        </>
-      )}
-    </section>
-    ) : null}
-  </div>
-
-  <script is:inline id="immersive-page-data" type="application/json" set:html={pageData} />
-</SiteLayout>
-)}
+      <script is:inline id="immersive-page-data" type="application/json" set:html={pageData} />
+    </SiteLayout>
+  )
+}

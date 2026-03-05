@@ -102,7 +102,7 @@ export function prepareWorks(works: CollectionEntry<'works'>[]) {
     const creditTagLinks = Object.fromEntries(
       derivedCreditKeys.map((key) => {
         const label = creditLabelByKey.get(key) ?? key
-        return [key, `/works/browse/${slugify(label)}/`]
+        return [key, `/music/browse/${slugify(label)}/`]
       }),
     )
 

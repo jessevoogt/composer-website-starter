@@ -1,0 +1,48 @@
+---
+import UiIcon from '@components/icons/UiIcon.astro'
+import type { UiIconName } from '@components/icons/icon-map'
+
+interface Props {
+  variant?: 'primary' | 'inline' | 'control' | 'orange'
+  iconLeft?: UiIconName
+  iconRight?: UiIconName
+  disabled?: boolean
+  class?: string
+  type?: 'button' | 'submit' | 'reset'
+  [key: string]: unknown
+}
+
+const {
+  variant = 'primary',
+  iconLeft,
+  iconRight,
+  disabled,
+  class: className,
+  type = 'button',
+  ...rest
+} = Astro.props
+
+const classes = ['immersive-btn', `immersive-btn-${variant}`, className].filter(Boolean).join(' ')
+
+const hasIconLeftSlot = Astro.slots.has('icon-left')
+const hasIconRightSlot = Astro.slots.has('icon-right')
+---
+
+<button class={classes} type={type} disabled={disabled} {...rest}>
+  {!hasIconLeftSlot && iconLeft && (
+    <span class="immersive-btn-icon" aria-hidden="true">
+      <UiIcon name={iconLeft} />
+    </span>
+  )}
+  <slot name="icon-left" />
+  <span class="immersive-btn-label">
+    <slot />
+  </span>
+  <slot name="icon-right" />
+  {!hasIconRightSlot && iconRight && (
+    <span class="immersive-btn-icon" aria-hidden="true">
+      <UiIcon name={iconRight} />
+    </span>
+  )}
+  <slot name="append" />
+</button>

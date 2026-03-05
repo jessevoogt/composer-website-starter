@@ -194,6 +194,18 @@ function initWorksSearch(container: HTMLElement): () => void {
   const worksData = mode === 'works' ? readWorksData(container) : []
   const siteData = mode === 'site' ? readSiteData(container) : []
 
+  if (import.meta.env.DEV) {
+    const dataCount = mode === 'site' ? siteData.length : worksData.length
+    if (dataCount === 0) {
+      const refId = container.dataset.worksSearchDataRef?.trim()
+      const scriptEl = refId ? document.getElementById(refId) : null
+      console.warn(
+        `[works-search] ${searchInstanceId} (mode=${mode}): no search data loaded.`,
+        refId ? `Script ref="${refId}" ${scriptEl ? `found (${scriptEl.textContent?.length ?? 0} chars)` : 'NOT FOUND in DOM'}` : 'No data-ref set',
+      )
+    }
+  }
+
   let activeIndex = -1
   let displayResults: DisplayResult[] = []
   let isOpen = false

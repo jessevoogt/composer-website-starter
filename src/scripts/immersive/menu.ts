@@ -26,24 +26,53 @@ function compactLabel(value: string | null | undefined): string {
 }
 
 export function initMenu(prefersReducedMotion: boolean): () => void {
-  const menuToggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]')
-  const menuToggleSlot = document.querySelector<HTMLElement>('[data-menu-toggle-slot]')
-  const headerSearchToggle = document.querySelector<HTMLButtonElement>('[data-mobile-header-search-toggle]')
+  const menuToggles = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-menu-toggle]'))
+  const headerSearchToggles = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-mobile-header-search-toggle]'))
   const mobileMenuDialog = document.querySelector<HTMLDialogElement>('#mobile-menu-modal')
 
-  if (!menuToggle || !mobileMenuDialog) return () => {}
+  if (!menuToggles.length || !mobileMenuDialog) return () => {}
 
   // Re-bind after null guard so TypeScript narrows in closures
   const dialog: HTMLDialogElement = mobileMenuDialog
+
+  // Track home parents for each toggle so we can restore after moving into dialog
+  const menuToggleHomeParents = new Map<HTMLButtonElement, HTMLElement>()
+  menuToggles.forEach((toggle) => {
+    const slot = toggle.closest<HTMLElement>('[data-menu-toggle-slot]')
+    menuToggleHomeParents.set(toggle, slot ?? toggle.parentElement!)
+  })
+  const searchToggleHomeParents = new Map<HTMLButtonElement, HTMLElement>()
+  headerSearchToggles.forEach((toggle) => {
+    searchToggleHomeParents.set(toggle, toggle.parentElement!)
+  })
+
+  // Breakpoint queries for finding the active layout
+  const desktopQuery = window.matchMedia('(min-width: 58rem)')
+  const tabletQuery = window.matchMedia('(min-width: 48rem) and (max-width: 57.999rem)')
+
+  function getActiveBreakpoint(): 'desktop' | 'tablet' | 'mobile' {
+    if (desktopQuery.matches) return 'desktop'
+    if (tabletQuery.matches) return 'tablet'
+    return 'mobile'
+  }
+
+  function getActiveMenuToggle(): HTMLButtonElement | null {
+    const bp = getActiveBreakpoint()
+    const layout = document.querySelector<HTMLElement>(`[data-header-layout="${bp}"]`)
+    return layout?.querySelector<HTMLButtonElement>('[data-menu-toggle]') ?? menuToggles[0] ?? null
+  }
+
+  function getActiveSearchToggle(): HTMLButtonElement | null {
+    const bp = getActiveBreakpoint()
+    const layout = document.querySelector<HTMLElement>(`[data-header-layout="${bp}"]`)
+    return layout?.querySelector<HTMLButtonElement>('[data-mobile-header-search-toggle]') ?? headerSearchToggles[0] ?? null
+  }
 
   const menuLinks = Array.from(dialog.querySelectorAll<HTMLAnchorElement>('a[href]'))
   const searchToggleButtons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-works-search-modal-toggle]'))
   const mobileMenuNav = dialog.querySelector<HTMLElement>('[data-mobile-menu-nav]')
   const mobileMenuSearch = dialog.querySelector<HTMLElement>('[data-mobile-menu-search]')
   const mobileSearchScopePanels = Array.from(dialog.querySelectorAll<HTMLElement>('[data-mobile-menu-search-scope]'))
-  const desktopQuery = window.matchMedia('(min-width: 58rem)')
-  const menuToggleHomeParent = menuToggleSlot ?? menuToggle.parentElement
-  const searchToggleHomeParent = headerSearchToggle?.parentElement ?? null
   const mobileSearchEventName = 'mobile-menu-search-request'
   const mobileSearchOpenClass = 'immersive-menu-search-open'
 
@@ -102,43 +131,46 @@ export function initMenu(prefersReducedMotion: boolean): () => void {
   }
 
   function restoreMenuToggleToHeader(): void {
-    if (!menuToggleHomeParent) return
-    if (menuToggle!.parentElement !== menuToggleHomeParent) {
-      menuToggleHomeParent.append(menuToggle!)
-    }
-    menuToggle!.classList.remove('is-in-mobile-menu')
+    menuToggles.forEach((toggle) => {
+      const home = menuToggleHomeParents.get(toggle)
+      if (home && toggle.parentElement !== home) {
+        home.append(toggle)
+      }
+      toggle.classList.remove('is-in-mobile-menu')
+    })
   }
 
   function restoreSearchToggleToHeader(): void {
-    if (!headerSearchToggle || !searchToggleHomeParent) return
-    if (headerSearchToggle.parentElement !== searchToggleHomeParent) {
-      if (menuToggleSlot && menuToggleSlot.parentElement === searchToggleHomeParent) {
-        searchToggleHomeParent.insertBefore(headerSearchToggle, menuToggleSlot)
-      } else {
-        searchToggleHomeParent.append(headerSearchToggle)
+    headerSearchToggles.forEach((toggle) => {
+      const home = searchToggleHomeParents.get(toggle)
+      if (home && toggle.parentElement !== home) {
+        home.append(toggle)
       }
-    }
-    headerSearchToggle.classList.remove('is-in-mobile-menu')
+      toggle.classList.remove('is-in-mobile-menu')
+    })
   }
 
   function moveMenuToggleIntoDialog(): void {
-    if (menuToggle!.parentElement !== dialog) {
-      dialog.append(menuToggle!)
+    const active = getActiveMenuToggle()
+    if (active && active.parentElement !== dialog) {
+      dialog.append(active)
     }
-    menuToggle!.classList.add('is-in-mobile-menu')
+    active?.classList.add('is-in-mobile-menu')
   }
 
   function moveSearchToggleIntoDialog(): void {
-    if (!headerSearchToggle) return
-    if (headerSearchToggle.parentElement !== dialog) {
-      dialog.append(headerSearchToggle)
+    const active = getActiveSearchToggle()
+    if (active && active.parentElement !== dialog) {
+      dialog.append(active)
     }
-    headerSearchToggle.classList.add('is-in-mobile-menu')
+    active?.classList.add('is-in-mobile-menu')
   }
 
   function setMenuToggleState(isExpanded: boolean): void {
-    menuToggle!.setAttribute('aria-expanded', isExpanded ? 'true' : 'false')
-    menuToggle!.setAttribute('aria-label', isExpanded ? 'Close menu' : 'Open menu')
+    menuToggles.forEach((toggle) => {
+      toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false')
+      toggle.setAttribute('aria-label', isExpanded ? 'Close menu' : 'Open menu')
+    })
   }
 
   function setSearchToggleState(isExpanded: boolean, force = false): void {
@@ -486,7 +518,7 @@ export function initMenu(prefersReducedMotion: boolean): () => void {
     onSearchToggleRequest(event)
   }
 
-  menuToggle.addEventListener('click', onMenuToggleClick)
+  menuToggles.forEach((toggle) => toggle.addEventListener('click', onMenuToggleClick))
   dialog.addEventListener('close', onDialogClose)
   dialog.addEventListener('cancel', onDialogCancel)
   dialog.addEventListener('click', onDialogClick)
@@ -500,7 +532,7 @@ export function initMenu(prefersReducedMotion: boolean): () => void {
 
   return () => {
     clearMenuTimers()
-    menuToggle.removeEventListener('click', onMenuToggleClick)
+    menuToggles.forEach((toggle) => toggle.removeEventListener('click', onMenuToggleClick))
     mobileMenuDialog.removeEventListener('close', onDialogClose)
     mobileMenuDialog.removeEventListener('cancel', onDialogCancel)
     mobileMenuDialog.removeEventListener('click', onDialogClick)

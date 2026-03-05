@@ -1,7 +1,8 @@
 composerName: FirstName LastName
-siteTitle: FirstName LastName - Composer
-siteDescription: FirstName LastName is a composer specializing in concert music.
+siteTitle: FirstName LastName — Composer
+siteDescription: A composer portfolio website built with Astro.
 siteUrl: https://example.com
-email: your.email@example.com
-copyrightHolder: FirstName LastName
+email: composer@example.com
+googleAnalyticsId: ''
+apiEndpoint: ''
 perusalScoreOnlyMode: false

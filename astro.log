@@ -1,3 +1,0 @@
-2026-01-30T22:30:25.576Z astro:cli --verbose flag enabled! Enabling: DEBUG="astro:*,vite:*"
-2026-01-30T22:30:25.576Z astro:cli Tip: Set the DEBUG env variable directly for more control. Example: "DEBUG=astro:*,vite:* astro build".
-2026-01-30T22:30:25.731Z astro:telemetry [notify] telemetry has been disabled

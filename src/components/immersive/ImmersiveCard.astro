@@ -13,6 +13,7 @@ interface Props {
   imageData?: ImageData | null
   imageSrc?: string
   imageAlt?: string
+  'data-work-id'?: string
 }
 
 const {
@@ -24,10 +25,11 @@ const {
   imageData,
   imageSrc,
   imageAlt = '',
+  'data-work-id': dataWorkId,
 } = Astro.props
 ---
 
-<li class:list={['work-card', className]}>
+<li class:list={['work-card', className]} data-work-id={dataWorkId}>
   <a class="work-card-link" href={url}>
     <span class="work-media">
       {

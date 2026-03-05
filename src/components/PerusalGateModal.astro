@@ -1,0 +1,395 @@
+---
+import type { PerusalAccessConfig } from '@/utils/source-config'
+import Button from '@components/ui/Button.astro'
+
+interface Props {
+  workId: string
+  workTitle: string
+  config: PerusalAccessConfig
+  gateTitle: string
+  gateMessage: string
+  successMessage: string
+  apiEndpoint: string
+  composerEmail: string
+  /** The URL to navigate to after successful token generation (used on work detail pages) */
+  perusalScoreUrl?: string
+}
+
+const { workId, workTitle, config, gateTitle, gateMessage, successMessage, apiEndpoint, composerEmail, perusalScoreUrl } =
+  Astro.props
+---
+
+<dialog
+  class="perusal-gate-modal"
+  id="perusal-gate-dialog"
+  aria-labelledby="perusal-gate-title"
+  data-perusal-gate-dialog
+  data-work-id={workId}
+  data-perusal-score-url={perusalScoreUrl ?? undefined}
+  data-perusal-api-endpoint={apiEndpoint || undefined}
+  data-perusal-webhook-url={config.webhookUrl || undefined}
+  data-perusal-token-secret={config.tokenSecret || undefined}
+  data-composer-email={composerEmail || undefined}
+  data-work-title={workTitle}
+  data-perusal-token-exp-days={String(config.tokenExpirationDays)}
+>
+  <div class="perusal-gate-panel" tabindex="-1" data-perusal-gate-panel>
+    <div class="perusal-gate-content" data-perusal-gate-content>
+      <div class="perusal-gate-form-view" data-perusal-gate-form-view>
+        <h2 id="perusal-gate-title" class="perusal-gate-heading">{gateTitle}</h2>
+        <p class="perusal-gate-message">{gateMessage}</p>
+
+        <form
+          class="perusal-gate-form"
+          data-perusal-gate-form
+          novalidate
+          aria-label={`Request access to ${workTitle} perusal score`}
+        >
+          {/* Honeypot — hidden from humans, filled by bots */}
+          <div class="perusal-gate-hp" aria-hidden="true">
+            <label for="perusal-gate-website">Website</label>
+            <input type="text" id="perusal-gate-website" name="website" autocomplete="off" tabindex={-1} />
+          </div>
+
+          <div class="perusal-gate-field">
+            <input
+              type="text"
+              id="perusal-gate-firstName"
+              name="firstName"
+              required
+              autocomplete="given-name"
+              maxlength={config.nameMaxLength}
+              placeholder="Your first name"
+            />
+            <label for="perusal-gate-firstName">First name</label>
+            <span class="perusal-gate-field-error" data-field-error="firstName" role="alert" aria-live="assertive"
+            ></span>
+          </div>
+
+          <div class="perusal-gate-field">
+            <input
+              type="email"
+              id="perusal-gate-email"
+              name="email"
+              required
+              autocomplete="email"
+              maxlength={254}
+              placeholder="you@domain.com"
+            />
+            <label for="perusal-gate-email">Email</label>
+            <span class="perusal-gate-field-error" data-field-error="email" role="alert" aria-live="assertive"></span>
+          </div>
+
+          <div class="perusal-gate-actions">
+            <Button type="submit" variant="primary" class="perusal-gate-submit" data-perusal-gate-submit>
+              <span data-perusal-gate-submit-label>Send Access Link</span>
+              <Fragment slot="append">
+                <span class="perusal-gate-spinner" data-perusal-gate-spinner hidden aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2" stroke-dasharray="40 20" stroke-linecap="round">
+                      <animateTransform attributeName="transform" type="rotate" from="0 10 10" to="360 10 10" dur="0.8s" repeatCount="indefinite" />
+                    </circle>
+                  </svg>
+                </span>
+              </Fragment>
+            </Button>
+            <Button variant="inline" class="perusal-gate-cancel" data-perusal-gate-cancel>Cancel</Button>
+          </div>
+        </form>
+      </div>
+
+      <div class="perusal-gate-success" data-perusal-gate-success hidden>
+        <svg class="perusal-gate-success-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" />
+          <path d="m8 12 3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <p class="perusal-gate-success-message">{successMessage}</p>
+      </div>
+
+      <div class="perusal-gate-error-message" data-perusal-gate-error-message hidden role="alert" aria-live="assertive" tabindex="-1">
+        <!-- JS populates: error text + retry button + mailto link -->
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<style>
+  .perusal-gate-modal {
+    position: fixed;
+    opacity: 0;
+    pointer-events: none;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100%;
+    height: 100%;
+    transition: opacity 180ms ease;
+  }
+
+  .perusal-gate-modal::backdrop {
+    opacity: 0;
+    backdrop-filter: blur(8px);
+    background: rgb(0 0 0 / 0.6);
+    transition: opacity 180ms ease;
+  }
+
+  .perusal-gate-modal[open] {
+    display: grid;
+    place-items: center;
+  }
+
+  .perusal-gate-modal[open].is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .perusal-gate-modal.is-visible::backdrop {
+    opacity: 0.7;
+  }
+
+  .perusal-gate-panel {
+    position: relative;
+    transform: translate3d(0, 0.5rem, 0) scale(0.97);
+    opacity: 0;
+    transition:
+      transform 220ms ease,
+      opacity 220ms ease;
+    width: min(28rem, calc(100vw - 2rem));
+    background: var(--surface, #18212b);
+    border: 1px solid var(--line, #2c3c4b);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    outline: none;
+  }
+
+  .perusal-gate-modal[open].is-visible .perusal-gate-panel {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+
+  .perusal-gate-heading {
+    margin: 0 0 0.5rem;
+    font-size: var(--font-size-lg, 1.25rem);
+    font-family: var(--font-heading);
+    color: var(--ink, #ecf2f7);
+    line-height: 1.3;
+  }
+
+  .perusal-gate-message {
+    margin: 0 0 1.5rem;
+    color: var(--ink-soft, #aab8c4);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.5;
+  }
+
+  .perusal-gate-form {
+    display: grid;
+    gap: 0.72rem;
+  }
+
+  .perusal-gate-hp {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .perusal-gate-field {
+    position: relative;
+    --contact-field-bg: var(--bg-soft, #18212b);
+  }
+
+  .perusal-gate-field label {
+    position: absolute;
+    top: 50%;
+    left: 0.76rem;
+    transform: translateY(-50%);
+    transform-origin: left center;
+    pointer-events: none;
+    transition:
+      top 150ms ease,
+      transform 150ms ease,
+      color 150ms ease;
+    color: var(--ink-soft, #aab8c4);
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .perusal-gate-field input {
+    transition:
+      border-color 170ms ease,
+      box-shadow 170ms ease,
+      background-color 170ms ease;
+    border: 1px solid var(--line, #2c3c4b);
+    border-radius: var(--radius-sm);
+    background: var(--contact-field-bg);
+    padding: 0.96rem 0.76rem 0.42rem;
+    width: 100%;
+    color: var(--ink, #ecf2f7);
+    font: inherit;
+  }
+
+  .perusal-gate-field input::placeholder {
+    opacity: 0;
+    color: transparent;
+  }
+
+  .perusal-gate-field input:focus:placeholder-shown::placeholder {
+    opacity: 0.72;
+    color: color-mix(in srgb, var(--ink-soft) 76%, var(--ink) 24%);
+  }
+
+  .perusal-gate-field:focus-within input {
+    box-shadow: 0 0 0.6rem rgb(var(--accent-rgb, 151 198 222) / 0.3);
+    border-color: var(--focus-ring-color);
+  }
+
+  .perusal-gate-field:focus-within label,
+  .perusal-gate-field input:not(:placeholder-shown) + label,
+  .perusal-gate-field input:-webkit-autofill + label {
+    top: 0.36rem;
+    transform: scale(0.82);
+    color: color-mix(in srgb, var(--ink-soft) 60%, var(--ink) 40%);
+  }
+
+  .perusal-gate-field-error {
+    display: block;
+    min-height: 0;
+    color: #f87171;
+    font-size: 0.8rem;
+    line-height: 1.3;
+    padding-top: 0.2rem;
+  }
+
+  .perusal-gate-field-error:empty {
+    display: none;
+  }
+
+  .perusal-gate-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .perusal-gate-submit {
+    gap: 0.48rem;
+  }
+
+  .perusal-gate-cancel {
+    align-self: center;
+    font-size: var(--font-size-sm, 0.875rem);
+  }
+
+  .perusal-gate-spinner {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .perusal-gate-success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  .perusal-gate-success-icon {
+    color: var(--accent, #97c6de);
+  }
+
+  .perusal-gate-success-message {
+    margin: 0;
+    color: var(--ink, #ecf2f7);
+    font-size: var(--font-size-sm, 0.875rem);
+    line-height: 1.5;
+  }
+
+  .perusal-gate-error-message {
+    margin-top: 0.75rem;
+    color: #f87171;
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .perusal-gate-error-message p {
+    margin: 0;
+  }
+
+  .perusal-gate-error-message:focus {
+    outline: none;
+  }
+
+  .perusal-gate-error-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .perusal-gate-error-retry {
+    background: none;
+    border: 1px solid #f87171;
+    border-radius: var(--radius-sm);
+    color: #fca5a5;
+    padding: 0.35rem 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 150ms ease;
+  }
+
+  .perusal-gate-error-retry:hover {
+    background: color-mix(in srgb, #f87171 15%, transparent);
+  }
+
+  .perusal-gate-error-retry:focus-visible {
+    outline: 2px solid var(--focus-ring-color, #97c6de);
+    outline-offset: 2px;
+  }
+
+  .perusal-gate-error-divider {
+    color: var(--ink-soft, #aab8c4);
+  }
+
+  .perusal-gate-error-mailto {
+    color: #fca5a5;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  .perusal-gate-error-mailto:hover {
+    color: #fecaca;
+  }
+
+  .perusal-gate-error-mailto:focus-visible {
+    outline: 2px solid var(--focus-ring-color, #97c6de);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .perusal-gate-modal,
+    .perusal-gate-modal::backdrop,
+    .perusal-gate-panel {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 37.5rem) {
+    .perusal-gate-panel {
+      padding: 1.5rem 1.25rem;
+    }
+  }
+</style>

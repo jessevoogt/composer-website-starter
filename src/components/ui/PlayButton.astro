@@ -1,0 +1,21 @@
+---
+interface Props {
+  /** When set, renders an <a> instead of <button> */
+  href?: string
+  /** CSS class for the inner icon wrapper (e.g. 'recording-play-btn-inner') */
+  innerClass?: string
+  class?: string
+  [key: string]: unknown
+}
+
+const { href, innerClass, class: className, ...rest } = Astro.props
+const Tag = href ? 'a' : 'button'
+const tagAttrs = href ? { href } : { type: 'button' as const }
+---
+
+<Tag class={className} {...tagAttrs} {...rest}>
+  <span class={innerClass} aria-hidden="true">
+    <slot />
+  </span>
+  <span class="sr-only"><slot name="sr-label" /></span>
+</Tag>

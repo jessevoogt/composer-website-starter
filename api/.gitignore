@@ -1,0 +1,4 @@
+/vendor/
+/.env
+/storage/rate-limits/*
+!/storage/rate-limits/.gitkeep

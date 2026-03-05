@@ -1,6 +1,6 @@
 ---
 import { SOCIAL_IMAGE_VERSION } from '@data/social-image-version'
-import { getSiteConfig } from '@/utils/source-config'
+import { getSiteConfig, getSharingConfig } from '@/utils/source-config'
 
 /**
  * SiteMeta Component
@@ -40,9 +40,14 @@ interface Props {
    * Open Graph object type
    */
   type?: 'website' | 'article'
+  /**
+   * Robots meta directives
+   */
+  robots?: string
 }
 
 const siteConfig = getSiteConfig()
+const sharingConfig = getSharingConfig()
 
 const {
   title,
@@ -50,9 +55,10 @@ const {
   url,
   image,
   author = siteConfig.composerName,
-  imageAlt = `${siteConfig.composerName} social preview image`,
+  imageAlt = `${siteConfig.composerName} monogram and wordmark`,
   facebookAppId,
   type = 'website',
+  robots,
 } = Astro.props
 
 const siteName = siteConfig.composerName
@@ -64,7 +70,7 @@ const fullTitle = shouldAppendSiteName ? `${normalizedTitle} | ${normalizedSiteN
 const normalizedImageAlt = imageAlt.trim()
 const resolvedImageAlt =
   normalizedImageAlt.length > 0 ? normalizedImageAlt : `${normalizedTitle || normalizedSiteName} social preview image`
-const resolvedFacebookAppId = [facebookAppId, import.meta.env.PUBLIC_FACEBOOK_APP_ID, import.meta.env.PUBLIC_FB_APP_ID]
+const resolvedFacebookAppId = [facebookAppId, sharingConfig.facebookAppId]
   .map((value) => (typeof value === 'string' ? value.trim() : ''))
   .find((value) => value.length > 0)
 
@@ -83,7 +89,11 @@ function withSocialImageVersion(value: string): string {
   try {
     const base = Astro.site ?? Astro.url
     const url = new URL(value, base)
-    if (!url.pathname.endsWith('/social-preview-image.png')) {
+    const isGeneratedSocialImage =
+      url.pathname.endsWith('/social-preview-image.png') ||
+      (url.pathname.startsWith('/social/work/') && url.pathname.endsWith('.png'))
+
+    if (!isGeneratedSocialImage) {
       return value
     }
     url.searchParams.set('v', SOCIAL_IMAGE_VERSION)
@@ -103,6 +113,7 @@ const socialImageUrl = withSocialImageVersion(toAbsoluteUrl(image))
 <meta name="title" content={fullTitle} />
 <meta name="description" content={description} />
 <meta name="author" content={author} />
+{robots ? <meta name="robots" content={robots} /> : null}
 
 <!-- open graph -->
 <meta property="og:title" content={fullTitle} />
@@ -112,6 +123,7 @@ const socialImageUrl = withSocialImageVersion(toAbsoluteUrl(image))
 <meta property="og:url" content={canonicalUrl} />
 {resolvedFacebookAppId ? <meta property="fb:app_id" content={resolvedFacebookAppId} /> : null}
 <meta property="og:image" content={socialImageUrl} />
+<meta property="og:image:url" content={socialImageUrl} />
 <meta property="og:image:secure_url" content={socialImageUrl} />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />

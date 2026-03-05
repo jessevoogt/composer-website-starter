@@ -160,7 +160,7 @@ export function scoreItem(item: SearchableItem, query: string): number {
     score += 50
   }
 
-  // Promote direct tag hits (e.g., "guitar" -> /works/browse/guitar/).
+  // Promote direct tag hits (e.g., "guitar" -> /music/browse/guitar/).
   if (isTagItem(item) && normalizedQuery === item.title.toLowerCase().trim()) {
     score += 250
   }

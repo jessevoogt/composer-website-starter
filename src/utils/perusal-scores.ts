@@ -2,16 +2,10 @@
 // Run: node ./scripts/generate-perusal-scores.mjs
 
 /** Map of work slug → number of perusal score pages */
-const perusalScores: Record<string, number> = {
-  'scenario-score-sheet-music-performances': 31,
-  'simple-one-recording-with-score': 31
-}
+const perusalScores: Record<string, number> = {}
 
 /** Map of work slug → per-page cache-busting hashes for perusal score images */
-const perusalScorePageHashes: Record<string, string[]> = {
-  'scenario-score-sheet-music-performances': ["aef9fbe5a100375f","0a1144fafe357b82","36ead4a5a6da2244","fdb6c504ff986b8f","b3c51bd5595404ca","4ccadd6515f797f7","74e916a274362d08","52e8cbfc90ee93d7","eaba94d3fcca5f5e","7a9442baa6a7e8ea","7c3569049004be06","33b3de56a663c158","40a7126cc81290e3","7ab08d4dfdcecead","5a521d1bfc8c40b4","5301a41dc6d570a4","76c91b715969ed40","7883f5c96b2746bd","81fb1afd2327bdcc","adecf5a899793a4a","edf4a69570c2b533","47dfd42a488d2fac","4d3e9fc99382c03e","a92c05a4cc4c8474","a1ae630e72192805","3f43ef88a51b88ae","e104286c336bb76f","0af57c20f654a319","06d508d46b8816bf","09652e156eb7b023","110159a8625880a4"],
-  'simple-one-recording-with-score': ["aef9fbe5a100375f","0a1144fafe357b82","36ead4a5a6da2244","fdb6c504ff986b8f","b3c51bd5595404ca","4ccadd6515f797f7","74e916a274362d08","52e8cbfc90ee93d7","eaba94d3fcca5f5e","7a9442baa6a7e8ea","7c3569049004be06","33b3de56a663c158","40a7126cc81290e3","7ab08d4dfdcecead","5a521d1bfc8c40b4","5301a41dc6d570a4","76c91b715969ed40","7883f5c96b2746bd","81fb1afd2327bdcc","adecf5a899793a4a","edf4a69570c2b533","47dfd42a488d2fac","4d3e9fc99382c03e","a92c05a4cc4c8474","a1ae630e72192805","3f43ef88a51b88ae","e104286c336bb76f","0af57c20f654a319","06d508d46b8816bf","09652e156eb7b023","110159a8625880a4"]
-}
+const perusalScorePageHashes: Record<string, string[]> = {}
 
 export default perusalScores
 export { perusalScorePageHashes }

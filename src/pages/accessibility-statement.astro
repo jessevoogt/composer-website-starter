@@ -1,16 +1,21 @@
 ---
 import SiteLayout from '@layouts/SiteLayout.astro'
 import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
-import { getSiteConfig } from '@/utils/source-config'
+import { getSiteConfig, getAccessibilityPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
 
 const siteConfig = getSiteConfig()
 const siteDomain = siteConfig.siteUrl ? new URL(siteConfig.siteUrl).hostname : 'this website'
+const accessibilityPage = getAccessibilityPage()
+const { pageHero } = resolvePageHero(accessibilityPage.preferredHeroId)
+const pageTitle = accessibilityPage.title || 'Accessibility statement'
+const pageSubtitle = accessibilityPage.subtitle || 'This document outlines the accessibility features and support provided by our website.'
 ---
 
-<SiteLayout title="Accessibility statement">
+<SiteLayout title={pageTitle} pageHero={pageHero} pageKey="accessibility-statement">
   <ImmersivePageHeader
-    title="Accessibility statement"
-    subtitle="This document outlines the accessibility features and support provided by our website."
+    title={pageTitle}
+    subtitle={pageSubtitle}
   />
   <section class="container" style="margin-top: var(--space-l);">
     <div class="space-content">
@@ -56,7 +61,7 @@ const siteDomain = siteConfig.siteUrl ? new URL(siteConfig.siteUrl).hostname : '
         <li><strong>Description:</strong> A clear description of the problem</li>
         <li><strong>Contact details:</strong> Your name and email address</li>
       </ul>
-      <p>Please contact through the <a href="/contact">contact page</a>.</p>
+      <p>Please contact through the <a href="/contact/">contact page</a>.</p>
 
       <h2>Publication information</h2>
       <p>

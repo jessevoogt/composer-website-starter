@@ -1,0 +1,90 @@
+---
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ThankYouCard from '@components/ThankYouCard.astro'
+import { getCollection } from 'astro:content'
+import prepareWorks, { type WorkWithImage } from '@/utils/prepareWorks'
+import perusalScores from '@/utils/perusal-scores'
+import { getPerusalAccessGrantedPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
+
+export async function getStaticPaths() {
+  const works = await getCollection('works')
+  const { works: preparedWorks } = prepareWorks(works)
+
+  return preparedWorks
+    .filter((work) => work.data.hasPerusalScore && perusalScores[work.id])
+    .map((work) => ({
+      params: { work: work.id },
+      props: { work },
+    }))
+}
+
+interface Props {
+  work: WorkWithImage
+}
+
+const { work } = Astro.props
+
+const config = getPerusalAccessGrantedPage()
+const { pageHero } = resolvePageHero(config.preferredHeroId)
+
+const perusalScoreUrl = `/music/${work.id}/perusal-score/`
+const messageHtml = config.message.replace('{{workTitle}}', `<em>${work.data.title}</em>`)
+---
+
+<SiteLayout
+  title={`Access Granted — ${work.data.title}`}
+  description={`You have access to the perusal score for ${work.data.title}.`}
+  url={`/music/${work.id}/perusal-score/access-granted/`}
+  robots="noindex, nofollow"
+  pageContentClass="page-content-access-granted"
+  pageHero={pageHero}
+  pageKey="perusal-access-granted"
+  customBreadcrumbLabels={{
+    [work.id]: work.data.title,
+    'perusal-score': 'Perusal Score',
+    'access-granted': 'Access Granted',
+  }}
+>
+  <ThankYouCard headingId="access-granted-heading" heading={config.heading}>
+    <p set:html={messageHtml} />
+
+    <a
+      slot="actions"
+      href={perusalScoreUrl}
+      class="ty-btn ty-btn-primary"
+      data-astro-reload
+    >
+      {config.buttonLabel}
+      <svg
+        class="ty-btn-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M5 12h13"></path>
+        <path d="m13 6 6 6-6 6"></path>
+      </svg>
+    </a>
+  </ThankYouCard>
+</SiteLayout>
+
+<script is:inline define:vars={{ workId: work.id }}>
+  document.addEventListener('astro:page-load', function onAccessGrantedLoad() {
+    // Guard: if there's no token, the user shouldn't be here — send them to the work page.
+    if (!localStorage.getItem('perusal_gate:' + workId)) {
+      window.location.replace('/music/' + workId + '/')
+      return
+    }
+
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'perusal_gate_access_granted', {
+        work_id: workId,
+      })
+    }
+  })
+</script>

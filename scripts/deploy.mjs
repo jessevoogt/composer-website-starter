@@ -1,29 +1,26 @@
 #!/usr/bin/env node
-// Deploy script: build output → SFTP server (changed files only)
+// Deploy script: build output + API backend → SFTP server (changed files only)
+//
+// Deploys two directories:
+//   dist/  → SFTP_REMOTE_PATH/          (Astro static site)
+//   api/   → SFTP_REMOTE_PATH/api/      (PHP backend — excludes .env, storage/)
 //
 // Credentials:
-//   The SFTP password is retrieved using a platform-specific secure store:
-//
-//   macOS — stored in Keychain. One-time setup:
+//   Password stored in macOS Keychain — NEVER in any file on disk.
+//   One-time setup:
 //     security add-generic-password -a "YOUR_SFTP_USER" -s "YOUR_SFTP_HOST" -w
-//     (prompts for password; it never appears on screen or in shell history)
-//
-//   Windows / Linux — set the SFTP_PASSWORD environment variable:
-//     export SFTP_PASSWORD="your-password"        # Linux / macOS fallback
-//     $env:SFTP_PASSWORD = "your-password"         # PowerShell
-//     set SFTP_PASSWORD=your-password              # cmd.exe
+//   (prompts for password; it never appears on screen or in shell history)
 //
 // Config:
-//   Primary: source/site/deploy.yaml (managed via Keystatic)
-//   Fallback: .env.local (legacy, for backwards compatibility)
-//
-//   YAML keys: sftpHost, sftpUser, sftpRemotePath, sftpPort, sftpSkipAudio
-//   .env.local keys: SFTP_HOST, SFTP_USER, SFTP_REMOTE_PATH, SFTP_PORT, SFTP_SKIP_AUDIO
+//   source/site/deploy.yaml (managed via Keystatic)
+//   YAML keys: sftpHost, sftpUser, sftpRemotePath, sftpPort
 //
 // Flags:
-//   --dry-run   Connect to SFTP, compare every local file against the live server
-//               (size first, then SHA-256 hash for same-size files), and report
-//               what would be uploaded — without transferring anything.
+//   --dry-run    Show what would be uploaded (manifest-based, no network). Fast.
+//   --verify     Compare local files against the live server via SFTP. Slow but
+//                thorough — useful for auditing drift between local and remote.
+//   --force      Clear the local manifest and re-upload all files.
+//   --skip-api   Deploy dist/ only, skip the api/ backend.
 //
 // Change detection (normal deploy):
 //   A local .deploy-manifest.json records { size, hash } for every uploaded file.
@@ -32,6 +29,7 @@
 //
 // Skipped files:
 //   .DS_Store, Thumbs.db, desktop.ini — OS metadata, never deployed.
+//   api/.env, api/storage/ — server-only, never overwritten.
 
 import crypto from 'crypto'
 import fs from 'fs'
@@ -47,8 +45,11 @@ const root = path.resolve(__dirname, '..')
 // ─── Flags ────────────────────────────────────────────────────────────────────
 
 const DRY_RUN = process.argv.includes('--dry-run')
+const VERIFY = process.argv.includes('--verify')
+const FORCE = process.argv.includes('--force')
+const SKIP_API = process.argv.includes('--skip-api')
 
-// ─── Load deploy config (YAML primary, .env.local fallback) ─────────────────
+// ─── Load deploy config (source/site/deploy.yaml via Keystatic) ─────────────
 
 function loadDeployYaml() {
   const yamlPath = path.join(root, 'source', 'site', 'deploy.yaml')
@@ -61,76 +62,48 @@ function loadDeployYaml() {
   }
 }
 
-function loadEnvLocal() {
-  const envPath = path.join(root, '.env.local')
-  const vars = {}
-  if (!fs.existsSync(envPath)) return vars
-  const envContent = fs.readFileSync(envPath, 'utf8')
-  for (const line of envContent.split('\n')) {
-    const match = line.match(/^\s*([\w]+)\s*=\s*(.*)$/)
-    if (match) {
-      const [, key, rawValue] = match
-      vars[key] = rawValue.replace(/^['"]|['"]$/g, '')
-    }
-  }
-  return vars
-}
-
 const deployYaml = loadDeployYaml()
-const envVars = loadEnvLocal()
 
-// YAML takes precedence, .env.local is fallback
-const SFTP_HOST = deployYaml.sftpHost || envVars.SFTP_HOST || ''
-const SFTP_USER = deployYaml.sftpUser || envVars.SFTP_USER || ''
-const SFTP_REMOTE_PATH = (deployYaml.sftpRemotePath || envVars.SFTP_REMOTE_PATH || '').replace(/\/$/, '')
-const SFTP_PORT = Number(deployYaml.sftpPort || envVars.SFTP_PORT || 22)
-const SFTP_SKIP_AUDIO = deployYaml.sftpSkipAudio === true || envVars.SFTP_SKIP_AUDIO === 'true'
+const SFTP_HOST = deployYaml.sftpHost || ''
+const SFTP_USER = deployYaml.sftpUser || ''
+const SFTP_REMOTE_PATH = (deployYaml.sftpRemotePath || '').replace(/\/$/, '')
+const SFTP_PORT = Number(deployYaml.sftpPort || 22)
+// Private remote path: auto-derived from public path if blank (public_html → private_html)
+const SFTP_PRIVATE_REMOTE_PATH = (() => {
+  const explicit = (deployYaml.sftpPrivateRemotePath || '').replace(/\/$/, '')
+  if (explicit) return explicit
+  if (SFTP_REMOTE_PATH.includes('public_html')) {
+    return SFTP_REMOTE_PATH.replace('public_html', 'private_html')
+  }
+  return ''
+})()
 
 const missing = []
-if (!SFTP_HOST) missing.push('SFTP_HOST')
-if (!SFTP_USER) missing.push('SFTP_USER')
-if (!SFTP_REMOTE_PATH) missing.push('SFTP_REMOTE_PATH')
+if (!SFTP_HOST) missing.push('sftpHost')
+if (!SFTP_USER) missing.push('sftpUser')
+if (!SFTP_REMOTE_PATH) missing.push('sftpRemotePath')
 
 if (missing.length > 0) {
-  console.error('[deploy] Missing required config:')
+  console.error('[deploy] Missing required config in source/site/deploy.yaml:')
   for (const key of missing) console.error(`  ${key}`)
-  console.error('\nConfigure deployment in source/site/deploy.yaml (via Keystatic) or .env.local.')
+  console.error('\nConfigure deployment via Keystatic or edit source/site/deploy.yaml directly.')
   process.exit(1)
 }
 
-// ─── Password retrieval (cross-platform) ────────────────────────────────────
+// ─── Keychain password retrieval ─────────────────────────────────────────────
 
-function getSftpPassword(host, user) {
-  // 1. Environment variable — works on all platforms
-  if (process.env.SFTP_PASSWORD) {
-    return process.env.SFTP_PASSWORD
+function getKeychainPassword(host, user) {
+  try {
+    return execSync(
+      `security find-generic-password -a ${JSON.stringify(user)} -s ${JSON.stringify(host)} -w`,
+      { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] }
+    ).trim()
+  } catch {
+    console.error('[deploy] SFTP password not found in macOS Keychain.')
+    console.error('[deploy] Run this once to store it (you will be prompted for the password):')
+    console.error(`\n  security add-generic-password -a ${JSON.stringify(user)} -s ${JSON.stringify(host)} -w\n`)
+    process.exit(1)
   }
-
-  // 2. macOS Keychain
-  if (process.platform === 'darwin') {
-    try {
-      return execSync(
-        `security find-generic-password -a ${JSON.stringify(user)} -s ${JSON.stringify(host)} -w`,
-        { encoding: 'utf8', stdio: ['inherit', 'pipe', 'pipe'] }
-      ).trim()
-    } catch {
-      console.error('[deploy] SFTP password not found.')
-      console.error('[deploy] Either set the SFTP_PASSWORD environment variable, or store it in macOS Keychain:')
-      console.error(`\n  security add-generic-password -a ${JSON.stringify(user)} -s ${JSON.stringify(host)} -w\n`)
-      process.exit(1)
-    }
-  }
-
-  // 3. No password found on non-macOS
-  console.error('[deploy] SFTP password not found.')
-  console.error('[deploy] Set the SFTP_PASSWORD environment variable:')
-  if (process.platform === 'win32') {
-    console.error(`\n  $env:SFTP_PASSWORD = "your-password"   # PowerShell`)
-    console.error(`  set SFTP_PASSWORD=your-password          # cmd.exe\n`)
-  } else {
-    console.error(`\n  export SFTP_PASSWORD="your-password"\n`)
-  }
-  process.exit(1)
 }
 
 // ─── Change detection ─────────────────────────────────────────────────────────
@@ -163,20 +136,64 @@ function needsUpload(localPath, relPath, manifest) {
 // OS-generated metadata files that should never be deployed
 const SKIP_FILENAMES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini'])
 
-// ─── Recursive dist/ walker ───────────────────────────────────────────────────
+// ─── Recursive directory walkers ─────────────────────────────────────────────
 
-function walkDir(dir, baseDir, skipAudio) {
+function walkDir(dir, baseDir) {
   const results = []
   for (const name of fs.readdirSync(dir)) {
     const fullPath = path.join(dir, name)
-    const relPath = path.relative(baseDir, fullPath).replace(/\\/g, '/')
     const stat = fs.statSync(fullPath)
     if (stat.isDirectory()) {
-      if (skipAudio && relPath === 'audio') continue
-      results.push(...walkDir(fullPath, baseDir, skipAudio))
+      results.push(...walkDir(fullPath, baseDir))
     } else {
       if (SKIP_FILENAMES.has(name)) continue
+      results.push({ localPath: fullPath, relPath: path.relative(baseDir, fullPath).replace(/\\/g, '/') })
+    }
+  }
+  return results
+}
+
+// Files and directories inside api/ that must never be deployed.
+// .env contains secrets (configured on the server manually).
+// storage/ contains runtime state (rate limit counters).
+const API_SKIP = new Set(['.env', 'storage', '.gitignore'])
+
+function walkApiDir(dir, baseDir) {
+  const results = []
+  for (const name of fs.readdirSync(dir)) {
+    if (API_SKIP.has(name)) continue
+    if (SKIP_FILENAMES.has(name)) continue
+    const fullPath = path.join(dir, name)
+    const stat = fs.statSync(fullPath)
+    if (stat.isDirectory()) {
+      results.push(...walkApiDir(fullPath, baseDir))
+    } else {
+      // Prefix with api/ so remote path becomes SFTP_REMOTE_PATH/api/…
+      const relPath = 'api/' + path.relative(baseDir, fullPath).replace(/\\/g, '/')
       results.push({ localPath: fullPath, relPath })
+    }
+  }
+  return results
+}
+
+// ─── Private scores walker ──────────────────────────────────────────────────
+
+const PRIVATE_SKIP = new Set(['.pdf-manifest.json'])
+
+function walkPrivateScoresDir(dir, baseDir) {
+  if (!fs.existsSync(dir)) return []
+  const results = []
+  for (const name of fs.readdirSync(dir)) {
+    if (SKIP_FILENAMES.has(name)) continue
+    if (PRIVATE_SKIP.has(name)) continue
+    const fullPath = path.join(dir, name)
+    const stat = fs.statSync(fullPath)
+    if (stat.isDirectory()) {
+      results.push(...walkPrivateScoresDir(fullPath, baseDir))
+    } else {
+      // Prefix with scores/ so remote path becomes PRIVATE_REMOTE_PATH/scores/…
+      const relPath = 'scores/' + path.relative(baseDir, fullPath).replace(/\\/g, '/')
+      results.push({ localPath: fullPath, relPath, remoteRoot: SFTP_PRIVATE_REMOTE_PATH })
     }
   }
   return results
@@ -185,28 +202,87 @@ function walkDir(dir, baseDir, skipAudio) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const distDir = path.join(root, 'dist')
+const apiDir = path.join(root, 'api')
+const privateScoresDir = path.join(root, 'private', 'scores')
 
 if (!fs.existsSync(distDir)) {
   console.error('[deploy] dist/ not found. Run a build first.')
   process.exit(1)
 }
 
-const allFiles = walkDir(distDir, distDir, SFTP_SKIP_AUDIO)
-
-if (SFTP_SKIP_AUDIO) {
-  console.log('[deploy] Skipping dist/audio/ (SFTP_SKIP_AUDIO=true)')
-}
+const allFiles = walkDir(distDir, distDir)
 
 console.log(`[deploy] ${allFiles.length} files in dist/`)
 
-const password = getSftpPassword(SFTP_HOST, SFTP_USER)
+// Include API backend files (unless --skip-api)
+if (!SKIP_API && fs.existsSync(apiDir)) {
+  const apiFiles = walkApiDir(apiDir, apiDir)
+  allFiles.push(...apiFiles)
+  console.log(`[deploy] ${apiFiles.length} files in api/ (excludes .env, storage/)`)
+} else if (SKIP_API) {
+  console.log('[deploy] Skipping api/ (--skip-api)')
+}
 
-const sftp = new SftpClient()
+// Include private PDF scores (for private_html deployment)
+if (SFTP_PRIVATE_REMOTE_PATH && fs.existsSync(privateScoresDir)) {
+  const privateFiles = walkPrivateScoresDir(privateScoresDir, privateScoresDir)
+  allFiles.push(...privateFiles)
+  console.log(`[deploy] ${privateFiles.length} files in private/scores/ → ${SFTP_PRIVATE_REMOTE_PATH}/scores/`)
+} else if (!SFTP_PRIVATE_REMOTE_PATH && fs.existsSync(privateScoresDir)) {
+  console.log('[deploy] Skipping private/scores/ (no private remote path configured)')
+}
 
-// ─── Dry run: compare against live remote state ────────────────────────────────
+// ─── Dry run: manifest-based preview (no network) ───────────────────────────
 
 if (DRY_RUN) {
-  console.log('[deploy] Dry run — comparing against live server…\n')
+  const manifest = FORCE ? {} : loadManifest()
+
+  if (FORCE) {
+    console.log('[deploy] --force: manifest cleared, all files shown as pending.\n')
+  }
+
+  console.log('[deploy] Dry run — comparing against local manifest…\n')
+
+  const wouldUpload = []
+  let unchanged = 0
+
+  for (const { localPath, relPath } of allFiles) {
+    const localSize = fs.statSync(localPath).size
+    const entry = manifest[relPath]
+
+    if (!entry) {
+      wouldUpload.push({ relPath, reason: 'new (not in manifest)' })
+    } else if (entry.size !== localSize) {
+      wouldUpload.push({ relPath, reason: `size: ${entry.size} → ${localSize}` })
+    } else {
+      const localHash = sha256File(localPath)
+      if (localHash !== entry.hash) {
+        wouldUpload.push({ relPath, reason: 'content changed (same size)' })
+      } else {
+        unchanged++
+      }
+    }
+  }
+
+  if (wouldUpload.length > 0) {
+    for (const { relPath, reason } of wouldUpload) {
+      const prefix = reason.startsWith('new') ? '  +' : '  ↑'
+      console.log(`${prefix} ${relPath}  (${reason})`)
+    }
+    console.log('')
+  }
+
+  console.log(`[deploy] Dry run complete. Would upload: ${wouldUpload.length}  Unchanged: ${unchanged}  Total: ${allFiles.length}`)
+  process.exit(0)
+}
+
+// ─── Verify: compare against live remote state via SFTP ─────────────────────
+
+if (VERIFY) {
+  const password = getKeychainPassword(SFTP_HOST, SFTP_USER)
+  const sftp = new SftpClient()
+
+  console.log('[deploy] Verify — comparing against live server…\n')
 
   try {
     console.log(`[deploy] Connecting to ${SFTP_USER}@${SFTP_HOST}:${SFTP_PORT}…`)
@@ -216,8 +292,9 @@ if (DRY_RUN) {
     const wouldUpload = []
     let unchanged = 0
 
-    for (const { localPath, relPath } of allFiles) {
-      const remotePath = `${SFTP_REMOTE_PATH}/${relPath}`
+    for (const { localPath, relPath, remoteRoot } of allFiles) {
+      const base = remoteRoot || SFTP_REMOTE_PATH
+      const remotePath = `${base}/${relPath}`
       const localSize = fs.statSync(localPath).size
 
       const remoteType = await sftp.exists(remotePath)
@@ -254,7 +331,7 @@ if (DRY_RUN) {
       console.log('')
     }
 
-    console.log(`[deploy] Dry run complete. Would upload: ${wouldUpload.length}  Unchanged: ${unchanged}  Total: ${allFiles.length}`)
+    console.log(`[deploy] Verify complete. Would upload: ${wouldUpload.length}  Unchanged: ${unchanged}  Total: ${allFiles.length}`)
   } finally {
     await sftp.end()
   }
@@ -264,7 +341,16 @@ if (DRY_RUN) {
 
 // ─── Normal deploy: manifest-based change detection ───────────────────────────
 
-const manifest = loadManifest()
+// Retrieve password from Keychain (may prompt for macOS login password if Keychain is locked)
+const password = getKeychainPassword(SFTP_HOST, SFTP_USER)
+const sftp = new SftpClient()
+
+const manifest = FORCE ? {} : loadManifest()
+
+if (FORCE) {
+  console.log('[deploy] --force: manifest cleared, all files will be uploaded.')
+}
+
 const toUpload = allFiles.filter(({ localPath, relPath }) => needsUpload(localPath, relPath, manifest))
 const toSkip = allFiles.length - toUpload.length
 
@@ -286,8 +372,9 @@ try {
   let uploaded = 0
   let failed = 0
 
-  for (const { localPath, relPath } of toUpload) {
-    const remotePath = `${SFTP_REMOTE_PATH}/${relPath}`
+  for (const { localPath, relPath, remoteRoot } of toUpload) {
+    const base = remoteRoot || SFTP_REMOTE_PATH
+    const remotePath = `${base}/${relPath}`
     const remoteDir = remotePath.substring(0, remotePath.lastIndexOf('/'))
 
     // Ensure remote parent directory exists (create once per unique dir)

@@ -1,0 +1,30 @@
+gatingEnabled: true
+gatingMode: magic-link
+tokenExpirationDays: 90
+webhookUrl: ''
+tokenSecret: ''
+emailSubject: 'Your perusal score, {{firstName}} — {{workTitle}}'
+emailMessage: >-
+  Hi {{firstName}},
+
+
+  Thank you for your interest in "{{workTitle}}."
+
+
+  Here is your perusal copy:
+
+  {{scoreLink}}
+
+
+  If you have any questions, feel free to reply to this email.
+
+
+  Best,
+
+  {{composerName}}
+
+  {{siteUrl}}
+pdfWatermarkedEnabled: true
+pdfOriginalEnabled: false
+pdfWatermarkedGated: true
+pdfOriginalGated: true

@@ -2,14 +2,13 @@
  * Client-side featured recording selection and DOM updates.
  */
 
-import type { ClientRecordingEntry } from './types'
+import type { ClientRecordingEntry, ClientSelectWorksSortOrder } from './types'
 import { isNonEmpty, normalizeMediaSrc } from '@/utils/immersive-helpers'
 
 interface FeaturedRecordingOptions {
+  selectWorksSortOrder: ClientSelectWorksSortOrder
   featuredRecordingPool: ClientRecordingEntry[]
   fallbackFeaturedRecording: ClientRecordingEntry | null
-  randomizeWorks?: boolean
-  removeFeaturedWorkFromList?: boolean
 }
 
 export interface AppliedRecording {
@@ -17,12 +16,7 @@ export interface AppliedRecording {
 }
 
 export function applyFeaturedRecording(options: FeaturedRecordingOptions): AppliedRecording | null {
-  const {
-    featuredRecordingPool,
-    fallbackFeaturedRecording,
-    randomizeWorks = true,
-    removeFeaturedWorkFromList = true,
-  } = options
+  const { selectWorksSortOrder, featuredRecordingPool, fallbackFeaturedRecording } = options
 
   const validPool = featuredRecordingPool.filter(
     (entry) => entry && typeof entry === 'object' && isNonEmpty(entry.mp3),
@@ -122,7 +116,7 @@ export function applyFeaturedRecording(options: FeaturedRecordingOptions): Appli
       }
     }
     if (featuredWorkLink) {
-      featuredWorkLink.href = isNonEmpty(recording.workHref) ? recording.workHref : '/works/'
+      featuredWorkLink.href = isNonEmpty(recording.workHref) ? recording.workHref : '/music/'
       featuredWorkLink.setAttribute(
         'aria-label',
         `More details for ${isNonEmpty(recording.title) ? recording.title : 'featured work'}`,
@@ -130,7 +124,7 @@ export function applyFeaturedRecording(options: FeaturedRecordingOptions): Appli
     }
   }
 
-  function updateSelectedWorks(featuredWorkId: string | undefined): void {
+  function arrangeSelectedWorks(featuredWorkId: string | undefined): void {
     const track = document.querySelector<HTMLElement>('.work-carousel-track')
     const frame = document.querySelector<HTMLElement>('[data-carousel-frame]')
     if (!track) return
@@ -139,22 +133,20 @@ export function applyFeaturedRecording(options: FeaturedRecordingOptions): Appli
     if (cards.length === 0) return
 
     let visibleCards = cards
-    if (removeFeaturedWorkFromList && isNonEmpty(featuredWorkId)) {
+    if (isNonEmpty(featuredWorkId)) {
       const filtered = cards.filter((card) => card.getAttribute('data-work-id') !== featuredWorkId)
       if (filtered.length > 0) visibleCards = filtered
     }
 
-    const cardsToRender = [...visibleCards]
-
-    if (randomizeWorks) {
+    if (selectWorksSortOrder === 'random') {
       // Fisher-Yates shuffle
-      for (let i = cardsToRender.length - 1; i > 0; i -= 1) {
+      for (let i = visibleCards.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1))
-        ;[cardsToRender[i], cardsToRender[j]] = [cardsToRender[j]!, cardsToRender[i]!]
+        ;[visibleCards[i], visibleCards[j]] = [visibleCards[j]!, visibleCards[i]!]
       }
     }
 
-    track.replaceChildren(...cardsToRender)
+    track.replaceChildren(...visibleCards)
     if (frame) frame.scrollLeft = 0
   }
 
@@ -166,12 +158,12 @@ export function applyFeaturedRecording(options: FeaturedRecordingOptions): Appli
   const recording = shouldPreserveActiveRecording ? activeRecording : choose()
 
   if (shouldPreserveActiveRecording && !recording) {
-    updateSelectedWorks(undefined)
+    arrangeSelectedWorks(undefined)
     return null
   }
 
   apply(recording)
-  updateSelectedWorks(recording?.workId)
+  arrangeSelectedWorks(recording?.workId)
 
   return recording ? { workId: recording.workId } : null
 }

@@ -30,10 +30,10 @@ export const THEME_FONT_CATALOG = {
   'Gothic A1': {
     label: 'Gothic A1',
     cssFamily: `'Gothic A1', ${FALLBACK_STACK_SANS}`,
-    googleCss2Family: 'Gothic+A1:wght@400;500;600;700',
+    // No googleCss2Family — self-hosted in this project via src/assets/fonts/gothic-a1/
     immersiveButtonLabelShift: {
       standard: '0.045em',
-      control: '0.055em',
+      control: '0.045em',
     },
   },
   Archivo: {
@@ -46,10 +46,20 @@ export const THEME_FONT_CATALOG = {
     cssFamily: `'Barlow', ${FALLBACK_STACK_SANS}`,
     googleCss2Family: 'Barlow:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700',
   },
+  'Bebas Neue': {
+    label: 'Bebas Neue',
+    cssFamily: `'Bebas Neue', ${FALLBACK_STACK_SANS}`,
+    googleCss2Family: 'Bebas+Neue',
+  },
   Bitter: {
     label: 'Bitter',
     cssFamily: `'Bitter', ${FALLBACK_STACK_SERIF}`,
     googleCss2Family: 'Bitter:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700',
+  },
+  'Cormorant Garamond': {
+    label: 'Cormorant Garamond',
+    cssFamily: `'Cormorant Garamond', ${FALLBACK_STACK_SERIF}`,
+    googleCss2Family: 'Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700',
   },
   'DM Sans': {
     label: 'DM Sans',
@@ -60,6 +70,11 @@ export const THEME_FONT_CATALOG = {
     label: 'Fira Sans',
     cssFamily: `'Fira Sans', ${FALLBACK_STACK_SANS}`,
     googleCss2Family: 'Fira+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700',
+  },
+  Fraunces: {
+    label: 'Fraunces',
+    cssFamily: `'Fraunces', ${FALLBACK_STACK_SERIF}`,
+    googleCss2Family: 'Fraunces:opsz,wght@9..144,400..700',
   },
   'IBM Plex Sans': {
     label: 'IBM Plex Sans',

@@ -41,7 +41,7 @@ const worksWithScores = works
       <ul class="perusal-only-list" role="list">
         {worksWithScores.map((work) => (
           <li>
-            <a href={`/works/${work.id}/perusal-score/`}>
+            <a href={`/music/${work.id}/perusal-score/`}>
               <span class="perusal-only-work-title">{work.title}</span>
               <span class="perusal-only-work-pages">{work.pageCount} {work.pageCount === 1 ? 'page' : 'pages'}</span>
             </a>

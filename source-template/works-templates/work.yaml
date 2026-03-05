@@ -1,11 +1,11 @@
 # work.yaml — Copy this file into your work folder and fill in the fields.
-# The folder name becomes the URL slug (e.g. folder "nocturne" → example.com/works/nocturne/)
+# The folder name becomes the URL slug (e.g. folder "nocturne" → example.com/music/nocturne/)
 
 # ── Required ──────────────────────────────────────────────────────────────────
 
-title: ''
-# composer: "FirstName LastName"   # Defaults to config value; uncomment to override
-description: ''
+title: ""
+# composer: "Composer Name"   # Defaults to config value; uncomment to override
+description: ""
 
 # ── Optional descriptive ──────────────────────────────────────────────────────
 
@@ -17,12 +17,11 @@ description: ''
 # perusalScore: "score.pdf"   # Filename of PDF in this folder (generates watermarked perusal viewer)
 
 # ── Thumbnail ─────────────────────────────────────────────────────────────────
-# Place your high-res image in this folder and reference it here.
-# The ingest script will resize and convert it to WebP automatically.
+# Place a high-res image named "thumbnail.jpg" (or .png, .webp) in this folder.
+# The ingest script auto-detects it and resizes/converts it to WebP.
 
 thumbnail:
-  src: 'thumbnail.jpg' # Filename relative to this folder (jpg, png, etc.)
-  alt: '' # Describe the image for accessibility
+  alt: ""                     # Describe the image for accessibility
   # crop: "cc"                # Optional crop hint: tl tc tr cl cc cr bl bc br
 
 # ── Categorization ────────────────────────────────────────────────────────────
@@ -49,7 +48,7 @@ selected: false
 # those files — use a numeric prefix to control display order.
 
 recordings: []
-#  - folder: "kermit-the-frog-2021"       # Subfolder under recordings/ holding the assets
+#  - folder: "anna-heller-2021"       # Subfolder under recordings/ holding the assets
 #    performers:
 #      - "Anna Heller"
 #    ensemble: ""                     # Optional: ensemble name (e.g. "Calefax Reed Quintet")
@@ -60,9 +59,7 @@ recordings: []
 #    photo:
 #      src: "photo.webp"              # Relative to the recordings/{folder}/ subfolder
 #      alt: "Anna Heller performing ..."
-#      crop: "cc"                     # Optional crop hint: tl tc tr cl cc cr bl bc br
 #    featuredRecording: true
-#    notes: ""
 
 # Multi-movement works: use movements instead of top-level mp3/photo
 #  - folder: "oleg-bezuglov-2021"
@@ -88,9 +85,7 @@ recordings: []
 # Leave empty array if none.
 
 sheetMusic: []
-#  - label: "Study score (PDF)"
-#    url: "https://example.com/sheet-music"
-#    tooltip: "Optional helper text"
+#  - "https://example.com/sheet-music"
 
 # ── Performances ──────────────────────────────────────────────────────────────
 # Optional: track live performances.

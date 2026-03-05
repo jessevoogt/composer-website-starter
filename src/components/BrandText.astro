@@ -2,8 +2,8 @@
 /**
  * BrandText — Generic text-based site logo.
  *
- * Renders the composer's name as a simple styled text link.
- * Used when no image logo is configured.
+ * Renders the composer's name as a simple styled text link. Used as the default
+ * brand mode; plugin-based brands are opt-in via `source/branding/brand-logo.yaml`.
  */
 
 interface Props {
@@ -61,14 +61,17 @@ const { firstName, lastName, composerName, isHomepage = false } = Astro.props
   .brand-text-last {
     display: block;
     font-weight: 700;
-    font-family: var(--font-heading);
+    font-family: var(--font-heading, 'Gothic A1', sans-serif);
   }
 
   .brand-text-first {
-    font-size: 1.1rem;
+    font-size: 0.96rem;
+    letter-spacing: 0.19em;
   }
 
   .brand-text-last {
-    font-size: 1.1rem;
+    margin-top: -2px;
+    font-size: 0.96rem;
+    letter-spacing: 0.19em;
   }
 </style>

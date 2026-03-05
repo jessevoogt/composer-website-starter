@@ -1,0 +1,90 @@
+---
+/**
+ * BrandCustomLogo — Custom uploaded logo image as site brand.
+ *
+ * Renders a user-uploaded logo image as a linked brand element. The logo is
+ * sourced from `public/logo.*` (ingested from `source/branding/` by the
+ * ingest-assets pipeline).
+ *
+ * If no logo file is found, falls back to rendering the composer name as text.
+ */
+import fs from 'node:fs'
+import path from 'node:path'
+
+interface Props {
+  composerName: string
+  isHomepage?: boolean
+}
+
+const { composerName, isHomepage = false } = Astro.props
+
+// Check for logo file in public/ — supports common image formats
+const publicDir = path.resolve('public')
+const logoExtensions = ['svg', 'png', 'jpg', 'jpeg', 'webp']
+let logoSrc: string | null = null
+
+for (const ext of logoExtensions) {
+  if (fs.existsSync(path.join(publicDir, `logo.${ext}`))) {
+    logoSrc = `/logo.${ext}`
+    break
+  }
+}
+---
+
+{
+  logoSrc ? (
+    <a
+      href="/"
+      class:list={['brand', 'brand-custom-logo', isHomepage && 'brand-home-logo']}
+      aria-label={`${composerName} home`}
+    >
+      <img src={logoSrc} alt="" class="brand-custom-logo-img" aria-hidden="true" />
+    </a>
+  ) : (
+    <a
+      href="/"
+      class:list={['brand', 'brand-custom-logo', 'brand-custom-logo-missing', isHomepage && 'brand-home-logo']}
+      aria-label={`${composerName} home`}
+    >
+      <span class="brand-custom-logo-fallback" aria-hidden="true">
+        {composerName}
+      </span>
+    </a>
+  )
+}
+
+<style>
+  .brand.brand-custom-logo {
+    display: inline-flex;
+    align-items: center;
+    transition:
+      opacity 220ms ease,
+      filter 220ms ease;
+    text-decoration: none;
+  }
+
+  .brand.brand-custom-logo:hover,
+  .brand.brand-custom-logo:focus-visible {
+    opacity: 0.85;
+  }
+
+  .brand-custom-logo-img {
+    display: block;
+    max-height: 2rem;
+    width: auto;
+    object-fit: contain;
+  }
+
+  .brand-custom-logo-fallback {
+    display: block;
+    color: var(--ink);
+    font-family: var(--font-heading, 'Gothic A1', sans-serif);
+    font-size: 0.96rem;
+    font-weight: 700;
+    letter-spacing: 0.19em;
+    line-height: 1;
+    text-transform: uppercase;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+</style>

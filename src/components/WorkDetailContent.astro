@@ -1,0 +1,510 @@
+---
+import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
+import ImmersiveBadge from '@components/immersive/ImmersiveBadge.astro'
+import SocialShares from '@components/SocialShares.astro'
+import FormattedDate from '@components/FormattedDate.astro'
+import RecordingList from '@components/RecordingList.astro'
+import ButtonLink from '@components/ui/ButtonLink.astro'
+import { render } from 'astro:content'
+import type { WorkWithImage } from '@/utils/prepareWorks'
+import perusalScores from '@/utils/perusal-scores'
+import { slugify } from '@/utils/slugify'
+import { marked } from 'marked'
+import { getSharingConfig } from '@/utils/source-config'
+
+const sharingConfig = getSharingConfig()
+
+interface Props {
+  work: WorkWithImage
+  /** Where the "View Score" button links. Omit to hide the button. */
+  scoreButtonHref?: string
+  /** Whether to add data-astro-reload to the score button (true for PerusalLayout targets). */
+  scoreButtonReload?: boolean
+}
+
+const { work, scoreButtonHref, scoreButtonReload } = Astro.props
+const { Content } = await render(work)
+
+const rawDescriptionHtml = await marked.parse(work.data.description)
+// Add target/_blank and rel attributes to any external links produced by marked
+const descriptionHtml = rawDescriptionHtml.replace(
+  /<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/g,
+  '<a href="$1"$2 target="_blank" rel="nofollow noopener noreferrer">',
+)
+
+function getHostName(url: string) {
+  try {
+    const parsedUrl = new URL(url)
+    return parsedUrl.hostname.replace('www.', '')
+  } catch {
+    return null
+  }
+}
+function getDefaultSheetMusicTooltip(url: string) {
+  const hostName = getHostName(url)
+  if (hostName) {
+    return `Purchase ${work.data.title} on ${hostName}`
+  }
+  return `Purchase ${work.data.title}`
+}
+function getSheetMusicTooltip(sm: (typeof work.data.sheetMusic)[number]) {
+  if (typeof sm === 'string') return getDefaultSheetMusicTooltip(sm) || sm
+  return sm.tooltip || getDefaultSheetMusicTooltip(sm.url) || sm.url
+}
+function getSheetMusicLabel(sm: (typeof work.data.sheetMusic)[number]) {
+  if (typeof sm === 'string') return getHostName(sm) || sm
+  return sm.label || getHostName(sm.url) || sm.url
+}
+function getSheetMusicAriaLabel(sm: (typeof work.data.sheetMusic)[number]) {
+  if (typeof sm === 'string') return getSheetMusicTooltip(sm)
+  return sm.label || getSheetMusicTooltip(sm)
+}
+function getSheetMusicUrl(sm: (typeof work.data.sheetMusic)[number]) {
+  if (typeof sm === 'string') {
+    return sm
+  } else {
+    return sm.url
+  }
+}
+
+const instrumentationValues = (Array.isArray(work.data.instrumentation) ? work.data.instrumentation : [work.data.instrumentation])
+  .map((value) => value.trim())
+  .filter(Boolean)
+const tagSlugsForWork = new Set(work.tagSlugs)
+const instrumentationEntries = instrumentationValues.map((label) => {
+  const slug = slugify(label)
+  return {
+    label,
+    href: tagSlugsForWork.has(slug) ? `/music/browse/${slug}/` : undefined,
+  }
+})
+const tagEntries = work.data.tags
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .map((label) => {
+    const slug = slugify(label)
+    return {
+      label,
+      href: tagSlugsForWork.has(slug) ? `/music/browse/${slug}/` : undefined,
+    }
+  })
+const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.id])
+---
+
+<ImmersivePageHeader title={work.data.title} subtitle={work.data.subtitle} subtitleClass="work-detail-subtitle" class="work-detail-page-header">
+  {
+    hasPerusalScore && scoreButtonHref ? (
+      <ButtonLink
+        href={scoreButtonHref}
+        variant="primary"
+        class="work-detail-score-link"
+        reload={scoreButtonReload}
+      >
+        View Score
+        <span slot="icon-right" class="work-detail-score-link-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="9" cy="17.3" rx="2.9" ry="2.35" fill="currentColor" stroke="none"></ellipse>
+            <path d="M11.8 17.3V5.2"></path>
+            <path d="M11.8 5.3c2.8 0.35 4.8 2.1 4.8 4.6-1.2-1.1-3-1.5-4.8-1.2"></path>
+          </svg>
+        </span>
+      </ButtonLink>
+    ) : null
+  }
+  <div class="work-header-meta-layout">
+    <div class="work-description-panel">
+      <div class="work-description-text" set:html={descriptionHtml} />
+    </div>
+    <div class="work-meta-panel">
+      <div class="work-meta-panel-scroll">
+        <dl class="work-meta-grid">
+          <dt>Instrumentation:</dt>
+          <dd>
+            {
+              instrumentationEntries.map((instrument, index) => (
+                <>
+                  {index > 0 ? ', ' : ''}
+                  {instrument.href ? <a href={instrument.href}>{instrument.label}</a> : instrument.label}
+                </>
+              ))
+            }
+          </dd>
+
+          {
+            work.data.duration ? (
+              <>
+                <dt>Duration:</dt>
+                <dd>{work.data.duration}</dd>
+              </>
+            ) : null
+          }
+          {
+            work.data.difficulty ? (
+              <>
+                <dt>Difficulty:</dt>
+                <dd>{work.data.difficulty}</dd>
+              </>
+            ) : null
+          }
+          {
+            work.data.completionDate ? (
+              <>
+                <dt>Completion date:</dt>
+                <dd>
+                  <FormattedDate date={work.data.completionDate} />
+                </dd>
+              </>
+            ) : null
+          }
+          {
+            work.data.sheetMusic.length ? (
+              <>
+                <dt>Sheet Music:</dt>
+                <dd style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                  {work.data.sheetMusic.map((sm) => (
+                    <a
+                      href={getSheetMusicUrl(sm)}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      title={getSheetMusicTooltip(sm)}
+                      aria-label={getSheetMusicAriaLabel(sm)}
+                    >
+                      {getSheetMusicLabel(sm)}
+                    </a>
+                  ))}
+                </dd>
+              </>
+            ) : null
+          }
+          {
+            tagEntries.length ? (
+              <>
+                <dt>Tags:</dt>
+                <dd>
+                  <ul class="tags-list">
+                    {tagEntries.map((tag) => (
+                      <li>{tag.href ? <ImmersiveBadge href={tag.href}>{tag.label}</ImmersiveBadge> : <ImmersiveBadge>{tag.label}</ImmersiveBadge>}</li>
+                    ))}
+                  </ul>
+                </dd>
+              </>
+            ) : null
+          }
+        </dl>
+      </div>
+    </div>
+  </div>
+  {work.data.recordings ? (
+    <div class="work-detail-recordings-row">
+      <RecordingList
+        recordings={work.data.recordings}
+        workId={work.id}
+        workTitle={work.data.title}
+        composer={work.data.composer}
+        thumbnail={work.data.thumbnail}
+        singleLinkHeadingLevel="h2"
+        creditTagLinks={work.creditTagLinks}
+      />
+    </div>
+  ) : null}
+</ImmersivePageHeader>
+<section class="work-detail-content-section">
+  <div class="narrow space-content container">
+    <Content />
+  </div>
+</section>
+{!sharingConfig.hidden && (
+<section class="work-detail-share-section">
+  <div class="narrow space-content container">
+    <h2>{sharingConfig.sectionTitle}</h2>
+    <p>{sharingConfig.sectionDescription}</p>
+    <SocialShares />
+  </div>
+</section>
+)}
+
+<style is:global>
+  .page-content-work-detail {
+    padding-bottom: 0;
+  }
+
+  .work-detail-content-section {
+    margin-block: var(--space-xl);
+  }
+
+  .work-detail-share-section {
+    margin-top: var(--space-xl);
+    margin-bottom: 0;
+    background: color-mix(in srgb, var(--bg-soft) 86%, var(--surface) 14%);
+    padding-block: clamp(1.75rem, 4vw, 2.75rem);
+  }
+
+  .work-detail-page-header .page-header-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    column-gap: var(--space-s);
+    row-gap: 0.15rem;
+  }
+
+  .work-detail-page-header .page-header-inner > h1 {
+    flex: 1 1 18rem;
+    min-width: 0;
+    margin-bottom: 0;
+  }
+
+  .work-detail-page-header .page-header-inner > .page-header-subtitle {
+    order: 2;
+    flex: 1 1 100%;
+    margin-top: 0.5rem;
+  }
+
+  .page-header-subtitle.work-detail-subtitle {
+    max-width: 72ch;
+    color: var(--ink);
+    font-size: var(--font-size-1);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .immersive-btn-primary.work-detail-score-link {
+    order: 1;
+    flex: 0 0 auto;
+    display: inline-flex;
+    gap: 0.42rem;
+    align-self: flex-start;
+    margin-left: auto;
+    margin-top: 0.18rem;
+    white-space: nowrap;
+    background: var(--cta-bg);
+    border-color: color-mix(in srgb, var(--cta-bg) 82%, #000);
+    color: var(--cta-ink);
+  }
+
+  .immersive-btn-primary.work-detail-score-link:not(:disabled):hover,
+  .immersive-btn-primary.work-detail-score-link:not(:disabled):focus-visible {
+    background: color-mix(in srgb, var(--cta-bg) 86%, #000);
+    border-color: color-mix(in srgb, var(--cta-bg) 72%, #000);
+    color: var(--cta-ink);
+  }
+
+  .immersive-btn-primary.work-detail-score-link:not(:disabled):active {
+    background: color-mix(in srgb, var(--cta-bg) 72%, #000);
+    border-color: color-mix(in srgb, var(--cta-bg) 65%, #000);
+    color: var(--cta-ink);
+  }
+
+  /* On the request-score-access page, tone down the button so it doesn't
+     compete with the modal dialog overlay for the user's attention. */
+  [data-request-score-access-page] .immersive-btn-primary.work-detail-score-link {
+    background: transparent;
+    border-color: color-mix(in srgb, var(--btn-ghost) 64%, transparent);
+    color: var(--btn-ghost);
+  }
+
+  [data-request-score-access-page] .immersive-btn-primary.work-detail-score-link:not(:disabled):hover,
+  [data-request-score-access-page] .immersive-btn-primary.work-detail-score-link:not(:disabled):focus-visible {
+    border-color: var(--ink);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--ink);
+  }
+
+  [data-request-score-access-page] .immersive-btn-primary.work-detail-score-link:not(:disabled):active {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .work-detail-score-link-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
+    min-width: 1.5em;
+    flex: 0 0 auto;
+    color: currentColor;
+    transform-origin: center;
+  }
+
+  .work-detail-score-link-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .work-header-meta-layout {
+    order: 3;
+    flex: 1 1 100%;
+    min-width: 0;
+    margin-top: var(--space-s);
+    display: grid;
+    gap: var(--space-s);
+  }
+
+  .work-detail-recordings-row {
+    order: 4;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .work-description-text {
+    color: var(--ink-soft);
+    font-size: var(--font-size-0);
+    line-height: 1.5;
+  }
+
+  .page-header-section .work-description-text p {
+    margin: 0;
+    max-width: 68ch;
+  }
+
+  .work-description-text p + p {
+    margin-top: 0.75em;
+  }
+
+  .work-meta-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.2em 1.5em;
+    align-items: start;
+    font-size: var(--font-size--1);
+    margin: 0;
+  }
+
+  .work-meta-grid dt {
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .work-meta-grid dd {
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  @media (min-width: 64rem), (min-width: 48rem) and (orientation: landscape) {
+    .work-detail-page-header .page-header-inner {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      column-gap: var(--space-s);
+      row-gap: 0;
+      align-items: start;
+    }
+
+    .work-detail-page-header .page-header-inner > h1 {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .work-detail-page-header .page-header-inner > .page-header-subtitle {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .immersive-btn-primary.work-detail-score-link {
+      grid-column: 1;
+      grid-row: 3;
+      justify-self: start;
+      padding: 0.62rem 1rem;
+      margin-left: 0;
+      margin-top: var(--space-s);
+      align-self: start;
+    }
+
+    /* Promote children into the parent grid */
+    .work-header-meta-layout {
+      display: contents;
+    }
+
+    .work-meta-panel {
+      grid-column: 2;
+      grid-row: 1 / 4;
+      align-self: start;
+      border: 1px solid var(--line);
+      border-color: color-mix(in srgb, var(--line) 62%, transparent);
+      border-radius: var(--radius-md);
+      background: var(--bg-soft);
+      background: color-mix(in srgb, var(--bg) 72%, var(--surface) 28%);
+      padding: var(--space-s);
+    }
+
+    .work-description-panel {
+      grid-column: 1 / -1;
+      grid-row: 4;
+      margin-top: var(--space-s);
+      max-height: calc(1.5 * var(--font-size-0) * 6 + 3.75em);
+      overflow-y: auto;
+    }
+
+    .work-meta-panel-scroll {
+      max-height: 33vh;
+      overflow-y: auto;
+    }
+
+    .work-meta-grid {
+      max-height: 33vh;
+      overflow-y: auto;
+      font-size: var(--font-size--2);
+    }
+
+    .work-detail-recordings-row {
+      grid-column: 1 / -1;
+      grid-row: 5;
+    }
+  }
+
+  /* Remove the extra top margin applied by .space-content > dl > * + *
+     for this dl so grid gap controls row spacing and alignment */
+  .space-content > dl.work-meta-grid > * + * {
+    margin-block-start: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .work-detail-score-link:hover .work-detail-score-link-icon,
+    .work-detail-score-link:focus-visible .work-detail-score-link-icon {
+      animation: work-detail-score-icon-bump 240ms ease-out;
+    }
+  }
+
+  @keyframes work-detail-score-icon-bump {
+    0% {
+      transform: translateY(0) scale(1);
+    }
+
+    45% {
+      transform: translateY(-0.12rem) scale(1.08);
+    }
+
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .work-detail-page-header .page-header-inner {
+      row-gap: 0.65rem;
+    }
+
+    .work-detail-page-header .page-header-inner > h1 {
+      flex-basis: 100%;
+    }
+
+    .work-detail-page-header .page-header-inner > .page-header-subtitle {
+      order: 2;
+      margin-top: 0;
+    }
+
+    .immersive-btn-primary.work-detail-score-link {
+      order: 3;
+      align-self: flex-start;
+      margin-left: 0;
+      margin-top: 0;
+    }
+
+    .work-header-meta-layout {
+      order: 4;
+    }
+
+    .work-detail-recordings-row {
+      order: 5;
+    }
+  }
+</style>

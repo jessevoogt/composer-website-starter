@@ -55,12 +55,11 @@ document.addEventListener('astro:page-load', () => {
     localStorage.setItem(introKey, 'seen')
   }
 
-  // Apply featured recording and update selected works list behavior
+  // Apply the featured recording and adjust the works carousel ordering
   applyFeaturedRecording({
+    selectWorksSortOrder: data.selectWorksSortOrder,
     featuredRecordingPool: data.featuredRecordingPool,
     fallbackFeaturedRecording: data.fallbackFeaturedRecording,
-    randomizeWorks: data.selectWorksBehavior.randomize,
-    removeFeaturedWorkFromList: data.selectWorksBehavior.removeFeaturedWorkFromList,
   })
 
   // Initialize all interactive modules

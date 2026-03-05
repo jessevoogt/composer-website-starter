@@ -1,0 +1,325 @@
+themes:
+  - id: concert-hall
+    label: Concert Hall
+    description: Classic warm ivory with burgundy and brass. Program-booklet energy.
+    colors:
+      colorBackground: '#f6f1e8'
+      colorBackgroundSoft: '#ffffff'
+      colorText: '#1a1a1a'
+      colorTextMuted: '#5d5a55'
+      colorAccent: '#6e0f1a'
+      colorAccentStrong: '#b08d57'
+      colorButton: '#6e0f1a'
+      colorButtonText: '#ffffff'
+    fontBody: IBM Plex Sans
+    fontHeading: Cormorant Garamond
+    borderRadius: subtle
+    focusRingColor: '#000000'
+    ctaBackground: ''
+    ctaText: ''
+    navActiveUnderline: ''
+    navActiveText: ''
+    navHoverUnderline: ''
+    navHoverText: ''
+    scrimColor: ''
+    disableImageOverlays: false
+    playerBorderRadius: rounded
+    socialIconBorderRadius: circle
+    profileImageBorderRadius: circle
+    tagBadgeBorderRadius: circle
+    customCss: ''
+    aboutPage:
+      profileImagePosition: center
+    contactPage:
+      position: center
+      maxWidth: default
+    homeHero:
+      mirrorImage: false
+      layout:
+        mode: columns
+        columnsImagePosition: left
+        columnSplit: text-wide
+        stackedImageOrder: first
+      typography:
+        titleScale: default
+        taglineScale: default
+        citationScale: default
+      divider:
+        visible: false
+        widthPx: 1
+        color: ''
+        glow: none
+        glowSide: balanced
+      actions:
+        listenNow: theme-default
+        searchMusic: theme-default
+  - id: midnight-stage
+    label: Midnight Stage
+    description: Dark venue atmosphere with warm gold and cool teal. Elegant and focused.
+    colors:
+      colorBackground: '#0b0f14'
+      colorBackgroundSoft: '#121926'
+      colorText: '#ede7de'
+      colorTextMuted: '#a7a19a'
+      colorAccent: '#d2b48c'
+      colorAccentStrong: '#5bd6c8'
+      colorButton: '#d2b48c'
+      colorButtonText: '#0b0f14'
+    fontBody: Source Sans 3
+    fontHeading: Playfair Display
+    borderRadius: none
+    focusRingColor: '#ffffff'
+    ctaBackground: ''
+    ctaText: ''
+    navActiveUnderline: ''
+    navActiveText: ''
+    navHoverUnderline: ''
+    navHoverText: ''
+    scrimColor: ''
+    disableImageOverlays: false
+    playerBorderRadius: rounded
+    socialIconBorderRadius: ''
+    profileImageBorderRadius: circle
+    tagBadgeBorderRadius: circle
+    customCss: ''
+    aboutPage:
+      profileImagePosition: center
+    contactPage:
+      position: center
+      maxWidth: default
+    homeHero:
+      mirrorImage: false
+      layout:
+        mode: columns
+        columnsImagePosition: left
+        columnSplit: text-wide
+        stackedImageOrder: first
+      typography:
+        titleScale: default
+        taglineScale: default
+        citationScale: default
+      divider:
+        visible: true
+        widthPx: 1
+        color: ''
+        glow: none
+        glowSide: balanced
+      actions:
+        listenNow: theme-default
+        searchMusic: theme-default
+  - id: sheet-music-minimal
+    label: Sheet Music Minimal
+    description: Bright high-contrast white with cobalt ink. Clean and text-forward.
+    colors:
+      colorBackground: '#ffffff'
+      colorBackgroundSoft: '#f6f7f9'
+      colorText: '#0e0e10'
+      colorTextMuted: '#4e5561'
+      colorAccent: '#2d5bff'
+      colorAccentStrong: '#111827'
+      colorButton: '#2d5bff'
+      colorButtonText: '#ffffff'
+    fontBody: IBM Plex Sans
+    fontHeading: IBM Plex Serif
+    borderRadius: none
+    focusRingColor: ''
+    ctaBackground: ''
+    ctaText: ''
+    navActiveUnderline: '#000000'
+    navActiveText: '#000000'
+    navHoverUnderline: '#0e0e10'
+    navHoverText: '#0e0e10'
+    scrimColor: ''
+    disableImageOverlays: false
+    playerBorderRadius: none
+    socialIconBorderRadius: none
+    profileImageBorderRadius: none
+    tagBadgeBorderRadius: none
+    customCss: ''
+    aboutPage:
+      profileImagePosition: center
+    contactPage:
+      position: center
+      maxWidth: default
+    homeHero:
+      mirrorImage: false
+      layout:
+        mode: columns
+        columnsImagePosition: left
+        columnSplit: text-wide
+        stackedImageOrder: first
+      typography:
+        titleScale: default
+        taglineScale: default
+        citationScale: default
+      divider:
+        visible: true
+        widthPx: 1
+        color: ''
+        glow: none
+        glowSide: balanced
+      actions:
+        listenNow: theme-default
+        searchMusic: theme-default
+  - id: velvet-curtain
+    label: Velvet Curtain
+    description: Deep plum-black with rose wine and lilac electric. Expressive and artsy.
+    colors:
+      colorBackground: '#141016'
+      colorBackgroundSoft: '#1e1621'
+      colorText: '#f2e9f3'
+      colorTextMuted: '#b9aebb'
+      colorAccent: '#b34a6b'
+      colorAccentStrong: '#8a7cff'
+      colorButton: '#b34a6b'
+      colorButtonText: '#f2e9f3'
+    fontBody: DM Sans
+    fontHeading: Fraunces
+    borderRadius: subtle
+    focusRingColor: '#ffffff'
+    ctaBackground: ''
+    ctaText: ''
+    navActiveUnderline: ''
+    navActiveText: ''
+    navHoverUnderline: ''
+    navHoverText: ''
+    scrimColor: ''
+    disableImageOverlays: false
+    playerBorderRadius: rounded
+    socialIconBorderRadius: ''
+    profileImageBorderRadius: circle
+    tagBadgeBorderRadius: circle
+    customCss: ''
+    aboutPage:
+      profileImagePosition: center
+    contactPage:
+      position: center
+      maxWidth: default
+    homeHero:
+      mirrorImage: false
+      layout:
+        mode: columns
+        columnsImagePosition: left
+        columnSplit: text-wide
+        stackedImageOrder: first
+      typography:
+        titleScale: default
+        taglineScale: default
+        citationScale: default
+      divider:
+        visible: true
+        widthPx: 1
+        color: ''
+        glow: none
+        glowSide: balanced
+      actions:
+        listenNow: theme-default
+        searchMusic: theme-default
+  - id: sea-glass-modern
+    label: Sea Glass Modern
+    description: Calm teal and blue on light grey. Approachable and contemporary.
+    colors:
+      colorBackground: '#f3f7f7'
+      colorBackgroundSoft: '#ffffff'
+      colorText: '#102a2e'
+      colorTextMuted: '#4c666b'
+      colorAccent: '#0f766e'
+      colorAccentStrong: '#2563eb'
+      colorButton: '#0f766e'
+      colorButtonText: '#ffffff'
+    fontBody: Manrope
+    fontHeading: Space Grotesk
+    borderRadius: rounded
+    focusRingColor: ''
+    ctaBackground: ''
+    ctaText: ''
+    navActiveUnderline: ''
+    navActiveText: ''
+    navHoverUnderline: ''
+    navHoverText: ''
+    scrimColor: ''
+    disableImageOverlays: false
+    playerBorderRadius: round
+    socialIconBorderRadius: ''
+    profileImageBorderRadius: circle
+    tagBadgeBorderRadius: circle
+    customCss: ''
+    aboutPage:
+      profileImagePosition: center
+    contactPage:
+      position: center
+      maxWidth: default
+    homeHero:
+      mirrorImage: false
+      layout:
+        mode: columns
+        columnsImagePosition: left
+        columnSplit: text-wide
+        stackedImageOrder: first
+      typography:
+        titleScale: default
+        taglineScale: default
+        citationScale: default
+      divider:
+        visible: true
+        widthPx: 1
+        color: ''
+        glow: none
+        glowSide: balanced
+      actions:
+        listenNow: theme-default
+        searchMusic: theme-default
+  - id: neon-ink
+    label: New Music / Neon Ink
+    description: Ink-black with electric cyan and magenta. Festival-poster edge.
+    colors:
+      colorBackground: '#070a12'
+      colorBackgroundSoft: '#0e1424'
+      colorText: '#eaf0ff'
+      colorTextMuted: '#a3aec7'
+      colorAccent: '#00e5ff'
+      colorAccentStrong: '#ff3dcc'
+      colorButton: '#00e5ff'
+      colorButtonText: '#070a12'
+    fontBody: Space Grotesk
+    fontHeading: Bebas Neue
+    borderRadius: none
+    focusRingColor: '#ffffff'
+    ctaBackground: ''
+    ctaText: ''
+    navActiveUnderline: ''
+    navActiveText: ''
+    navHoverUnderline: ''
+    navHoverText: ''
+    scrimColor: ''
+    disableImageOverlays: false
+    playerBorderRadius: rounded
+    socialIconBorderRadius: ''
+    profileImageBorderRadius: circle
+    tagBadgeBorderRadius: circle
+    customCss: ''
+    aboutPage:
+      profileImagePosition: center
+    contactPage:
+      position: center
+      maxWidth: default
+    homeHero:
+      mirrorImage: false
+      layout:
+        mode: columns
+        columnsImagePosition: left
+        columnSplit: text-wide
+        stackedImageOrder: first
+      typography:
+        titleScale: default
+        taglineScale: default
+        citationScale: default
+      divider:
+        visible: true
+        widthPx: 1
+        color: ''
+        glow: medium
+        glowSide: image
+      actions:
+        listenNow: theme-default
+        searchMusic: theme-default

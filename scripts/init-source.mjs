@@ -2,9 +2,14 @@
 /**
  * Initialize local source content from the committed source template.
  *
+ * This runs automatically on `npm install` (via postinstall).
+ * It copies source-template/ → source/ so you have a working local copy
+ * to customize. Your source/ directory is gitignored — the template
+ * (source-template/) is the shared starting point.
+ *
  * Usage:
- *   node ./scripts/init-source.mjs
- *   node ./scripts/init-source.mjs --reset
+ *   node ./scripts/init-source.mjs          # Initialize if missing
+ *   node ./scripts/init-source.mjs --reset  # Force reinitialize
  */
 
 import fs from 'node:fs'
@@ -29,7 +34,7 @@ function resolveGitDir() {
   if (!dotGitStats.isFile()) return null
 
   const dotGitContents = fs.readFileSync(dotGitPath, 'utf8').trim()
-  const gitDirMatch = dotGitContents.match(/^gitdir:\s*(.+)$/i)
+  const gitDirMatch = dotGitContents.match(/^gitdir:\\s*(.+)$/i)
   if (!gitDirMatch) return null
 
   const gitDirPath = gitDirMatch[1].trim()
@@ -87,3 +92,6 @@ if (fs.existsSync(sourceDir)) {
 
 fs.cpSync(sourceTemplateDir, sourceDir, { recursive: true })
 console.log('[init-source] Initialized source/ from source-template/.')
+console.log('')
+console.log('  Run \x1b[36mnpm run dev\x1b[0m to get started \u2014 the setup wizard will launch automatically.')
+console.log('')

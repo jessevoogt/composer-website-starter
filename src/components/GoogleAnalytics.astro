@@ -9,14 +9,14 @@ const googleAnalyticsId = siteConfig.googleAnalyticsId
   import.meta.env.PROD && googleAnalyticsId && (
     <>
       <!-- Google tag (gtag.js) -->
-  <script define:vars={{ googleAnalyticsId }}>
+  <script is:inline define:vars={{ googleAnalyticsId }}>
     const GTAG = googleAnalyticsId;
 
     // Initialize dataLayer immediately to queue events
     window.dataLayer = window.dataLayer || [];
 
     // Define the gtag function - GTM script doesn't do this, we do!
-    window.gtag = function(...args) {
+    window.gtag = function() {
       window.dataLayer.push(arguments);
     };
 

@@ -1,6 +1,21 @@
 ---
 import '../styles/site.css'
-import { getSiteConfig } from '@/utils/source-config'
+import { getSiteConfig, getThemeConfig } from '@/utils/source-config'
+import {
+  DEFAULT_THEME_FONT_BODY,
+  DEFAULT_THEME_FONT_HEADING,
+  normalizeThemeFontValue,
+  resolveThemeFontFamily,
+  resolveImmersiveButtonLabelShifts,
+  getThemeGoogleFontsStylesheetHref,
+} from '@/utils/theme-fonts'
+import {
+  normalizeThemeColors,
+  normalizeHexColorExact,
+  toThemeCssVars,
+  toThemeStyleString,
+} from '@/utils/theme-css-vars'
+import { THEME_PRESETS, THEME_COLOR_KEYS } from '@/utils/theme-presets'
 import SiteMeta from '@components/SiteMeta.astro'
 import GoogleAnalytics from '@components/GoogleAnalytics.astro'
 
@@ -11,44 +26,176 @@ interface Props {
   image?: string
   imageAlt?: string
   author?: string
+  robots?: string
   skipTargetId?: string
   pageContentClass?: string
   bodyClass?: string
 }
 
 const siteConfig = getSiteConfig()
+const themeConfig = getThemeConfig()
+
+const resolvedThemeColors = normalizeThemeColors(themeConfig)
+const resolvedFontBody = normalizeThemeFontValue(themeConfig.fontBody, DEFAULT_THEME_FONT_BODY)
+const resolvedFontHeading = normalizeThemeFontValue(themeConfig.fontHeading, DEFAULT_THEME_FONT_HEADING)
+const resolvedBorderRadius = themeConfig.borderRadius || 'none'
+
+const matchedPreset = THEME_PRESETS.find(
+  (preset) =>
+    THEME_COLOR_KEYS.every((key) => {
+      const a = normalizeHexColorExact(resolvedThemeColors[key])
+      const b = normalizeHexColorExact(preset.colors[key])
+      return a && b && a === b
+    }) && (preset.borderRadius || 'none') === resolvedBorderRadius,
+)
+const resolvedCtaBackground = themeConfig.ctaBackground.trim() || matchedPreset?.ctaBackground || ''
+const resolvedCtaText = themeConfig.ctaText.trim() || matchedPreset?.ctaText || ''
+const resolvedFocusRingColor = themeConfig.focusRingColor.trim() || matchedPreset?.focusRingColor || ''
+const resolvedNavActiveUnderline = themeConfig.navActiveUnderline.trim() || matchedPreset?.navActiveUnderline || ''
+const resolvedNavActiveText = themeConfig.navActiveText.trim() || matchedPreset?.navActiveText || ''
+const resolvedNavHoverUnderline = themeConfig.navHoverUnderline.trim() || matchedPreset?.navHoverUnderline || ''
+const resolvedNavHoverText = themeConfig.navHoverText.trim() || matchedPreset?.navHoverText || ''
+const resolvedScrimColor = themeConfig.scrimColor.trim() || matchedPreset?.scrimColor || ''
+const resolvedDisableImageOverlays = themeConfig.disableImageOverlays
+const resolvedPlayerBorderRadius = themeConfig.playerBorderRadius.trim()
+const resolvedSocialIconBorderRadius = themeConfig.socialIconBorderRadius.trim()
+const resolvedProfileImageBorderRadius =
+  themeConfig.profileImageBorderRadius.trim() || matchedPreset?.profileImageBorderRadius || 'circle'
+const resolvedTagBadgeBorderRadius =
+  themeConfig.tagBadgeBorderRadius.trim() || matchedPreset?.tagBadgeBorderRadius || 'circle'
+const resolvedThemeId = themeConfig.currentThemeId.trim() || matchedPreset?.id || ''
+const resolvedThemeCustomCss = themeConfig.customCss.trim()
+const resolvedAboutPage = themeConfig.aboutPage
+const resolvedContactPage = themeConfig.contactPage
+const themeVars = toThemeCssVars(
+  resolvedThemeColors,
+  resolvedBorderRadius,
+  resolvedFocusRingColor,
+  resolvedCtaBackground,
+  resolvedCtaText,
+  resolvedNavActiveUnderline,
+  resolvedNavActiveText,
+  resolvedNavHoverUnderline,
+  resolvedNavHoverText,
+  resolvedScrimColor,
+  resolvedDisableImageOverlays,
+  resolvedPlayerBorderRadius,
+  resolvedSocialIconBorderRadius,
+  resolvedProfileImageBorderRadius,
+  resolvedTagBadgeBorderRadius,
+  resolvedAboutPage.profileImagePosition,
+  resolvedAboutPage.position,
+  resolvedAboutPage.maxWidth,
+  resolvedContactPage.position,
+  resolvedContactPage.maxWidth,
+)
+themeVars['--font-heading'] = resolveThemeFontFamily(resolvedFontHeading, DEFAULT_THEME_FONT_HEADING)
+themeVars['--font-body'] = resolveThemeFontFamily(resolvedFontBody, DEFAULT_THEME_FONT_BODY)
+const immersiveLabelShifts = resolveImmersiveButtonLabelShifts(resolvedFontHeading, DEFAULT_THEME_FONT_HEADING)
+themeVars['--immersive-btn-label-shift-standard'] = immersiveLabelShifts.standard
+themeVars['--immersive-btn-label-shift-control'] = immersiveLabelShifts.control
+const themeStyleVars = toThemeStyleString(themeVars)
+
+const googleFontsStylesheetHref = getThemeGoogleFontsStylesheetHref([
+  { value: resolvedFontBody, fallback: DEFAULT_THEME_FONT_BODY },
+  { value: resolvedFontHeading, fallback: DEFAULT_THEME_FONT_HEADING },
+])
+
+const isDevMode = import.meta.env.DEV
+
+const themeToolbarData = isDevMode
+  ? JSON.stringify({
+      currentThemeId: themeConfig.currentThemeId.trim(),
+      colors: resolvedThemeColors,
+      rawColors: {
+        colorBackground: themeConfig.colorBackground.trim(),
+        colorBackgroundSoft: themeConfig.colorBackgroundSoft.trim(),
+        colorText: themeConfig.colorText.trim(),
+        colorTextMuted: themeConfig.colorTextMuted.trim(),
+        colorAccent: themeConfig.colorAccent.trim(),
+        colorAccentStrong: themeConfig.colorAccentStrong.trim(),
+        colorButton: themeConfig.colorButton.trim(),
+        colorButtonText: themeConfig.colorButtonText.trim(),
+      },
+      focusRingColor: resolvedFocusRingColor,
+      navActiveUnderline: resolvedNavActiveUnderline,
+      navActiveText: resolvedNavActiveText,
+      navHoverUnderline: resolvedNavHoverUnderline,
+      navHoverText: resolvedNavHoverText,
+      scrimColor: resolvedScrimColor,
+      disableImageOverlays: resolvedDisableImageOverlays,
+      ctaBackground: resolvedCtaBackground,
+      ctaText: resolvedCtaText,
+      fontBody: resolvedFontBody,
+      fontHeading: resolvedFontHeading,
+      borderRadius: resolvedBorderRadius,
+      playerBorderRadius: resolvedPlayerBorderRadius,
+      socialIconBorderRadius: resolvedSocialIconBorderRadius,
+      profileImageBorderRadius: resolvedProfileImageBorderRadius,
+      tagBadgeBorderRadius: resolvedTagBadgeBorderRadius,
+      customCss: themeConfig.customCss,
+      aboutPage: themeConfig.aboutPage,
+      contactPage: themeConfig.contactPage,
+      homeHero: themeConfig.homeHero,
+    })
+  : null
 
 const {
   title = siteConfig.siteTitle,
   description = siteConfig.siteDescription,
   url = Astro.site,
   image = '/social-preview-image.png',
-  imageAlt = `${siteConfig.composerName} social preview image`,
+  imageAlt = `${siteConfig.composerName} monogram and wordmark`,
   author = siteConfig.composerName,
+  robots,
   skipTargetId = 'main-content',
   pageContentClass,
   bodyClass,
 } = Astro.props
 ---
 
-<html lang="en" dir="ltr">
+<html lang="en" dir="ltr" style={themeStyleVars} data-theme-id={resolvedThemeId || undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
 
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=7" />
-    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=7" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=7" />
-    <link rel="shortcut icon" href="/favicon.ico?v=7" />
+    {
+      googleFontsStylesheetHref && (
+        <>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+          <link rel="stylesheet" href={googleFontsStylesheetHref} />
+        </>
+      )
+    }
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=6" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png?v=6" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=6" />
+    <link rel="shortcut icon" href="/favicon.ico?v=6" />
     <meta name="apple-mobile-web-app-title" content={siteConfig.composerName} />
     <link rel="manifest" href="/site.webmanifest" />
 
-    <SiteMeta title={title} description={description} url={String(url)} image={image} imageAlt={imageAlt} author={author} />
+    <SiteMeta
+      title={title}
+      description={description}
+      url={String(url)}
+      image={image}
+      imageAlt={imageAlt}
+      author={author}
+      robots={robots}
+    />
     <GoogleAnalytics />
+    {resolvedThemeCustomCss && <style id="site-theme-custom-css" is:inline set:html={resolvedThemeCustomCss} />}
   </head>
   <body class:list={[bodyClass]}>
+    {
+      themeToolbarData && (
+        <script is:inline id="site-theme-config-data" type="application/json" set:html={themeToolbarData} />
+      )
+    }
     <a class="skip-link" href={`#${skipTargetId}`}>Skip to main content</a>
     <main id="main-content" class:list={['page-content', pageContentClass]}>
       <slot />

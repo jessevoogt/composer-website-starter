@@ -1,0 +1,89 @@
+---
+import SiteLayout from '@layouts/SiteLayout.astro'
+import WorkDetailContent from '@components/WorkDetailContent.astro'
+import PerusalGateModal from '@components/PerusalGateModal.astro'
+import { getCollection } from 'astro:content'
+import prepareWorks, { type WorkWithImage } from '@/utils/prepareWorks'
+import perusalScores from '@/utils/perusal-scores'
+import {
+  getSiteConfig,
+  getScoreAccessConfig,
+  isScoreGatingActive,
+  getWorkDetailPage,
+  getRequestScoreAccessPage,
+} from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
+
+const siteConfig = getSiteConfig()
+const perusalAccessConfig = getScoreAccessConfig()
+const requestAccessConfig = getRequestScoreAccessPage()
+
+export async function getStaticPaths() {
+  const works = await getCollection('works')
+  const { works: preparedWorks } = prepareWorks(works)
+  const gatingActive = isScoreGatingActive()
+
+  return preparedWorks
+    .filter((work) => {
+      if (!work.data.hasPerusalScore || !perusalScores[work.id]) return false
+      const override = work.data.perusalScoreGated ?? ''
+      return override === 'gated' ? true : override === 'ungated' ? false : gatingActive
+    })
+    .map((work) => ({
+      params: { work: work.id },
+      props: { work },
+    }))
+}
+
+interface Props {
+  work: WorkWithImage
+}
+
+const { work } = Astro.props
+
+// Inherit page hero from work detail: per-work hero → global work detail default → none
+// The hideBackground option suppresses the hero to avoid a visual glitch when the dialog opens.
+const workDetailConfig = getWorkDetailPage()
+const { pageHero } = requestAccessConfig.hideBackground
+  ? { pageHero: undefined }
+  : resolvePageHero(work.data.preferredHeroId || workDetailConfig.preferredHeroId)
+
+const descriptionMeta = work.data.description
+  .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+  .replace(/[*_~`]+/g, '')
+  .replace(/\n+/g, ' ')
+  .trim()
+---
+
+<SiteLayout
+  title={`Request Score Access — ${work.data.title}`}
+  description={descriptionMeta}
+  url={`/music/${work.id}/request-score-access/`}
+  pageContentClass="page-content-work-detail"
+  pageHero={pageHero}
+  pageKey="work-detail"
+  customBreadcrumbLabels={{
+    [work.id]: work.data.title,
+    'request-score-access': 'Request Access',
+  }}
+>
+  <div data-request-score-access-page data-work-id={work.id}>
+    <WorkDetailContent
+      work={work}
+      scoreButtonHref={`/music/${work.id}/perusal-score/`}
+      scoreButtonReload
+    />
+  </div>
+
+  <PerusalGateModal
+    workId={work.id}
+    workTitle={work.data.title}
+    config={perusalAccessConfig}
+    gateTitle={requestAccessConfig.gateTitle}
+    gateMessage={requestAccessConfig.gateMessage}
+    successMessage={requestAccessConfig.successMessage}
+    apiEndpoint={siteConfig.apiEndpoint}
+    composerEmail={siteConfig.email}
+    perusalScoreUrl={`/music/${work.id}/perusal-score/`}
+  />
+</SiteLayout>

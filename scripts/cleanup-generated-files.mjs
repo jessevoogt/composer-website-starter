@@ -18,7 +18,6 @@
 
 import fs from 'fs'
 import path from 'path'
-import os from 'os'
 import yaml from 'js-yaml'
 
 const APPLY = process.argv.includes('--apply')
@@ -38,24 +37,12 @@ async function loadConfig() {
     config = mod.default || {}
   }
 
-  const envPath = path.join(workspaceRoot, '.env.local')
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8')
-    for (const line of envContent.split('\n')) {
-      const match = line.match(/^\s*([\w]+)\s*=\s*(.*)$/)
-      if (match) {
-        const [, key, rawValue] = match
-        process.env[key] = rawValue.replace(/^['"]|['"]$/g, '')
-      }
-    }
-  }
-
-  const rawSourceDir = (process.env.WORKS_SOURCE_DIR || config.sourceDir || '').replace(/^~/, os.homedir())
+  const rawSourceDir = (config.sourceDir || '').replace(/^~/, process.env.HOME)
   const sourceDir = path.isAbsolute(rawSourceDir) ? rawSourceDir : path.resolve(workspaceRoot, rawSourceDir)
 
   if (!sourceDir) {
     console.error('Error: No source directory configured.')
-    console.error('Set sourceDir in source.config.mjs or WORKS_SOURCE_DIR in .env.local')
+    console.error('Set sourceDir in source.config.mjs')
     process.exit(1)
   }
 

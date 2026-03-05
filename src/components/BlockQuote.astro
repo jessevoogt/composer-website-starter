@@ -1,5 +1,5 @@
 ---
-import { Icon } from 'astro-icon/components'
+import UiIcon from '@components/icons/UiIcon.astro'
 
 interface Props {
   /**
@@ -17,9 +17,9 @@ const { author } = Astro.props
 
 <blockquote class="blockquote">
   <div>
-    <Icon aria-hidden="true" name="lucide:quote" size="2rem" />
+    <UiIcon name="quote" size="2rem" />
     <slot />
-    <Icon aria-hidden="true" name="lucide:quote" size="2rem" />
+    <UiIcon name="quote" size="2rem" />
   </div>
   {author && <cite>{author}</cite>}
 </blockquote>

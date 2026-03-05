@@ -1,4 +1,6 @@
 ---
+import ButtonLink from '@components/ui/ButtonLink.astro'
+
 interface Props {
   firstPage: string | null
   previousPage: string | null
@@ -23,22 +25,18 @@ const {
 <nav aria-label={ariaLabel} class="pagination">
   {
     firstPage ? (
-      <a href={firstPage} class="immersive-btn-control" aria-label="First page">
-        <span class="immersive-btn-label">First</span>
-      </a>
+      <ButtonLink href={firstPage} variant="control" aria-label="First page">First</ButtonLink>
     ) : (
-      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+      <span class="immersive-btn immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
         <span class="immersive-btn-label">First</span>
       </span>
     )
   }
   {
     previousPage ? (
-      <a href={previousPage} class="immersive-btn-control" aria-label="Previous page">
-        <span class="immersive-btn-label">Prev</span>
-      </a>
+      <ButtonLink href={previousPage} variant="control" aria-label="Previous page">Prev</ButtonLink>
     ) : (
-      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+      <span class="immersive-btn immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
         <span class="immersive-btn-label">Prev</span>
       </span>
     )
@@ -48,22 +46,18 @@ const {
   </span>
   {
     nextPage ? (
-      <a href={nextPage} class="immersive-btn-control" aria-label="Next page">
-        <span class="immersive-btn-label">Next</span>
-      </a>
+      <ButtonLink href={nextPage} variant="control" aria-label="Next page">Next</ButtonLink>
     ) : (
-      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+      <span class="immersive-btn immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
         <span class="immersive-btn-label">Next</span>
       </span>
     )
   }
   {
     lastPage ? (
-      <a href={lastPage} class="immersive-btn-control" aria-label="Last page">
-        <span class="immersive-btn-label">Last</span>
-      </a>
+      <ButtonLink href={lastPage} variant="control" aria-label="Last page">Last</ButtonLink>
     ) : (
-      <span class="immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
+      <span class="immersive-btn immersive-btn-control" aria-disabled="true" style="opacity: 0.45; cursor: default;">
         <span class="immersive-btn-label">Last</span>
       </span>
     )

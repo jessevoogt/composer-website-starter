@@ -1,0 +1,22 @@
+title: Example Solo Piece
+subtitle: for piano
+description: >-
+  An example work that demonstrates how recordings appear on a work page.
+  Replace this with your own music.
+thumbnail:
+  alt: Placeholder thumbnail for example solo piece
+  crop: ''
+completionDate: '2024-03-15'
+duration: "ca. 4'"
+difficulty: ''
+tags:
+  - Solo
+  - Piano
+instrumentation:
+  - Piano
+searchKeywords: []
+selected: true
+selectedOrder: 2
+recordings: []
+performances: []
+sheetMusic: []

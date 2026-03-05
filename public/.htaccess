@@ -1,0 +1,20 @@
+# ── Error Pages ───────────────────────────────────────────────────────────────
+ErrorDocument 404 /404.html
+
+# ── Cache-Control ─────────────────────────────────────────────────────────────
+# Hashed assets (_astro/**) — immutable, cache for 1 year
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|woff2|webp|avif|png|jpg|jpeg|svg|gif|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # HTML pages — short cache with mandatory revalidation
+  <FilesMatch "\.html$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+
+  # XML (sitemap, RSS) — revalidate frequently
+  <FilesMatch "\.xml$">
+    Header set Cache-Control "public, max-age=3600, must-revalidate"
+  </FilesMatch>
+</IfModule>

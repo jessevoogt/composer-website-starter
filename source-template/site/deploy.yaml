@@ -1,2 +1,5 @@
+sftpHost: ''
+sftpUser: ''
+sftpRemotePath: ''
+sftpPrivateRemotePath: ''
 sftpPort: 22
-sftpSkipAudio: false

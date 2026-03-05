@@ -1,0 +1,10 @@
+flipAnimationEnabled: true
+defaultViewMode: spreads
+watermarkEnabled: true
+watermarkText: PERUSAL COPY
+watermarkColor: '#B40000'
+watermarkOpacity: 12
+watermarkAngle: -35
+watermarkFont: sans-serif
+watermarkFontScale: 100
+watermarkSpacing: 100

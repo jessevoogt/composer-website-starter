@@ -1,0 +1,7 @@
+slots:
+  left:
+    - brand-logo
+  center: []
+  right:
+    - main-menu
+    - site-search

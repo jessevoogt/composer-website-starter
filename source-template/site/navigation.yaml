@@ -1,7 +1,6 @@
-mainNavFontSizePx: 20
 menuItems:
-  - label: Works
-    href: /works/
+  - label: Music
+    href: /music/
     enabled: true
     order: 0
   - label: About
@@ -12,8 +11,3 @@ menuItems:
     href: /contact/
     enabled: true
     order: 2
-footerLinks:
-  - label: Accessibility
-    href: /accessibility-statement/
-  - label: Sitemap
-    href: /sitemap/

@@ -1,0 +1,198 @@
+---
+/**
+ * Shared thank-you / confirmation card.
+ *
+ * Renders a vertically-centred box with the fermata icon floating above,
+ * a heading, a message area (default slot), and an actions area (named slot).
+ *
+ * Usage:
+ * ```astro
+ * <ThankYouCard headingId="ty-heading" heading="Thank You!">
+ *   <p>Your message was sent.</p>
+ *   <Fragment slot="actions">
+ *     <a href="/" class="ty-btn ty-btn-back">…</a>
+ *   </Fragment>
+ * </ThankYouCard>
+ * ```
+ */
+
+interface Props {
+  /** `id` applied to the `<h1>` — must match `aria-labelledby` expectations */
+  headingId: string
+  /** Visible heading text */
+  heading: string
+}
+
+const { headingId, heading } = Astro.props
+---
+
+<section class="ty" aria-labelledby={headingId}>
+  <div class="ty-card">
+    {/* Fermata icon – positioned above the card */}
+    <svg
+      class="ty-icon"
+      xmlns="http://www.w3.org/2000/svg"
+      width="72"
+      height="72"
+      viewBox="0 0 1052.362 744.094"
+      aria-hidden="true"
+    >
+      <path
+        d="M526.181 400.237c-266.668 0-482.844 223.024-482.844 498.125a519 519 0 0 0 3.719 62.031C76.657 714.567 279.876 524.3 526.181 524.3s449.524 190.268 479.125 436.094a519 519 0 0 0 3.719-62.031c0-275.1-216.176-498.125-482.844-498.125z"
+        style="fill:currentColor;fill-opacity:1;fill-rule:evenodd;stroke:currentColor"
+        transform="translate(0 -308.268)"
+      />
+      <path
+        d="M563.002 619.09a65.843 65.843 0 1 1-131.685 0 65.843 65.843 0 1 1 131.685 0z"
+        style="fill:currentColor;fill-opacity:1;fill-rule:evenodd;stroke:currentColor;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+        transform="translate(29.022 -34.056)"
+      />
+    </svg>
+
+    <h1 id={headingId} class="ty-heading">{heading}</h1>
+
+    <div class="ty-message">
+      <slot />
+    </div>
+
+    <div class="ty-actions">
+      <slot name="actions" />
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Centred layout ────────────────────────────────── */
+  .ty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100svh - var(--header-height) - var(--header-breadcrumb-height));
+    padding: var(--space-l) var(--space-m);
+  }
+
+  .ty-card {
+    position: relative;
+    text-align: center;
+    max-width: 32rem;
+  }
+
+  /* ── Fermata icon ──────────────────────────────────── */
+  .ty-icon {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-block-end: var(--space-m);
+  }
+
+  /* ── Typography ────────────────────────────────────── */
+  .ty-heading {
+    font-size: var(--font-size-4);
+    margin-block-end: var(--space-s);
+  }
+
+  .ty-message {
+    font-size: var(--font-size-1);
+    line-height: 1.6;
+    color: var(--font-color);
+    margin-block-end: var(--space-l);
+  }
+
+  /* ── Actions area ──────────────────────────────────── */
+  .ty-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+    align-items: center;
+  }
+
+  /* ── Shared button base (applies to slotted content) ─ */
+  .ty-actions :global(.ty-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35em;
+    padding: var(--space-xs) var(--space-m);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-0);
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      border-color 170ms ease,
+      background-color 170ms ease,
+      color 170ms ease,
+      box-shadow 170ms ease;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .ty-actions :global(.ty-btn-icon) {
+    width: 1.4rem;
+    height: 1.4rem;
+    flex-shrink: 0;
+    transition: transform 180ms ease;
+  }
+
+  .ty-actions :global(.ty-btn-label) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  /* ── Back / outline variant ────────────────────────── */
+  .ty-actions :global(.ty-btn-back) {
+    max-width: 100%;
+    background: transparent;
+    border: 1px solid color-mix(in srgb, var(--btn-ghost) 64%, transparent);
+    color: var(--btn-ghost);
+    font-weight: 600;
+    font-family: var(--font-heading);
+    letter-spacing: 0.03em;
+  }
+
+  .ty-actions :global(.ty-btn-back .ty-btn-icon) {
+    transform: scaleX(-1);
+  }
+
+  .ty-actions :global(.ty-btn-back:hover),
+  .ty-actions :global(.ty-btn-back:focus-visible) {
+    border-color: var(--ink);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--ink);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ty-actions :global(.ty-btn-back:hover .ty-btn-icon) {
+      transform: scaleX(-1) translateX(0.2rem);
+    }
+  }
+
+  /* ── Primary / solid variant ───────────────────────── */
+  .ty-actions :global(.ty-btn-primary) {
+    background: var(--cta-bg);
+    border: 1px solid color-mix(in srgb, var(--cta-bg) 82%, #000);
+    color: var(--cta-ink);
+    font-weight: 700;
+  }
+
+  .ty-actions :global(.ty-btn-primary:hover),
+  .ty-actions :global(.ty-btn-primary:focus-visible) {
+    background: color-mix(in srgb, var(--cta-bg) 86%, #000);
+    border-color: color-mix(in srgb, var(--cta-bg) 72%, #000);
+    color: var(--cta-ink);
+  }
+
+  .ty-actions :global(.ty-btn-primary:active) {
+    background: color-mix(in srgb, var(--cta-bg) 72%, #000);
+    border-color: color-mix(in srgb, var(--cta-bg) 65%, #000);
+    color: var(--cta-ink);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ty-actions :global(.ty-btn-primary:hover .ty-btn-icon) {
+      transform: translateX(0.2rem);
+    }
+  }
+</style>

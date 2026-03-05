@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Works Search</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --bg: #0e0e10;
+  --bg-soft: #18181b;
+  --bg-muted: #27272a;
+  --border: #3f3f46;
+  --text: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --radius: 6px;
+}
+html { background: var(--bg); color: var(--text); }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 32px 80px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.page-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.page-header .meta {
+  color: var(--text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 10ch;
+}
+.page-header .search-bar {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+}
+.page-header .search-bar input {
+  width: 100%;
+  padding: 7px 34px 7px 12px;
+  background: var(--bg-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.page-header .search-bar input:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
+}
+.page-header .search-bar input::placeholder { color: var(--text-dim); }
+.page-header .search-bar .clear-search-btn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  display: none;
+}
+.page-header .search-bar .clear-search-btn:hover { color: var(--text); }
+.page-header .search-bar .clear-search-btn.visible { display: block; }
+.page-header .back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.page-header .back-link:hover { text-decoration: underline; }
+
+/* ── Clear all ─────────────────────────────────────────────────────────── */
+.clear-all-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  color: var(--warning);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.clear-all-btn:hover, .clear-all-btn:focus-visible {
+  background: rgba(245,158,11,0.12);
+  color: #fbbf24;
+}
+.clear-all-btn.visible { display: inline-flex; }
+
+/* ── Filters ────────────────────────────────────────────────────────────── */
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.filters-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.filters-toggle:hover, .filters-toggle:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.filters-toggle .arrow { transition: transform 0.15s; }
+.filters-toggle[aria-expanded="true"] .arrow { transform: rotate(180deg); }
+.filters-toggle .active-count {
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-left: 4px;
+}
+
+.filters-panel { display: none; margin-bottom: 20px; }
+.filters-panel.open { display: block; }
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+@media (max-width: 1023px) { .filters-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 767px)  { .filters-grid { grid-template-columns: 1fr; } }
+
+.filter-section h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.filter-group {
+  margin-bottom: 12px;
+}
+.filter-group legend, .filter-group label.group-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+fieldset.filter-group { border: none; padding: 0; }
+
+/* Tri-state radios */
+.radio-row {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.radio-row label {
+  flex: 1;
+  text-align: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.1s, color 0.1s;
+  user-select: none;
+}
+.radio-row label:hover { background: var(--bg-muted); }
+.radio-row input { position: absolute; opacity: 0; width: 0; height: 0; }
+.radio-row input:checked + span {
+  display: block;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  margin: -4px -8px;
+  padding: 4px 8px;
+}
+.radio-row input:focus-visible + span {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Number inputs */
+.num-input {
+  width: 72px;
+  padding: 4px 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+}
+.num-input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
+}
+.year-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.year-range span { color: var(--text-dim); font-size: 12px; }
+
+/* Chips */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.1s;
+  user-select: none;
+  white-space: nowrap;
+}
+.chip:hover { border-color: var(--accent); color: var(--text); }
+.chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* Checkboxes */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.checkbox-row input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+.result-count {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.results-table thead { background: var(--bg-soft); }
+.results-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.results-table th:hover { color: var(--text); }
+.results-table th .sort-arrow { margin-left: 4px; font-size: 10px; }
+.results-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--bg-muted);
+  vertical-align: top;
+}
+.results-table tbody tr:hover { background: var(--bg-soft); }
+
+/* Cell types */
+.cell-title {
+  font-weight: 500;
+  color: var(--text);
+}
+.cell-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cell-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.cell-tags .tag-pill {
+  font-size: 11px;
+  padding: 1px 7px;
+  background: var(--bg-muted);
+  border-radius: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.cell-difficulty {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.diff-beginner { background: #052e16; color: #4ade80; }
+.diff-intermediate { background: #422006; color: #fbbf24; }
+.diff-advanced { background: #450a0a; color: #f87171; }
+
+.cell-scores {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.score-badge.perusal { background: #1e1b4b; color: #a5b4fc; }
+.score-badge.watermarked { background: #172554; color: #93c5fd; }
+.score-badge.original { background: #052e16; color: #86efac; }
+.score-badge .gated { font-size: 10px; }
+
+.cell-num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.cell-num.has-value { color: var(--text); }
+.cell-year {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.cell-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+.cell-actions a,
+.cell-actions button {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cell-actions a:hover,
+.cell-actions button:hover { text-decoration: underline; }
+.cell-actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── States ─────────────────────────────────────────────────────────────── */
+.state-msg {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.state-msg.error { color: var(--danger); }
+
+/* ── Table wrapper ──────────────────────────────────────────────────────── */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Focus ──────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>Works Search</h1>
+  <span class="meta" id="result-count" aria-live="polite"></span>
+  <div class="search-bar">
+    <label for="search-input" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Search works</label>
+    <input type="text" id="search-input" placeholder="Search works (title, tags, instruments, performers...)" autocomplete="off">
+    <button class="clear-search-btn" id="clear-search" type="button" aria-label="Clear search">&#xd7;</button>
+  </div>
+  <a class="back-link" href="/keystatic/">Back to Keystatic</a>
+</header>
+
+<div class="filters-bar">
+  <button class="filters-toggle" id="filters-toggle" type="button" aria-expanded="false" aria-controls="filters-panel">
+    Filters <span class="arrow">&#x25BE;</span><span class="active-count" id="active-filter-count" hidden></span>
+  </button>
+  <button class="clear-all-btn" id="clear-all" type="button" aria-label="Clear all filters and search" title="Clear all filters &amp; search">&#xd7;</button>
+</div>
+
+<div class="filters-panel" id="filters-panel">
+  <div class="filters-grid">
+
+    <!-- Column 1: Score filters -->
+    <div class="filter-section">
+      <h3>Scores</h3>
+
+      <fieldset class="filter-group">
+        <legend>Has any score</legend>
+        <div class="radio-row" data-filter="hasAnyScore">
+          <label><input type="radio" name="hasAnyScore" value="any" checked><span>Any</span></label>
+          <label><input type="radio" name="hasAnyScore" value="yes"><span>Yes</span></label>
+          <label><input type="radio" name="hasAnyScore" value="no"><span>No</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="filter-group">
+        <legend>Has perusal score</legend>
+        <div class="radio-row" data-filter="hasPerusalScore">
+          <label><input type="radio" name="hasPerusalScore" value="any" checked><span>Any</span></label>
+          <label><input type="radio" name="hasPerusalScore" value="yes"><span>Yes</span></label>
+          <label><input type="radio" name="hasPerusalScore" value="no"><span>No</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="filter-group">
+        <legend>Has watermarked PDF</legend>
+        <div class="radio-row" data-filter="hasWatermarkedPdf">
+          <label><input type="radio" name="hasWatermarkedPdf" value="any" checked><span>Any</span></label>
+          <label><input type="radio" name="hasWatermarkedPdf" value="yes"><span>Yes</span></label>
+          <label><input type="radio" name="hasWatermarkedPdf" value="no"><span>No</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="filter-group">
+        <legend>Has original PDF</legend>
+        <div class="radio-row" data-filter="hasOriginalPdf">
+          <label><input type="radio" name="hasOriginalPdf" value="any" checked><span>Any</span></label>
+          <label><input type="radio" name="hasOriginalPdf" value="yes"><span>Yes</span></label>
+          <label><input type="radio" name="hasOriginalPdf" value="no"><span>No</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="filter-group">
+        <legend>Perusal gating</legend>
+        <div class="radio-row" data-filter="perusalGated">
+          <label><input type="radio" name="perusalGated" value="any" checked><span>Any</span></label>
+          <label><input type="radio" name="perusalGated" value="gated"><span>Gated</span></label>
+          <label><input type="radio" name="perusalGated" value="ungated"><span>Ungated</span></label>
+        </div>
+      </fieldset>
+    </div>
+
+    <!-- Column 2: Content filters -->
+    <div class="filter-section">
+      <h3>Content</h3>
+
+      <div class="filter-group">
+        <label class="group-label">Difficulty</label>
+        <div class="chip-group" id="difficulty-chips"></div>
+      </div>
+
+      <div class="filter-group">
+        <label class="group-label">Tags</label>
+        <div class="chip-group" id="tag-chips"></div>
+      </div>
+
+      <div class="filter-group">
+        <label class="group-label">Instrumentation</label>
+        <div class="chip-group" id="instrument-chips"></div>
+      </div>
+
+      <div class="filter-group">
+        <label class="group-label">Performers</label>
+        <div class="chip-group" id="performer-chips"></div>
+      </div>
+
+      <div class="filter-group">
+        <label class="group-label">Ensembles</label>
+        <div class="chip-group" id="ensemble-chips"></div>
+      </div>
+
+      <div class="checkbox-row"><input type="checkbox" id="f-youtube"><label for="f-youtube">Has YouTube video</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="f-thumbnail"><label for="f-thumbnail">Has thumbnail</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="f-performances"><label for="f-performances">Has performances</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="f-sheetmusic"><label for="f-sheetmusic">Has sheet music</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="f-programnote"><label for="f-programnote">Has program note</label></div>
+      <div class="checkbox-row"><input type="checkbox" id="f-selected"><label for="f-selected">Is selected/featured</label></div>
+    </div>
+
+    <!-- Column 3: Counts -->
+    <div class="filter-section">
+      <h3>Counts &amp; dates</h3>
+
+      <div class="filter-group">
+        <label class="group-label">Recordings</label>
+        <div class="year-range">
+          <input type="number" id="f-min-recordings" class="num-input" placeholder="Min" min="0" aria-label="Min recordings">
+          <span>&ndash;</span>
+          <input type="number" id="f-max-recordings" class="num-input" placeholder="Max" min="0" aria-label="Max recordings">
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label class="group-label">Movements</label>
+        <div class="year-range">
+          <input type="number" id="f-min-movements" class="num-input" placeholder="Min" min="0" aria-label="Min movements">
+          <span>&ndash;</span>
+          <input type="number" id="f-max-movements" class="num-input" placeholder="Max" min="0" aria-label="Max movements">
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label class="group-label">Completion year</label>
+        <div class="year-range">
+          <input type="number" id="f-year-min" class="num-input" placeholder="From" min="1900" max="2099" aria-label="Year from">
+          <span>&ndash;</span>
+          <input type="number" id="f-year-max" class="num-input" placeholder="To" min="1900" max="2099" aria-label="Year to">
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="loading-state" class="state-msg">Loading works data&hellip;</div>
+<div id="error-state" class="state-msg error" hidden></div>
+<div id="results-container" hidden>
+  <div class="table-wrap">
+    <table class="results-table" id="results-table">
+      <thead>
+        <tr>
+          <th data-sort="title" scope="col">Title <span class="sort-arrow"></span></th>
+          <th data-sort="tags" scope="col">Tags</th>
+          <th data-sort="difficulty" scope="col">Diff <span class="sort-arrow"></span></th>
+          <th scope="col">Scores</th>
+          <th data-sort="recordingsCount" scope="col">Rec <span class="sort-arrow"></span></th>
+          <th data-sort="movementsCount" scope="col">Mov <span class="sort-arrow"></span></th>
+          <th data-sort="completionYear" scope="col">Year <span class="sort-arrow"></span></th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </div>
+  <div id="no-results" class="state-msg" hidden>No works match the current filters.</div>
+</div>
+
+<script>
+(function () {
+  'use strict'
+
+  const searchParams = new URLSearchParams(window.location.search)
+  const isModalMode = searchParams.get('modal') === '1'
+
+  // ── State ──────────────────────────────────────────────────────────────
+  let allWorks = []
+  let globalConfig = {}
+  let allTags = []
+  let allInstruments = []
+  let allDifficulties = []
+  let allPerformers = []
+  let allEnsembles = []
+  let sortField = 'title'
+  let sortDir = 'asc'
+
+  // ── Elements ───────────────────────────────────────────────────────────
+  const $ = (s) => document.querySelector(s)
+  const $$ = (s) => [...document.querySelectorAll(s)]
+
+  const searchInput = $('#search-input')
+  const clearSearchBtn = $('#clear-search')
+  const clearAllBtn = $('#clear-all')
+  const filtersToggle = $('#filters-toggle')
+  const filtersPanel = $('#filters-panel')
+  const resultCount = $('#result-count')
+  const resultsContainer = $('#results-container')
+  const resultsBody = $('#results-body')
+  const noResults = $('#no-results')
+  const loadingState = $('#loading-state')
+  const errorState = $('#error-state')
+  const activeFilterCount = $('#active-filter-count')
+
+  // ── Modal mode: replace "Back to Keystatic" with a Close button ──────
+  if (isModalMode) {
+    const backLink = $('.back-link')
+    if (backLink) {
+      const closeBtn = document.createElement('button')
+      closeBtn.type = 'button'
+      closeBtn.className = 'back-link'
+      closeBtn.textContent = 'Close'
+      closeBtn.style.cursor = 'pointer'
+      closeBtn.style.background = 'none'
+      closeBtn.style.border = 'none'
+      closeBtn.addEventListener('click', () => {
+        window.parent.postMessage({ type: 'works-search-close' }, '*')
+      })
+      backLink.replaceWith(closeBtn)
+    }
+  }
+
+  // ── Fetch data ─────────────────────────────────────────────────────────
+  async function init() {
+    try {
+      const res = await fetch('/api/works-data')
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const data = await res.json()
+      allWorks = data.works || []
+      globalConfig = data.globalConfig || {}
+      allTags = data.allTags || []
+      allInstruments = data.allInstruments || []
+      allDifficulties = data.allDifficulties || []
+      allPerformers = data.allPerformers || []
+      allEnsembles = data.allEnsembles || []
+
+      buildFilterChips()
+      loadFiltersFromHash()
+      render()
+
+      loadingState.hidden = true
+      resultsContainer.hidden = false
+    } catch (err) {
+      loadingState.hidden = true
+      errorState.textContent = 'Failed to load works data: ' + err.message
+      errorState.hidden = false
+    }
+  }
+
+  // ── Build dynamic chips ────────────────────────────────────────────────
+  function buildFilterChips() {
+    buildChips('difficulty-chips', allDifficulties, 'difficulty')
+    buildChips('tag-chips', allTags, 'tag')
+    buildChips('instrument-chips', allInstruments, 'instrument')
+    buildChips('performer-chips', allPerformers, 'performer')
+    buildChips('ensemble-chips', allEnsembles, 'ensemble')
+  }
+
+  function buildChips(containerId, items, prefix) {
+    const container = document.getElementById(containerId)
+    container.innerHTML = ''
+    for (const item of items) {
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.className = 'chip'
+      btn.setAttribute('role', 'button')
+      btn.setAttribute('aria-pressed', 'false')
+      btn.dataset.filterType = prefix
+      btn.dataset.value = item
+      btn.textContent = item
+      btn.addEventListener('click', () => {
+        const pressed = btn.getAttribute('aria-pressed') === 'true'
+        btn.setAttribute('aria-pressed', String(!pressed))
+        onFilterChange()
+      })
+      container.appendChild(btn)
+    }
+  }
+
+  // ── Gather filter state ────────────────────────────────────────────────
+  function getFilters() {
+    const radio = (name) => {
+      const checked = document.querySelector(`input[name="${name}"]:checked`)
+      return checked ? checked.value : 'any'
+    }
+    const num = (id) => {
+      const v = document.getElementById(id).value
+      return v === '' ? null : parseInt(v, 10)
+    }
+    const chips = (type) => {
+      return $$('.chip[data-filter-type="' + type + '"][aria-pressed="true"]')
+        .map(c => c.dataset.value)
+    }
+    const checked = (id) => document.getElementById(id).checked
+
+    return {
+      search: searchInput.value.trim(),
+      hasAnyScore: radio('hasAnyScore'),
+      hasPerusalScore: radio('hasPerusalScore'),
+      hasWatermarkedPdf: radio('hasWatermarkedPdf'),
+      hasOriginalPdf: radio('hasOriginalPdf'),
+      perusalGated: radio('perusalGated'),
+      minRecordings: num('f-min-recordings'),
+      maxRecordings: num('f-max-recordings'),
+      minMovements: num('f-min-movements'),
+      maxMovements: num('f-max-movements'),
+      yearMin: num('f-year-min'),
+      yearMax: num('f-year-max'),
+      difficulties: chips('difficulty'),
+      tags: chips('tag'),
+      instruments: chips('instrument'),
+      performers: chips('performer'),
+      ensembles: chips('ensemble'),
+      hasYoutube: checked('f-youtube'),
+      hasThumbnail: checked('f-thumbnail'),
+      hasPerformances: checked('f-performances'),
+      hasSheetMusic: checked('f-sheetmusic'),
+      hasProgramNote: checked('f-programnote'),
+      isSelected: checked('f-selected'),
+    }
+  }
+
+  function countActiveFilters() {
+    const f = getFilters()
+    let count = 0
+    if (f.hasAnyScore !== 'any') count++
+    if (f.hasPerusalScore !== 'any') count++
+    if (f.hasWatermarkedPdf !== 'any') count++
+    if (f.hasOriginalPdf !== 'any') count++
+    if (f.perusalGated !== 'any') count++
+    if (f.minRecordings != null) count++
+    if (f.maxRecordings != null) count++
+    if (f.minMovements != null) count++
+    if (f.maxMovements != null) count++
+    if (f.yearMin != null) count++
+    if (f.yearMax != null) count++
+    count += f.difficulties.length
+    count += f.tags.length
+    count += f.instruments.length
+    count += f.performers.length
+    count += f.ensembles.length
+    if (f.hasYoutube) count++
+    if (f.hasThumbnail) count++
+    if (f.hasPerformances) count++
+    if (f.hasSheetMusic) count++
+    if (f.hasProgramNote) count++
+    if (f.isSelected) count++
+    return count
+  }
+
+  // ── Resolve effective gating ───────────────────────────────────────────
+  function resolveGating(work) {
+    if (work.scores.perusalScoreGated === 'gated') return true
+    if (work.scores.perusalScoreGated === 'ungated') return false
+    return globalConfig.gatingEnabled
+  }
+
+  // ── Filter logic ───────────────────────────────────────────────────────
+  function filterWorks(works, filters) {
+    return works.filter(work => {
+      // Text search
+      if (filters.search) {
+        const q = normalize(filters.search)
+        const searchable = normalize([
+          work.title, work.subtitle, work.description,
+          ...work.tags, ...work.instrumentation, ...work.searchKeywords,
+          work.programNote,
+          ...work.recordings.flatMap(r => [...r.performers, r.ensemble].filter(Boolean)),
+          ...work.movementNames,
+          work.duration, work.difficulty,
+        ].filter(Boolean).join(' '))
+        if (!searchable.includes(q)) return false
+      }
+
+      // Tri-state score filters
+      if (filters.hasAnyScore === 'yes' && !work.scores.hasAnyScore) return false
+      if (filters.hasAnyScore === 'no' && work.scores.hasAnyScore) return false
+      if (filters.hasPerusalScore === 'yes' && !work.scores.hasPerusalScore) return false
+      if (filters.hasPerusalScore === 'no' && work.scores.hasPerusalScore) return false
+      if (filters.hasWatermarkedPdf === 'yes' && !work.scores.hasWatermarkedPdf) return false
+      if (filters.hasWatermarkedPdf === 'no' && work.scores.hasWatermarkedPdf) return false
+      if (filters.hasOriginalPdf === 'yes' && !work.scores.hasOriginalPdf) return false
+      if (filters.hasOriginalPdf === 'no' && work.scores.hasOriginalPdf) return false
+
+      // Gating
+      if (filters.perusalGated !== 'any') {
+        if (!work.scores.hasPerusalScore) return false
+        const gated = resolveGating(work)
+        if (filters.perusalGated === 'gated' && !gated) return false
+        if (filters.perusalGated === 'ungated' && gated) return false
+      }
+
+      // Counts
+      if (filters.minRecordings != null && work.recordingsCount < filters.minRecordings) return false
+      if (filters.maxRecordings != null && work.recordingsCount > filters.maxRecordings) return false
+      if (filters.minMovements != null && work.movementsCount < filters.minMovements) return false
+      if (filters.maxMovements != null && work.movementsCount > filters.maxMovements) return false
+
+      // Year range
+      if (filters.yearMin != null && (work.completionYear == null || work.completionYear < filters.yearMin)) return false
+      if (filters.yearMax != null && (work.completionYear == null || work.completionYear > filters.yearMax)) return false
+
+      // Multi-select
+      if (filters.difficulties.length > 0 && !filters.difficulties.includes(work.difficulty)) return false
+      if (filters.tags.length > 0 && !filters.tags.some(t => work.tags.includes(t))) return false
+      if (filters.instruments.length > 0 && !filters.instruments.some(i => work.instrumentation.includes(i))) return false
+
+      // Performer / ensemble
+      if (filters.performers.length > 0) {
+        const workPerformers = work.recordings.flatMap(r => r.performers)
+        if (!filters.performers.some(p => workPerformers.includes(p))) return false
+      }
+      if (filters.ensembles.length > 0) {
+        const workEnsembles = work.recordings.map(r => r.ensemble).filter(Boolean)
+        if (!filters.ensembles.some(e => workEnsembles.includes(e))) return false
+      }
+
+      // Checkboxes
+      if (filters.hasYoutube && !work.hasYoutubeVideo) return false
+      if (filters.hasThumbnail && !work.hasThumbnail) return false
+      if (filters.hasPerformances && !work.hasPerformances) return false
+      if (filters.hasSheetMusic && !work.hasSheetMusic) return false
+      if (filters.hasProgramNote && !work.programNote) return false
+      if (filters.isSelected && !work.selected) return false
+
+      return true
+    })
+  }
+
+  function normalize(str) {
+    return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  }
+
+  // ── Sort ────────────────────────────────────────────────────────────────
+  function sortWorks(works) {
+    const dir = sortDir === 'asc' ? 1 : -1
+    return [...works].sort((a, b) => {
+      let va = a[sortField]
+      let vb = b[sortField]
+      if (va == null) va = sortField === 'title' ? '' : -Infinity
+      if (vb == null) vb = sortField === 'title' ? '' : -Infinity
+      if (typeof va === 'string') va = va.toLowerCase()
+      if (typeof vb === 'string') vb = vb.toLowerCase()
+      if (va < vb) return -dir
+      if (va > vb) return dir
+      return 0
+    })
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────
+  function render() {
+    const filters = getFilters()
+    const filtered = filterWorks(allWorks, filters)
+    const sorted = sortWorks(filtered)
+
+    // Update count
+    resultCount.textContent = sorted.length + ' of ' + allWorks.length + ' works'
+
+    // Update active filter badge
+    const active = countActiveFilters()
+    const hasSearch = filters.search.length > 0
+    const totalActive = active + (hasSearch ? 1 : 0)
+    if (active > 0) {
+      activeFilterCount.textContent = active
+      activeFilterCount.hidden = false
+    } else {
+      activeFilterCount.hidden = true
+    }
+
+    // Update clear-all button visibility
+    clearAllBtn.classList.toggle('visible', totalActive > 0)
+
+    // Update sort arrows
+    $$('.results-table th').forEach(th => {
+      const arrow = th.querySelector('.sort-arrow')
+      if (!arrow) return
+      if (th.dataset.sort === sortField) {
+        arrow.textContent = sortDir === 'asc' ? '\u25B2' : '\u25BC'
+      } else {
+        arrow.textContent = ''
+      }
+    })
+
+    // Build rows
+    resultsBody.innerHTML = ''
+    if (sorted.length === 0) {
+      noResults.hidden = false
+      return
+    }
+    noResults.hidden = true
+
+    for (const work of sorted) {
+      const tr = document.createElement('tr')
+
+      // Title
+      const tdTitle = td()
+      const titleSpan = document.createElement('span')
+      titleSpan.className = 'cell-title'
+      titleSpan.textContent = work.title
+      tdTitle.appendChild(titleSpan)
+      if (work.subtitle) {
+        const sub = document.createElement('div')
+        sub.className = 'cell-subtitle'
+        sub.textContent = work.subtitle
+        tdTitle.appendChild(sub)
+      }
+      tr.appendChild(tdTitle)
+
+      // Tags
+      const tdTags = td()
+      const tagDiv = document.createElement('div')
+      tagDiv.className = 'cell-tags'
+      for (const tag of work.tags.slice(0, 5)) {
+        const pill = document.createElement('span')
+        pill.className = 'tag-pill'
+        pill.textContent = tag
+        tagDiv.appendChild(pill)
+      }
+      if (work.tags.length > 5) {
+        const more = document.createElement('span')
+        more.className = 'tag-pill'
+        more.textContent = '+' + (work.tags.length - 5)
+        more.title = work.tags.slice(5).join(', ')
+        tagDiv.appendChild(more)
+      }
+      tdTags.appendChild(tagDiv)
+      tr.appendChild(tdTags)
+
+      // Difficulty
+      const tdDiff = td()
+      if (work.difficulty) {
+        const badge = document.createElement('span')
+        badge.className = 'cell-difficulty diff-' + work.difficulty.toLowerCase()
+        badge.textContent = work.difficulty
+        tdDiff.appendChild(badge)
+      }
+      tr.appendChild(tdDiff)
+
+      // Scores
+      const tdScores = td()
+      const scoresDiv = document.createElement('div')
+      scoresDiv.className = 'cell-scores'
+      if (work.scores.hasPerusalScore) {
+        const gated = resolveGating(work)
+        scoresDiv.appendChild(scoreBadge('perusal', 'Perusal', gated))
+      }
+      if (work.scores.hasWatermarkedPdf) {
+        scoresDiv.appendChild(scoreBadge('watermarked', 'WM PDF', work.scores.watermarkedGated))
+      }
+      if (work.scores.hasOriginalPdf) {
+        scoresDiv.appendChild(scoreBadge('original', 'Orig PDF', work.scores.originalGated))
+      }
+      tdScores.appendChild(scoresDiv)
+      tr.appendChild(tdScores)
+
+      // Recordings count
+      tr.appendChild(numCell(work.recordingsCount))
+
+      // Movements count
+      tr.appendChild(numCell(work.movementsCount))
+
+      // Year
+      const tdYear = td()
+      tdYear.className = 'cell-year'
+      tdYear.textContent = work.completionYear || ''
+      tr.appendChild(tdYear)
+
+      // Actions
+      const tdActions = td()
+      tdActions.className = 'cell-actions'
+      if (isModalMode) {
+        const editBtn = document.createElement('button')
+        editBtn.type = 'button'
+        editBtn.textContent = 'Edit'
+        editBtn.addEventListener('click', () => {
+          window.parent.postMessage({
+            type: 'works-search-edit',
+            slug: work.slug,
+            keystaticUrl: work.keystatic_url,
+            devUrl: work.dev_url,
+          }, '*')
+        })
+        tdActions.appendChild(editBtn)
+        const viewBtn = document.createElement('button')
+        viewBtn.type = 'button'
+        viewBtn.textContent = 'View'
+        viewBtn.addEventListener('click', () => {
+          window.parent.postMessage({
+            type: 'works-search-view',
+            slug: work.slug,
+            keystaticUrl: work.keystatic_url,
+            devUrl: work.dev_url,
+          }, '*')
+        })
+        tdActions.appendChild(viewBtn)
+      } else {
+        const editLink = document.createElement('a')
+        editLink.href = work.keystatic_url
+        editLink.textContent = 'Edit'
+        editLink.target = '_blank'
+        editLink.rel = 'noopener'
+        tdActions.appendChild(editLink)
+        const viewLink = document.createElement('a')
+        viewLink.href = work.dev_url
+        viewLink.textContent = 'View'
+        viewLink.target = '_blank'
+        viewLink.rel = 'noopener'
+        tdActions.appendChild(viewLink)
+      }
+      tr.appendChild(tdActions)
+
+      resultsBody.appendChild(tr)
+    }
+
+    saveFiltersToHash()
+  }
+
+  function td() {
+    return document.createElement('td')
+  }
+
+  function numCell(value) {
+    const el = td()
+    el.className = 'cell-num' + (value > 0 ? ' has-value' : '')
+    el.textContent = value
+    return el
+  }
+
+  function scoreBadge(cls, label, gated) {
+    const span = document.createElement('span')
+    span.className = 'score-badge ' + cls
+    span.textContent = label
+    if (gated) {
+      const lock = document.createElement('span')
+      lock.className = 'gated'
+      lock.textContent = ' \uD83D\uDD12'
+      lock.title = 'Gated'
+      span.appendChild(lock)
+    }
+    span.title = label + (gated ? ' (gated)' : ' (ungated)')
+    return span
+  }
+
+  // ── Events ─────────────────────────────────────────────────────────────
+  let searchTimer = null
+  function onFilterChange() {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(render, 50)
+  }
+
+  function onSearchInput() {
+    clearSearchBtn.classList.toggle('visible', searchInput.value.length > 0)
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(render, 150)
+  }
+
+  searchInput.addEventListener('input', onSearchInput)
+  clearSearchBtn.addEventListener('click', () => {
+    searchInput.value = ''
+    clearSearchBtn.classList.remove('visible')
+    render()
+    searchInput.focus()
+  })
+
+  // Filters toggle
+  filtersToggle.addEventListener('click', () => {
+    const open = filtersPanel.classList.toggle('open')
+    filtersToggle.setAttribute('aria-expanded', String(open))
+  })
+
+  // Radio filters
+  $$('.radio-row input[type="radio"]').forEach(input => {
+    input.addEventListener('change', onFilterChange)
+  })
+
+  // Checkbox filters
+  $$('.checkbox-row input[type="checkbox"]').forEach(input => {
+    input.addEventListener('change', onFilterChange)
+  })
+
+  // Number inputs
+  $$('.num-input').forEach(input => {
+    input.addEventListener('input', onFilterChange)
+  })
+
+  // Sort headers
+  $$('.results-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const field = th.dataset.sort
+      if (sortField === field) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc'
+      } else {
+        sortField = field
+        sortDir = field === 'title' ? 'asc' : 'desc'
+      }
+      render()
+    })
+  })
+
+  // Clear all filters + search
+  function clearAll() {
+    searchInput.value = ''
+    clearSearchBtn.classList.remove('visible')
+    $$('.radio-row input[value="any"]').forEach(r => { r.checked = true })
+    $$('.checkbox-row input[type="checkbox"]').forEach(c => { c.checked = false })
+    $$('.num-input').forEach(n => { n.value = '' })
+    $$('.chip[aria-pressed="true"]').forEach(c => { c.setAttribute('aria-pressed', 'false') })
+    sortField = 'title'
+    sortDir = 'asc'
+    render()
+    searchInput.focus()
+  }
+
+  clearAllBtn.addEventListener('click', clearAll)
+
+  // Keyboard shortcuts: / focuses search, Escape clears all when in search
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== searchInput && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault()
+      searchInput.focus()
+    }
+    if (e.key === 'Escape') {
+      if (document.activeElement === searchInput && searchInput.value) {
+        e.preventDefault()
+        searchInput.value = ''
+        clearSearchBtn.classList.remove('visible')
+        render()
+      } else if (isModalMode) {
+        e.preventDefault()
+        window.parent.postMessage({ type: 'works-search-close' }, '*')
+      }
+    }
+  })
+
+  // ── URL hash persistence ───────────────────────────────────────────────
+  function saveFiltersToHash() {
+    const f = getFilters()
+    const p = new URLSearchParams()
+    if (f.search) p.set('q', f.search)
+    if (f.hasAnyScore !== 'any') p.set('score', f.hasAnyScore)
+    if (f.hasPerusalScore !== 'any') p.set('perusal', f.hasPerusalScore)
+    if (f.hasWatermarkedPdf !== 'any') p.set('wmpdf', f.hasWatermarkedPdf)
+    if (f.hasOriginalPdf !== 'any') p.set('origpdf', f.hasOriginalPdf)
+    if (f.perusalGated !== 'any') p.set('gated', f.perusalGated)
+    if (f.minRecordings != null) p.set('minrec', String(f.minRecordings))
+    if (f.maxRecordings != null) p.set('maxrec', String(f.maxRecordings))
+    if (f.minMovements != null) p.set('minmov', String(f.minMovements))
+    if (f.maxMovements != null) p.set('maxmov', String(f.maxMovements))
+    if (f.yearMin != null) p.set('ymin', String(f.yearMin))
+    if (f.yearMax != null) p.set('ymax', String(f.yearMax))
+    if (f.difficulties.length) p.set('diff', f.difficulties.join(','))
+    if (f.tags.length) p.set('tags', f.tags.join(','))
+    if (f.instruments.length) p.set('inst', f.instruments.join(','))
+    if (f.performers.length) p.set('perf_', f.performers.join('|'))
+    if (f.ensembles.length) p.set('ens', f.ensembles.join('|'))
+    if (f.hasYoutube) p.set('yt', '1')
+    if (f.hasThumbnail) p.set('thumb', '1')
+    if (f.hasPerformances) p.set('perf', '1')
+    if (f.hasSheetMusic) p.set('sm', '1')
+    if (f.hasProgramNote) p.set('pn', '1')
+    if (f.isSelected) p.set('sel', '1')
+    if (sortField !== 'title') p.set('sort', sortField)
+    if (sortDir !== 'asc') p.set('dir', sortDir)
+
+    const hash = p.toString()
+    const basePath = isModalMode
+      ? location.pathname + '?' + new URLSearchParams(location.search).toString()
+      : location.pathname
+    history.replaceState(null, '', hash ? basePath + '#' + hash : basePath)
+  }
+
+  function loadFiltersFromHash() {
+    const hash = location.hash.replace(/^#/, '')
+    if (!hash) return
+    const p = new URLSearchParams(hash)
+
+    if (p.has('q')) searchInput.value = p.get('q')
+    clearSearchBtn.classList.toggle('visible', searchInput.value.length > 0)
+
+    setRadio('hasAnyScore', p.get('score') || 'any')
+    setRadio('hasPerusalScore', p.get('perusal') || 'any')
+    setRadio('hasWatermarkedPdf', p.get('wmpdf') || 'any')
+    setRadio('hasOriginalPdf', p.get('origpdf') || 'any')
+    setRadio('perusalGated', p.get('gated') || 'any')
+
+    if (p.has('minrec')) $('#f-min-recordings').value = p.get('minrec')
+    if (p.has('maxrec')) $('#f-max-recordings').value = p.get('maxrec')
+    if (p.has('minmov')) $('#f-min-movements').value = p.get('minmov')
+    if (p.has('maxmov')) $('#f-max-movements').value = p.get('maxmov')
+    if (p.has('ymin')) $('#f-year-min').value = p.get('ymin')
+    if (p.has('ymax')) $('#f-year-max').value = p.get('ymax')
+
+    if (p.has('diff')) setChips('difficulty', p.get('diff').split(','))
+    if (p.has('tags')) setChips('tag', p.get('tags').split(','))
+    if (p.has('inst')) setChips('instrument', p.get('inst').split(','))
+    if (p.has('perf_')) setChips('performer', p.get('perf_').split('|'))
+    if (p.has('ens')) setChips('ensemble', p.get('ens').split('|'))
+
+    if (p.get('yt') === '1') $('#f-youtube').checked = true
+    if (p.get('thumb') === '1') $('#f-thumbnail').checked = true
+    if (p.get('perf') === '1') $('#f-performances').checked = true
+    if (p.get('sm') === '1') $('#f-sheetmusic').checked = true
+    if (p.get('pn') === '1') $('#f-programnote').checked = true
+    if (p.get('sel') === '1') $('#f-selected').checked = true
+
+    if (p.has('sort')) sortField = p.get('sort')
+    if (p.has('dir')) sortDir = p.get('dir')
+
+    // If any filters active, open the panel
+    if (countActiveFilters() > 0) {
+      filtersPanel.classList.add('open')
+      filtersToggle.setAttribute('aria-expanded', 'true')
+    }
+  }
+
+  function setRadio(name, value) {
+    const input = document.querySelector('input[name="' + name + '"][value="' + value + '"]')
+    if (input) input.checked = true
+  }
+
+  function setChips(type, values) {
+    $$('.chip[data-filter-type="' + type + '"]').forEach(chip => {
+      if (values.includes(chip.dataset.value)) {
+        chip.setAttribute('aria-pressed', 'true')
+      }
+    })
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────
+  init()
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+---
+import { getSiteConfig, getMusicPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
+import PerusalOnlyRedirect from '@components/PerusalOnlyRedirect.astro'
+const isPerusalOnlyMode = getSiteConfig().perusalScoreOnlyMode
+import SiteLayout from '@layouts/SiteLayout.astro'
+import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
+import ImmersiveCard from '@components/immersive/ImmersiveCard.astro'
+import Dropdown from '@components/Dropdown.astro'
+import { getCollection } from 'astro:content'
+import type { SearchableWorkItem } from '../../scripts/search-types'
+import prepareWorks from '@/utils/prepareWorks'
+import { buildSearchableWorkItems } from '@/utils/search-items'
+import { marked } from 'marked'
+
+const siteConfig = getSiteConfig()
+const musicPageConfig = getMusicPage()
+const { pageHero } = resolvePageHero(musicPageConfig.preferredHeroId)
+const musicTitle = musicPageConfig.title || 'Music'
+const musicSubtitle = (musicPageConfig.subtitle || 'A showcase of compositions by {composerName}').replace(
+  '{composerName}',
+  siteConfig.composerName,
+)
+const musicSearchPlaceholder = musicPageConfig.searchPlaceholder || 'Filter works...'
+
+// Parse optional filter note (rich text, same pattern as about page body)
+const filterNoteParagraphs = musicPageConfig.filterNote
+  ? musicPageConfig.filterNote
+      .split('\n\n')
+      .map((p) => p.trim())
+      .filter(Boolean)
+  : []
+const filterNoteHtml = await Promise.all(
+  filterNoteParagraphs.map(async (paragraph) => {
+    const rawHtml = await marked.parseInline(paragraph)
+    return rawHtml.replace(
+      /<a\s+href="(https?:\/\/[^"]+)"([^>]*)>/g,
+      '<a href="$1"$2 target="_blank" rel="nofollow noopener noreferrer">',
+    )
+  }),
+)
+
+const works = await getCollection('works')
+const { works: worksWithImages } = prepareWorks(works)
+
+// Sort works by the configured default (matches client-side "Sort..." default)
+const defaultSort = musicPageConfig.defaultSortNoFilter
+if (defaultSort === 'title') {
+  worksWithImages.sort((a, b) => a.data.title.localeCompare(b.data.title))
+} else if (defaultSort === 'oldest') {
+  worksWithImages.sort((a, b) => (a.data.completionDate ?? '').localeCompare(b.data.completionDate ?? ''))
+} else {
+  worksWithImages.sort((a, b) => (b.data.completionDate ?? '').localeCompare(a.data.completionDate ?? ''))
+}
+
+const searchableWorkItems: SearchableWorkItem[] = buildSearchableWorkItems(worksWithImages)
+
+// Build sort dropdown options from config
+const sortDropdownOptions = [
+  { value: 'default', label: 'Sort...' },
+  ...(musicPageConfig.sortOptions.includes('title') ? [{ value: 'title', label: 'Sort by title' }] : []),
+  ...(musicPageConfig.sortOptions.includes('newest') ? [{ value: 'newest', label: 'Newest first' }] : []),
+  ...(musicPageConfig.sortOptions.includes('oldest') ? [{ value: 'oldest', label: 'Oldest first' }] : []),
+]
+
+// Build per-work metadata for checkbox filters
+const workMeta: Record<string, { hasScore: boolean; hasRecording: boolean }> = {}
+for (const work of worksWithImages) {
+  workMeta[work.id] = {
+    hasScore: work.data.hasPerusalScore === true,
+    hasRecording: work.data.recordings.length > 0,
+  }
+}
+
+// Only show a checkbox if the filter is meaningful (some works lack the attribute)
+const allHaveScore = worksWithImages.every((w) => w.data.hasPerusalScore === true)
+const allHaveRecording = worksWithImages.every((w) => w.data.recordings.length > 0)
+const showScoreCheckbox = !allHaveScore && musicPageConfig.scoreCheckboxEnabled
+const showRecordingCheckbox = !allHaveRecording && musicPageConfig.recordingCheckboxEnabled
+const showCheckboxes = showScoreCheckbox || showRecordingCheckbox
+---
+
+{isPerusalOnlyMode ? (
+  <PerusalOnlyRedirect />
+) : (
+<SiteLayout title={musicTitle} description={musicSubtitle} pageKey="music" pageHero={pageHero}>
+  <ImmersivePageHeader title={musicTitle} subtitle={musicSubtitle} class="music-page-header">
+    <div
+      class="music-filter-wrapper"
+      data-music-filter
+      data-default-sort={musicPageConfig.defaultSortNoFilter}
+      data-default-sort-filtered={musicPageConfig.defaultSortWithFilter}
+    >
+      <div class="music-filter-input-row">
+        <label for="music-filter-input" class="sr-only">
+          {`Filter ${musicTitle.toLowerCase()}`}
+        </label>
+        <span class="music-filter-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+        </span>
+        <input
+          type="search"
+          id="music-filter-input"
+          class="music-filter-input"
+          placeholder={musicSearchPlaceholder}
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button type="button" class="music-filter-clear" aria-label="Clear filter" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="music-filter-controls">
+        {showCheckboxes && (
+          <fieldset class="music-filter-checkboxes">
+            <legend class="sr-only">Filter options</legend>
+            {showScoreCheckbox && (
+              <label class="music-filter-checkbox">
+                <input type="checkbox" id="music-filter-has-score" />
+                <span>{musicPageConfig.scoreCheckboxLabel || 'Has score'}</span>
+              </label>
+            )}
+            {showRecordingCheckbox && (
+              <label class="music-filter-checkbox">
+                <input type="checkbox" id="music-filter-has-recording" />
+                <span>{musicPageConfig.recordingCheckboxLabel || 'Has recording'}</span>
+              </label>
+            )}
+          </fieldset>
+        )}
+        {musicPageConfig.sortEnabled && (
+          <div class="music-filter-sort">
+            <Dropdown
+              id="music-sort-dropdown"
+              label="Sort order"
+              options={sortDropdownOptions}
+              value="default"
+              align="end"
+              class="music-sort-dropdown"
+            />
+          </div>
+        )}
+        {filterNoteHtml.length > 0 && (
+          <p class="music-filter-note" set:html={filterNoteHtml[0]} />
+        )}
+      </div>
+    </div>
+  </ImmersivePageHeader>
+  <section>
+    <div class="container music-grid-wrapper">
+      <p class="music-filter-status" role="status" aria-live="polite" aria-atomic="true"><span aria-hidden="true" role="presentation">&nbsp;</span></p>
+      <ul class="work-card-grid music-card-grid">
+        {
+          worksWithImages.map((work) => (
+            <ImmersiveCard
+              url={'/music/' + work.id + '/'}
+              title={work.data.title}
+              headingLevel="h2"
+              footer={'Instrumentation: ' + work.data.instrumentation.join(', ')}
+              imageData={work.featuredImage}
+              imageAlt={work.data.thumbnail?.alt ?? ''}
+              data-work-id={work.id}
+            >
+              {work.data.description}
+            </ImmersiveCard>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+  <script is:inline type="application/json" id="music-filter-data" set:html={JSON.stringify(searchableWorkItems)} />
+  <script is:inline type="application/json" id="music-work-meta" set:html={JSON.stringify(workMeta)} />
+  <script>
+    import '../../scripts/music-filter'
+  </script>
+</SiteLayout>
+)}

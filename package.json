@@ -1,33 +1,36 @@
 {
-  "name": "FirstNameLastName-com-astro",
-  "description": "A personal website built with Astro, showcasing a blog and works/projects, with a focus on accessibility and responsive design.",
-  "version": "4.3.0",
+  "name": "composer-website-astro",
+  "description": "A professional, accessible portfolio website builder for composers. Built with Astro 5.",
+  "version": "1.0.0",
   "author": "Incluud",
   "license": "MIT",
   "type": "module",
-  "homepage": "https://example.com/",
+  "starterKit": {
+    "exportName": "composer-website-starter",
+    "publishBranch": "main"
+  },
   "scripts": {
-    "postinstall": "npm run init:source",
+    "generate:data": "node ./scripts/generate-works-images.mjs && node ./scripts/generate-perusal-scores.mjs && node ./scripts/generate-page-search-index.mjs && node ./scripts/generate-api-config.mjs",
+    "generate:branding": "node ./scripts/generate-branding-assets.mjs",
+    "generate:social-image": "node ./scripts/generate-social-preview-image.mjs",
+    "ingest:assets": "node ./scripts/generate-branding-assets.mjs && node ./scripts/ingest-assets.mjs",
+    "ingest:works": "node ./scripts/ingest-works.mjs",
+    "ingest:works:force": "node ./scripts/ingest-works.mjs --force",
+    "cleanup:generated": "node ./scripts/cleanup-generated-files.mjs",
+    "free:dev-ports": "node ./scripts/free-dev-ports.mjs",
+    "dev": "node scripts/maybe-setup.mjs && npm run free:dev-ports && npm run ingest:assets && npm run ingest:works && npm run generate:data && astro dev --host 127.0.0.1 --open",
+    "dev:full": "node scripts/maybe-setup.mjs && npm run free:dev-ports && npm run ingest:assets && npm run ingest:works && npm run generate:data && astro dev --host 127.0.0.1 --open",
+    "start": "npm run ingest:assets && npm run generate:data && astro dev --host 127.0.0.1",
+    "lint": "npx tsc --noEmit && eslint . && npx astro check",
+    "build": "npm run ingest:assets && npm run generate:data && npm run lint && astro build && node ./scripts/check-trailing-slashes.mjs && node ./scripts/generate-redirects.mjs",
+    "build:content": "npm run ingest:assets && npm run generate:social-image && npm run lint && astro build && node ./scripts/check-trailing-slashes.mjs && node ./scripts/generate-redirects.mjs",
+    "build:full": "npm run ingest:assets && npm run ingest:works && npm run generate:data && npm run lint && astro build && node ./scripts/check-trailing-slashes.mjs && node ./scripts/generate-redirects.mjs",
+    "deploy": "node ./scripts/deploy.mjs",
+    "preview": "astro preview",
     "init:source": "node ./scripts/init-source.mjs",
     "init:source:reset": "node ./scripts/init-source.mjs --reset",
-    "generate:data": "node ./scripts/generate-works-images.mjs && node ./scripts/generate-perusal-scores.mjs && node ./scripts/generate-page-search-index.mjs",
-    "generate:demo-placeholders": "node ./scripts/generate-demo-placeholders.mjs",
-    "generate:social-image": "node ./scripts/generate-social-preview-image.mjs",
-    "ingest:assets": "npm run init:source && node ./scripts/ingest-assets.mjs",
-    "ingest:works": "npm run init:source && node ./scripts/ingest-works.mjs",
-    "ingest:works:force": "npm run init:source && node ./scripts/ingest-works.mjs --force",
-    "cleanup:generated": "node ./scripts/cleanup-generated-files.mjs",
-    "keystatic": "npm run init:source && node ./scripts/keystatic-server.mjs",
-    "ks": "npm run keystatic",
-    "dev": "npm run init:source && concurrently -c cyan,magenta -n astro,ks \"npm run ingest:assets && npm run generate:data && astro dev --open\" \"node ./scripts/keystatic-server.mjs\"",
-    "dev:full": "npm run init:source && concurrently -c cyan,magenta -n astro,ks \"npm run ingest:assets && npm run ingest:works && npm run generate:data && astro dev --open\" \"node ./scripts/keystatic-server.mjs\"",
-    "start": "npm run ingest:assets && npm run generate:data && astro dev",
-    "lint": "npx tsc --noEmit && eslint . && npx astro check",
-    "build": "npm run lint && npm run ingest:assets && npm run generate:data && npm run lint && astro build",
-    "build:content": "npm run lint && npm run ingest:assets && npm run lint && astro build",
-    "build:full": "npm run lint && npm run ingest:assets && npm run ingest:works && npm run generate:data && npm run lint && astro build",
-    "deploy": "node ./scripts/deploy.mjs",
-    "preview": "astro preview"
+    "setup": "node scripts/setup-server.mjs",
+    "postinstall": "npm run init:source"
   },
   "keywords": [
     "astro",
@@ -43,13 +46,6 @@
     "blog",
     "works"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/incluud/accessible-astro-starter.git"
-  },
-  "bugs": {
-    "url": "https://github.com/incluud/accessible-astro-starter/issues"
-  },
   "devDependencies": {
     "@astrojs/mdx": "^4.3.9",
     "@astrojs/node": "^9.5.4",
@@ -62,10 +58,8 @@
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",
     "astro": "^5.17.1",
-    "astro-compress": "^2.3.8",
     "astro-eslint-parser": "^1.2.2",
     "astro-icon": "^1.1.5",
-    "concurrently": "^9.2.1",
     "eslint": "^9.35.0",
     "eslint-plugin-astro": "^1.3.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -78,8 +72,9 @@
     "sanitize-html": "^2.17.0",
     "sharp": "^0.32.4",
     "ssh2-sftp-client": "^12.0.1",
-    "svgo": "^4.0.0",
-    "typescript": "^5.9.3"
+    "svgo": "^4.0.1",
+    "typescript": "^5.9.3",
+    "sass": "^1.80.0"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.6",
@@ -88,14 +83,16 @@
     "@astrojs/sitemap": "^3.6.0",
     "@keystatic/astro": "^5.0.6",
     "@keystatic/core": "^0.5.48",
+    "@pdf-lib/fontkit": "^1.1.1",
     "astro-mail-obfuscation": "^2.3.4",
     "marked": "^17.0.3",
     "page-flip": "^2.0.7",
+    "pdf-lib": "^1.17.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
   "overrides": {
-    "minimatch": "^10.2.2",
-    "lodash": "^4.17.23"
+    "lodash": "^4.17.23",
+    "minimatch": "^10.2.2"
   }
 }

@@ -1,3 +1,0 @@
-preferredHeroId: hall
-fallbackHeroId: inside-piano
-defaultFilter: saturate(0.72) contrast(1.06) brightness(0.72)

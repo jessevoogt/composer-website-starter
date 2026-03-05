@@ -1,6 +1,6 @@
 /**
- * Hero variant switcher — resolves initial variant from URL param / server-rendered
- * active hero, handles error fallback, and listens for custom switch events.
+ * Hero variant switcher — resolves initial variant from URL param / data attribute,
+ * handles error fallback, and listens for custom events from the dev toolbar.
  */
 
 import type { ClientHeroVariant } from './types'
@@ -14,13 +14,7 @@ interface HeroVariantOptions {
 }
 
 export function initHeroVariants(options: HeroVariantOptions): () => void {
-  const {
-    heroVariants,
-    defaultHeroFilter,
-    fallbackHeroSrc,
-    heroVariantEventName,
-    devMode,
-  } = options
+  const { heroVariants, defaultHeroFilter, fallbackHeroSrc, heroVariantEventName, devMode } = options
 
   const root = document.querySelector<HTMLElement>('[data-immersive-root]')
   const heroBackdropImage = document.querySelector<HTMLImageElement>('.stage-backdrop-image')
@@ -89,8 +83,7 @@ export function initHeroVariants(options: HeroVariantOptions): () => void {
 
   const onHeroVariantSet = (event: Event): void => {
     if (!(event instanceof CustomEvent)) return
-    const nextHeroId =
-      event.detail && typeof event.detail.heroId === 'string' ? event.detail.heroId : ''
+    const nextHeroId = event.detail && typeof event.detail.heroId === 'string' ? event.detail.heroId : ''
     const nextVariant = findById(nextHeroId)
     if (!nextVariant) return
     setHeroVariant(nextVariant)

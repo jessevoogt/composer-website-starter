@@ -1,6 +1,6 @@
 // Integration: keystatic-link-dev-toolbar.mjs
 // Adds a one-click "Keystatic CMS" button to the Astro dev toolbar.
-// Clicking it opens Keystatic on port 4322, routed to the matching singleton/item when possible.
+// Clicking it opens /keystatic/ (same port as Astro dev server) in a new tab.
 
 export default function keystaticlinkDevToolbar() {
   return {

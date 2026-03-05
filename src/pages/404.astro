@@ -1,10 +1,23 @@
 ---
 import SiteLayout from '@layouts/SiteLayout.astro'
+import ButtonLink from '@components/ui/ButtonLink.astro'
+import UiIcon from '@components/icons/UiIcon.astro'
+import { getRedirects, getNotFoundPage } from '@/utils/source-config'
+import { resolvePageHero } from '@/utils/page-hero'
+
+const notFoundPage = getNotFoundPage()
+const { pageHero } = resolvePageHero(notFoundPage.preferredHeroId)
+const { rules } = getRedirects()
+const activeRules = rules
+  .filter((r) => r.enabled && r.type !== '410')
+  .map(({ from, to, matchType }) => ({ from, to, matchType }))
 ---
 
 <SiteLayout
-  title="404"
+  title={notFoundPage.title || '404'}
   replaceLastAutoBreadcrumbLabel="Page Not Found"
+  pageHero={pageHero}
+  pageKey="not-found"
 >
   <section class="page-header-section not-found-section">
     <div class="not-found-bg" aria-hidden="true">
@@ -16,30 +29,75 @@ import SiteLayout from '@layouts/SiteLayout.astro'
     </div>
 
     <div class="page-header-inner not-found-inner">
-      <h1>404</h1>
-      <p class="not-found-message">The page you requested isn't in the score.</p>
-      <p class="not-found-status">Don't worry, the music doesn't have to end.</p>
-      <a href="/" class="immersive-btn immersive-btn-primary not-found-home-link">
-        <span class="not-found-home-link-icon" aria-hidden="true">
-          <svg
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.9"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M15.5 5.5L8.5 12L15.5 18.5"></path>
-            <path d="M9.25 12H20"></path>
-          </svg>
+      <h1>{notFoundPage.title || '404'}</h1>
+      <p class="not-found-message">{notFoundPage.message || "The page you requested isn't in the score."}</p>
+      <p class="not-found-status">{notFoundPage.submessage || "Don't worry, the music doesn't have to end."}</p>
+      <ButtonLink href="/" variant="primary" class="not-found-home-link">
+        <span slot="icon-left" class="not-found-home-link-icon" aria-hidden="true">
+          <UiIcon name="arrowRight" size="1.05rem" />
         </span>
-        <span class="immersive-btn-label">Da capo</span>
-      </a>
+        {notFoundPage.buttonLabel || 'Da capo'}
+      </ButtonLink>
     </div>
   </section>
 </SiteLayout>
+
+<script is:inline define:vars={{ activeRules }}>
+  // Client-side redirect fallback — matches the .htaccess rules so redirects work
+  // on non-Apache servers (e.g. Astro dev, Cloudflare, Nginx) and locally in dev.
+  ;(() => {
+    const path = window.location.pathname
+    for (const rule of activeRules) {
+      const from = rule.from.replace(/\/$/, '')
+      if (rule.matchType === 'prefix') {
+        const bare = from + '/'
+        if (path === bare || path.startsWith(bare)) {
+          const rest = path.slice(bare.length)
+          window.location.replace(rule.to + rest)
+          return
+        }
+        if (path === from) {
+          window.location.replace(rule.to)
+          return
+        }
+      } else {
+        if (path === from || path === from + '/') {
+          window.location.replace(rule.to)
+          return
+        }
+      }
+    }
+  })()
+</script>
+
+<script is:inline>
+  // Rebuild breadcrumbs from the actual browser URL (the static 404.html was built
+  // with pathname "/404/", but Apache's ErrorDocument serves it at the original URL).
+  ;(() => {
+    const ol = document.querySelector('.site-header-breadcrumbs .breadcrumbs ol')
+    if (!ol) return
+
+    const segments = window.location.pathname.split('/').filter(Boolean)
+    if (segments.length <= 1) return // "Home / Page Not Found" is fine as-is
+
+    const fmt = (s) =>
+      /^\d+$/.test(s)
+        ? 'Page ' + s
+        : decodeURIComponent(s)
+            .split('-')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ')
+
+    let html = '<li><a href="/">Home</a></li>'
+    for (let i = 0; i < segments.length - 1; i++) {
+      const href = '/' + segments.slice(0, i + 1).join('/') + '/'
+      html += '<li><a href="' + href + '">' + fmt(segments[i]) + '</a></li>'
+    }
+    html += '<li><span aria-current="page">Page Not Found</span></li>'
+
+    ol.innerHTML = html
+  })()
+</script>
 
 <style>
   .not-found-section {
@@ -109,7 +167,8 @@ import SiteLayout from '@layouts/SiteLayout.astro'
     height: 1.05rem;
     min-width: 1.05rem;
     min-height: 1.05rem;
-    transform-origin: center;
+    transform: scaleX(-1);
+    transition: transform 180ms ease;
   }
 
   .not-found-home-link-icon svg {
@@ -118,23 +177,9 @@ import SiteLayout from '@layouts/SiteLayout.astro'
     display: block;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
     .not-found-home-link:not(:disabled):hover .not-found-home-link-icon {
-      animation: not-found-home-link-icon-bump 240ms ease-out;
-    }
-  }
-
-  @keyframes not-found-home-link-icon-bump {
-    0% {
-      transform: translateX(0) scale(1);
-    }
-
-    45% {
-      transform: translateX(-0.14rem) scale(1.08);
-    }
-
-    100% {
-      transform: translateX(0) scale(1);
+      transform: scaleX(-1) translateX(0.2rem);
     }
   }
 </style>

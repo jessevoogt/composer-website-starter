@@ -1,0 +1,5 @@
+sections:
+  - key: header
+  - key: breadcrumbs
+  - key: footer
+  - key: social-media

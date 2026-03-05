@@ -24,44 +24,6 @@ interface FeaturedRecording {
 type TrackCycleDirection = 'previous' | 'next'
 type FeaturedImageTransitionTarget = Pick<FeaturedRecording, 'imageSrc' | 'imagePosition'>
 
-interface AudioPlayerForceHideControls {
-  previousTrack: boolean
-  playPause: boolean
-  nextTrack: boolean
-  seek: boolean
-  mute: boolean
-  volume: boolean
-  currentTime: boolean
-  duration: boolean
-  trackDetails: boolean
-  trackText: boolean
-}
-
-interface AudioPlayerControlsConfig {
-  hideFeaturedPlayerControls: boolean
-  enableTrackTextScroll: boolean
-  forceHideControls: AudioPlayerForceHideControls
-}
-
-const DEFAULT_AUDIO_PLAYER_FORCE_HIDE_CONTROLS: AudioPlayerForceHideControls = {
-  previousTrack: false,
-  playPause: false,
-  nextTrack: false,
-  seek: false,
-  mute: false,
-  volume: false,
-  currentTime: false,
-  duration: false,
-  trackDetails: false,
-  trackText: false,
-}
-
-const DEFAULT_AUDIO_PLAYER_CONTROLS: AudioPlayerControlsConfig = {
-  hideFeaturedPlayerControls: false,
-  enableTrackTextScroll: true,
-  forceHideControls: DEFAULT_AUDIO_PLAYER_FORCE_HIDE_CONTROLS,
-}
-
 function formatTime(value: number): string {
   if (!Number.isFinite(value) || value < 0) return '0:00'
   const totalSeconds = Math.floor(value)
@@ -122,44 +84,6 @@ function parseFeaturedRecordings(): FeaturedRecording[] {
       .filter((entry): entry is FeaturedRecording => entry !== null)
   } catch {
     return []
-  }
-}
-
-function parseAudioPlayerControls(): AudioPlayerControlsConfig {
-  const controlsScript = document.querySelector<HTMLScriptElement>('[data-audio-player-controls]')
-  if (!controlsScript?.textContent) return DEFAULT_AUDIO_PLAYER_CONTROLS
-
-  try {
-    const parsed = JSON.parse(controlsScript.textContent)
-    if (!parsed || typeof parsed !== 'object') return DEFAULT_AUDIO_PLAYER_CONTROLS
-
-    const row = parsed as {
-      hideFeaturedPlayerControls?: unknown
-      enableTrackTextScroll?: unknown
-      forceHideControls?: Record<string, unknown>
-    }
-
-    const forceHideSource = row.forceHideControls
-    const forceHideControls: AudioPlayerForceHideControls = {
-      previousTrack: forceHideSource?.previousTrack === true,
-      playPause: forceHideSource?.playPause === true,
-      nextTrack: forceHideSource?.nextTrack === true,
-      seek: forceHideSource?.seek === true,
-      mute: forceHideSource?.mute === true,
-      volume: forceHideSource?.volume === true,
-      currentTime: forceHideSource?.currentTime === true,
-      duration: forceHideSource?.duration === true,
-      trackDetails: forceHideSource?.trackDetails === true,
-      trackText: forceHideSource?.trackText === true,
-    }
-
-    return {
-      hideFeaturedPlayerControls: row.hideFeaturedPlayerControls === true,
-      enableTrackTextScroll: row.enableTrackTextScroll !== false,
-      forceHideControls,
-    }
-  } catch {
-    return DEFAULT_AUDIO_PLAYER_CONTROLS
   }
 }
 
@@ -235,11 +159,9 @@ export function initFeaturedPlayer(): () => void {
   const bleedPause = document.querySelector<HTMLButtonElement>('[data-bleed-pause]')
   const fixedBar = document.querySelector<HTMLElement>('[data-fixed-player-bar]')
   const fixedBarControls = fixedBar?.querySelector<HTMLElement>('.fixed-player-bar-controls') ?? null
-  const fixedBarMarqueeSlot = fixedBar?.querySelector<HTMLElement>('.fixed-player-bar-marquee-slot') ?? null
   const fixedBarMarquee = fixedBar?.querySelector<HTMLElement>('[data-fixed-bar-marquee]') ?? null
   const fixedBarMarqueeContent = fixedBar?.querySelector<HTMLElement>('[data-fixed-bar-marquee-content]') ?? null
   const fixedBarLinkIcon = fixedBar?.querySelector<HTMLAnchorElement>('[data-fixed-bar-link-icon]') ?? null
-  const fixedBarVolumeControl = fixedBar?.querySelector<HTMLElement>('.fixed-player-bar-volume-control') ?? null
   const featuredImage = document.querySelector<HTMLImageElement>('[data-featured-image]')
   const listenFigure = document.querySelector<HTMLElement>('[data-parallax-listen]')
   const featuredMeta = document.querySelector<HTMLElement>('[data-featured-meta]')
@@ -250,10 +172,6 @@ export function initFeaturedPlayer(): () => void {
   const featuredScoreLink = document.querySelector<HTMLAnchorElement>('[data-featured-score-link]')
   const featuredSectionTitle = document.querySelector<HTMLElement>('[data-featured-section-title]')
   const isPerusalScorePage = document.body.classList.contains('perusal-score-body')
-  const audioPlayerControls = parseAudioPlayerControls()
-  const forceHideControls = audioPlayerControls.forceHideControls
-  const shouldHideFeaturedPlayerControls = audioPlayerControls.hideFeaturedPlayerControls
-  const shouldAllowTrackTextScroll = audioPlayerControls.enableTrackTextScroll && !forceHideControls.trackText
 
   if (isPerusalScorePage) {
     featuredPlayer?.pause()
@@ -307,11 +225,6 @@ export function initFeaturedPlayer(): () => void {
   const fixedBarLinks = [fixedBarLinkIcon].filter(
     (link): link is HTMLAnchorElement => link !== null,
   )
-  const isControlForceHidden = (control: keyof AudioPlayerForceHideControls): boolean => {
-    return forceHideControls[control] === true
-  }
-
-  const isPlayPauseForceHidden = shouldHideFeaturedPlayerControls || isControlForceHidden('playPause')
 
   const featuredRecordings = parseFeaturedRecordings()
   const inlineParent = featuredPlayerDock ?? playerShell.parentElement
@@ -368,58 +281,6 @@ export function initFeaturedPlayer(): () => void {
   )
   let deferralScrollHandler: (() => void) | null = null
   let deferralDismissed = false
-
-  function applyForcedControlVisibility(): void {
-    const hidePlayPause = shouldHideFeaturedPlayerControls || isControlForceHidden('playPause')
-    for (const toggleButton of playerToggleButtons) {
-      toggleButton.hidden = hidePlayPause
-      toggleButton.disabled = hidePlayPause
-    }
-    if (listenTrigger) {
-      listenTrigger.hidden = hidePlayPause
-    }
-    if (bleedPause) {
-      bleedPause.hidden = hidePlayPause
-    }
-
-    const hideSeek = shouldHideFeaturedPlayerControls || isControlForceHidden('seek')
-    playerSeek.hidden = hideSeek
-    playerSeek.disabled = hideSeek
-
-    const hideMute = shouldHideFeaturedPlayerControls || isControlForceHidden('mute')
-    for (const muteButton of playerMuteButtons) {
-      muteButton.hidden = hideMute
-      muteButton.disabled = hideMute
-    }
-
-    const hideVolume = shouldHideFeaturedPlayerControls || isControlForceHidden('volume')
-    if (fixedBarVolumeControl) {
-      fixedBarVolumeControl.hidden = hideVolume
-    }
-    if (fixedBarVolume) {
-      fixedBarVolume.disabled = hideVolume
-    }
-
-    playerTimeCurrent.hidden = shouldHideFeaturedPlayerControls || isControlForceHidden('currentTime')
-    playerTimeTotal.hidden = shouldHideFeaturedPlayerControls || isControlForceHidden('duration')
-
-    const hideTrackDetails = shouldHideFeaturedPlayerControls || isControlForceHidden('trackDetails')
-    for (const link of fixedBarLinks) {
-      link.hidden = hideTrackDetails
-    }
-
-    const hideTrackText = shouldHideFeaturedPlayerControls || isControlForceHidden('trackText')
-    if (fixedBarMarqueeSlot) {
-      fixedBarMarqueeSlot.hidden = hideTrackText
-    }
-    if (fixedBarMarquee) {
-      fixedBarMarquee.classList.toggle('is-scroll-disabled', !hideTrackText && !shouldAllowTrackTextScroll)
-      if (hideTrackText) {
-        fixedBarMarquee.classList.remove('is-overflowing')
-        fixedBarMarquee.style.removeProperty('--marquee-distance')
-      }
-    }
-  }
 
   function shouldDeferPlayerOnHome(): boolean {
     return (
@@ -526,14 +387,6 @@ export function initFeaturedPlayer(): () => void {
   }
 
   syncRevealAnimationClass()
-  applyForcedControlVisibility()
-  if (shouldHideFeaturedPlayerControls) {
-    playerShell.hidden = true
-    playerBar.hidden = true
-    isFixedBarOpen = false
-    document.documentElement.classList.remove('has-fixed-player', homePlayerDeferredClass, fixedPlayerRevealDoneClass)
-    playerBar.dataset.fixedPlayerRevealDone = 'false'
-  }
 
   function moveShellToInlineParent(): void {
     if (!inlineParent) return
@@ -543,7 +396,6 @@ export function initFeaturedPlayer(): () => void {
   }
 
   function openFeaturedPlayer(): void {
-    if (shouldHideFeaturedPlayerControls) return
     if (!isFixedBarOpen) {
       moveShellToInlineParent()
     }
@@ -587,16 +439,10 @@ export function initFeaturedPlayer(): () => void {
 
   function updateMarqueeOverflow(): void {
     if (!fixedBarMarquee || !fixedBarMarqueeContent) return
-    if (shouldHideFeaturedPlayerControls || isControlForceHidden('trackText')) return
     const containerWidth = fixedBarMarquee.clientWidth
     const contentWidth = fixedBarMarqueeContent.scrollWidth
     const isOverflowing = contentWidth > containerWidth + 2
     fixedBarMarquee.classList.toggle('is-overflowing', isOverflowing)
-    if (!shouldAllowTrackTextScroll) {
-      fixedBarMarquee.style.removeProperty('--marquee-distance')
-      resetMarqueeToStart()
-      return
-    }
     if (isOverflowing) {
       fixedBarMarquee.style.setProperty('--marquee-distance', `${-(contentWidth - containerWidth + 16)}px`)
       return
@@ -616,15 +462,13 @@ export function initFeaturedPlayer(): () => void {
 
   function syncTrackNavigationButtons(): void {
     const hasMultiple = featuredRecordings.length > 1
-    const forceHidePreviousTrack = shouldHideFeaturedPlayerControls || isControlForceHidden('previousTrack')
-    const forceHideNextTrack = shouldHideFeaturedPlayerControls || isControlForceHidden('nextTrack')
     for (const prevButton of trackPrevButtons) {
-      prevButton.hidden = forceHidePreviousTrack || !hasMultiple
-      prevButton.disabled = forceHidePreviousTrack || !hasMultiple
+      prevButton.hidden = !hasMultiple
+      prevButton.disabled = !hasMultiple
     }
     for (const nextButton of trackNextButtons) {
-      nextButton.hidden = forceHideNextTrack || !hasMultiple
-      nextButton.disabled = forceHideNextTrack || !hasMultiple
+      nextButton.hidden = !hasMultiple
+      nextButton.disabled = !hasMultiple
     }
 
     if (!hasMultiple || currentRecordingIndex < 0) return
@@ -998,7 +842,7 @@ export function initFeaturedPlayer(): () => void {
       }
     }
     if (featuredWorkLink) {
-      featuredWorkLink.href = recording.workHref || '/works/'
+      featuredWorkLink.href = recording.workHref || '/music/'
       featuredWorkLink.setAttribute(
         'aria-label',
         `More details for ${recording.title || 'featured work'}`,
@@ -1033,7 +877,7 @@ export function initFeaturedPlayer(): () => void {
       }
       if (fixedBarLinks.length > 0) {
         for (const link of fixedBarLinks) {
-          link.href = activeRecording.workHref || '/works/'
+          link.href = activeRecording.workHref || '/music/'
           link.setAttribute('aria-label', `Details for ${activeRecording.title || 'featured work'}`)
         }
       }
@@ -1154,18 +998,6 @@ export function initFeaturedPlayer(): () => void {
   }
 
   function showFixedBar(): void {
-    if (shouldHideFeaturedPlayerControls) {
-      if (inlineParent && playerShell.parentElement !== inlineParent) {
-        inlineParent.appendChild(playerShell)
-      }
-      playerShell.hidden = true
-      playerBar.hidden = true
-      isFixedBarOpen = false
-      document.documentElement.classList.remove('has-fixed-player', homePlayerDeferredClass, fixedPlayerRevealDoneClass)
-      playerBar.dataset.fixedPlayerRevealDone = 'false'
-      return
-    }
-
     syncFixedBarMeta()
     if (playerShell.parentElement !== playerBarControls) {
       playerBarControls.prepend(playerShell)
@@ -1197,7 +1029,6 @@ export function initFeaturedPlayer(): () => void {
       playerSeek.max = duration > 0 ? `${duration}` : '100'
       playerSeek.value = duration > 0 ? `${Math.min(currentTime, duration)}` : '0'
     }
-    playerSeek.disabled = shouldHideFeaturedPlayerControls || isControlForceHidden('seek') || duration <= 0
 
     const seekMax = Number.parseFloat(playerSeek.max)
     const seekValue = Number.parseFloat(playerSeek.value)
@@ -1211,7 +1042,6 @@ export function initFeaturedPlayer(): () => void {
       const volumePercent = Math.round((muted ? 0 : volume) * 100)
       fixedBarVolume.value = `${volumePercent}`
       fixedBarVolume.style.setProperty('--volume-progress', `${volumePercent}%`)
-      fixedBarVolume.disabled = shouldHideFeaturedPlayerControls || isControlForceHidden('volume')
     }
 
     const currentTimeLabel = formatTime(currentTime)
@@ -1231,23 +1061,22 @@ export function initFeaturedPlayer(): () => void {
     }
 
     if (listenTrigger) {
-      listenTrigger.hidden = isPlayPauseForceHidden ? true : playing
+      listenTrigger.hidden = playing
       listenTrigger.setAttribute('aria-label', 'Play featured recording')
     }
     if (bleedPause) {
-      bleedPause.hidden = isPlayPauseForceHidden ? true : !playing
+      bleedPause.hidden = !playing
       bleedPause.setAttribute('aria-label', playing ? 'Pause featured recording' : 'Play featured recording')
     }
 
-    if (!isPlayPauseForceHidden && previousPlayingState !== null && previousPlayingState !== playing) {
+    if (previousPlayingState !== null && previousPlayingState !== playing) {
       const visibleControlInner = playing
         ? bleedPause?.querySelector<HTMLElement>('.listen-bleed-pause-inner') ?? null
         : listenTrigger?.querySelector<HTMLElement>('.listen-bleed-trigger-inner') ?? null
       animateMobileListenBleedTapBounce(visibleControlInner)
+      listenSection?.dispatchEvent(new Event('playerstatechange'))
     }
     lastPlayerPlayingState = playing
-
-    applyForcedControlVisibility()
 
     if (isFixedBarOpen) {
       showFixedBar()
@@ -1257,7 +1086,7 @@ export function initFeaturedPlayer(): () => void {
   const playFeaturedRecording = async (focusFrom?: HTMLElement | null): Promise<void> => {
     openFeaturedPlayer()
     clearHomeDeferral()
-    if (!shouldHideFeaturedPlayerControls && focusFrom && document.activeElement === focusFrom) {
+    if (focusFrom && document.activeElement === focusFrom) {
       const focusTarget =
         fixedBarToggle && !playerBar.hidden
           ? fixedBarToggle

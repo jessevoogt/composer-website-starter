@@ -4,6 +4,7 @@
 import fs from 'fs'
 import path from 'path'
 import yaml from 'js-yaml'
+import { isGeneratedPageSearchExcludedFile } from '../src/utils/route-exclusions.mjs'
 
 const workspaceRoot = process.cwd()
 const pagesDir = path.join(workspaceRoot, 'src', 'pages')
@@ -234,6 +235,9 @@ function resolveRouteFromFile(filePath) {
 }
 
 function resolvePageEntry(filePath) {
+  const relativePagePath = path.relative(pagesDir, filePath).replace(/\\/g, '/')
+  if (isGeneratedPageSearchExcludedFile(relativePagePath)) return null
+
   const href = resolveRouteFromFile(filePath)
   if (!href) return null
 
@@ -258,22 +262,20 @@ function resolvePageEntry(filePath) {
 }
 
 function buildConfiguredPageEntries() {
-  const homeHero = readYamlFile(path.join(sourcePagesDir, 'home', 'hero.yaml'))
-  const homeSeo = readYamlFile(path.join(sourcePagesDir, 'home', 'seo.yaml'))
-  const homeContact = readYamlFile(path.join(sourcePagesDir, 'home', 'contact.yaml'))
+  const homePage = readYamlFile(path.join(sourcePagesDir, 'home.yaml'))
   const aboutPage = readYamlFile(path.join(sourcePagesDir, 'about', 'about.yaml'))
   const contactPage = readYamlFile(path.join(sourcePagesDir, 'contact.yaml'))
 
   const homeTitle = 'Home'
-  const homeDescription = buildSearchDescription(homeSeo.searchResultText, homeSeo.metaDescription, homeHero.heroTagline)
+  const homeDescription = buildSearchDescription(homePage.searchResultText, homePage.metaDescription, homePage.heroTagline)
   const homeContent = joinNonEmpty([
-    homeHero.heroTitle,
-    homeHero.heroSubtitle,
-    homeHero.heroTagline,
-    homeSeo.metaTitle,
-    homeSeo.metaDescription,
-    homeSeo.searchResultText,
-    homeContact.contactIntro,
+    homePage.heroTitle,
+    homePage.heroSubtitle,
+    homePage.heroTagline,
+    homePage.metaTitle,
+    homePage.metaDescription,
+    homePage.searchResultText,
+    homePage.contactIntro,
   ])
 
   const aboutTitle = 'About'
@@ -300,6 +302,11 @@ function buildConfiguredPageEntries() {
     contactPage.introText,
   ])
 
+  const musicPage = readYamlFile(path.join(sourcePagesDir, 'music.yaml'))
+  const musicTitle = firstNonEmpty(musicPage.title) || 'Music'
+  const musicDescription = buildSearchDescription(musicPage.searchResultText, musicPage.subtitle)
+  const musicContent = joinNonEmpty([musicPage.title, musicPage.subtitle])
+
   return [
     {
       id: routeToId('/'),
@@ -323,6 +330,14 @@ function buildConfiguredPageEntries() {
       description: contactDescription,
       keywords: buildKeywordPool('/contact/', contactTitle, contactContent),
       href: '/contact/',
+      category: 'page',
+    },
+    {
+      id: routeToId('/music/'),
+      title: musicTitle,
+      description: musicDescription,
+      keywords: buildKeywordPool('/music/', musicTitle, musicContent),
+      href: '/music/',
       category: 'page',
     },
   ]
@@ -364,7 +379,7 @@ export const generatedPageSearchEntries: SearchablePageItem[] = ${serialized}
 
   fs.mkdirSync(path.dirname(outFile), { recursive: true })
   if (fs.existsSync(outFile) && fs.readFileSync(outFile, 'utf8') === fileContent) {
-    console.log('generated-page-search-metadata.ts unchanged, skipping write')
+    console.log(`Search index up to date (${entries.length} page${entries.length !== 1 ? 's' : ''}). No write needed.`)
     return
   }
   fs.writeFileSync(outFile, fileContent, 'utf8')

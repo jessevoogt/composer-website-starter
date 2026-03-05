@@ -1,0 +1,33 @@
+---
+import Button from './Button.astro'
+import UiIcon from '@components/icons/UiIcon.astro'
+
+interface Props {
+  direction: 'prev' | 'next'
+  /** Additional class for the icon wrapper (e.g. 'work-carousel-btn-icon-prev') */
+  iconClass?: string
+  disabled?: boolean
+  class?: string
+  [key: string]: unknown
+}
+
+const { direction, iconClass, disabled, class: className, ...rest } = Astro.props
+
+const label = direction === 'prev' ? 'Prev' : 'Next'
+const iconName = direction === 'prev' ? 'chevronLeft' : 'chevronRight'
+const slotName = direction === 'prev' ? 'icon-left' : 'icon-right'
+---
+
+<Button variant="control" disabled={disabled} class={className} {...rest}>
+  {slotName === 'icon-left' && (
+    <span slot="icon-left" class={iconClass} aria-hidden="true">
+      <UiIcon name={iconName} size="100%" />
+    </span>
+  )}
+  {label}
+  {slotName === 'icon-right' && (
+    <span slot="icon-right" class={iconClass} aria-hidden="true">
+      <UiIcon name={iconName} size="100%" />
+    </span>
+  )}
+</Button>

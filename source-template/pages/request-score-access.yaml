@@ -1,0 +1,6 @@
+gateTitle: Request Perusal Score Access
+gateMessage: >-
+  To view this perusal score, please enter your name and email. You will receive
+  a link to access the score.
+successMessage: Check your inbox! A link to view this score has been sent to your email.
+hideBackground: true

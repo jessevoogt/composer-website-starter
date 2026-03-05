@@ -1,0 +1,17 @@
+title: Music
+subtitle: A showcase of compositions by {composerName}
+filterNote: >
+  You can also [Browse Music](/music/browse/) by performer, ensemble,
+  instrumentation, etc.
+searchPlaceholder: Filter works...
+sortEnabled: true
+sortOptions:
+  - title
+  - newest
+  - oldest
+defaultSortNoFilter: newest
+defaultSortWithFilter: relevance
+scoreCheckboxEnabled: true
+scoreCheckboxLabel: Score available
+recordingCheckboxEnabled: true
+preferredHeroId: hall

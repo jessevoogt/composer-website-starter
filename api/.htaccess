@@ -1,0 +1,24 @@
+# Route all API requests to the public/ entry point and block
+# direct access to private directories and files.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block access to private directories (src/, vendor/, storage/).
+    RewriteRule ^(src|vendor|storage)(/|$) - [F,L]
+
+    # Route all non-file, non-directory requests to public/index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ public/index.php [L]
+</IfModule>
+
+# Block access to hidden files (.env, .gitignore, etc.) and composer files.
+<FilesMatch "^(\.|composer\.(json|lock))">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# Prevent directory listing.
+Options -Indexes

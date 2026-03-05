@@ -1,0 +1,6 @@
+downloadFilenameFormat: '{{composerName}} -- {{workTitle}} {{workSubtitle}} -- {{suffix}}'
+downloadWatermarkedSuffix: PERUSAL SCORE
+downloadOriginalSuffix: ''
+watermarkOverrides:
+  discriminant: false
+  value: null
