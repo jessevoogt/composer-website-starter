@@ -13,7 +13,7 @@ const aboutPage = getAboutPage()
 const { pageHero } = resolvePageHero(aboutPage.preferredHeroId)
 
 // Profile image — loaded from src/assets/img/ (copied by ingest-assets from source/pages/about/)
-const profileImageGlob = import.meta.glob<{ default: ImageMetadata }>('../assets/img/{profile}*.{jpg,jpeg,png,webp}')
+const profileImageGlob = import.meta.glob<{ default: ImageMetadata }>('../assets/img/profile*.{jpg,jpeg,png,webp}')
 const profileImageEntry = Object.values(profileImageGlob)[0]
 const profileImage = profileImageEntry ? (await profileImageEntry()).default : null
 
