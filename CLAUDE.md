@@ -19,6 +19,7 @@ This is a **reusable composer portfolio site builder** built with **Astro 5**. I
 ## Commands
 
 ```sh
+npm run quickstart  # Install deps and start dev server
 npm run dev         # Start dev server (setup wizard on first run, then Astro + Keystatic)
 npm run setup       # Re-run the setup wizard
 npm run build       # Production build

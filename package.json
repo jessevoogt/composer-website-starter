@@ -1,7 +1,7 @@
 {
   "name": "composer-website-astro",
   "description": "A professional, accessible portfolio website builder for composers. Built with Astro 5.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Incluud",
   "license": "MIT",
   "type": "module",
@@ -21,7 +21,7 @@
     "dev": "node scripts/maybe-setup.mjs && npm run free:dev-ports && npm run ingest:assets && npm run ingest:works && npm run generate:data && astro dev --host 127.0.0.1 --open",
     "dev:full": "node scripts/maybe-setup.mjs && npm run free:dev-ports && npm run ingest:assets && npm run ingest:works && npm run generate:data && astro dev --host 127.0.0.1 --open",
     "start": "npm run ingest:assets && npm run generate:data && astro dev --host 127.0.0.1",
-    "lint": "npx tsc --noEmit && eslint . && npx astro check",
+    "lint": "npx tsc --noEmit && npx eslint . && npx astro check",
     "build": "npm run ingest:assets && npm run generate:data && npm run lint && astro build && node ./scripts/check-trailing-slashes.mjs && node ./scripts/generate-redirects.mjs",
     "build:content": "npm run ingest:assets && npm run generate:social-image && npm run lint && astro build && node ./scripts/check-trailing-slashes.mjs && node ./scripts/generate-redirects.mjs",
     "build:full": "npm run ingest:assets && npm run ingest:works && npm run generate:data && npm run lint && astro build && node ./scripts/check-trailing-slashes.mjs && node ./scripts/generate-redirects.mjs",
@@ -30,7 +30,8 @@
     "init:source": "node ./scripts/init-source.mjs",
     "init:source:reset": "node ./scripts/init-source.mjs --reset",
     "setup": "node scripts/setup-server.mjs",
-    "postinstall": "npm run init:source"
+    "postinstall": "npm run init:source",
+    "quickstart": "npm install && npm run dev"
   },
   "keywords": [
     "astro",

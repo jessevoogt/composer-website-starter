@@ -23,12 +23,19 @@ Typical workflow:
 
 ## Quick start
 
+Double-click launcher (recommended):
+- macOS: `Quickstart.command`
+- Windows: `Quickstart.bat`
+
+Or run in Terminal:
+
 ```bash
 git clone <your-repo-url> my-composer-site
 cd my-composer-site
-npm install
-npm run dev
+npm run quickstart
 ```
+
+This runs `npm install` and then `npm run dev`.
 
 Setup wizard opens on first run (default `http://127.0.0.1:3456/`), then the Astro app runs at `http://127.0.0.1:4321/`.
 
@@ -127,6 +134,7 @@ If you use an alternative deploy path, you can ignore `npm run deploy` and `sour
 ## Core commands
 
 ```bash
+npm run quickstart    # install deps and start dev server in one command
 npm run dev          # first run opens setup wizard, then Astro + Keystatic
 npm run setup        # re-open setup wizard
 npm run build        # production build

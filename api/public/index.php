@@ -69,7 +69,7 @@ $response = match (true) {
     $method === 'GET'  && $uri === '/download-score'  => DownloadHandler::handle(),
 
     // Health check (useful for uptime monitoring).
-    $method === 'GET' && $uri === '/health'           => ['status' => 200, 'body' => ['ok' => true, 'version' => '1.0.0']],
+    $method === 'GET' && $uri === '/health'           => ['status' => 200, 'body' => ['ok' => true, 'version' => '1.0.1']],
 
     // Catch-all.
     default => ['status' => 404, 'body' => ['error' => 'Not found']],
