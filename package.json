@@ -7,7 +7,8 @@
   "type": "module",
   "starterKit": {
     "exportName": "composer-website-starter",
-    "publishBranch": "main"
+    "publishBranch": "main",
+    "publishRepoUrl": "https://github.com/jessevoogt/composer-website-starter.git"
   },
   "scripts": {
     "generate:data": "node ./scripts/generate-works-images.mjs && node ./scripts/generate-perusal-scores.mjs && node ./scripts/generate-page-search-index.mjs && node ./scripts/generate-api-config.mjs",
