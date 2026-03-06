@@ -2,6 +2,8 @@
 
 A production-ready starter for composers who want to launch and maintain their own portfolio site with an editor-friendly workflow.
 
+Help videos (Loom): [https://loom.com/share/folder/2761fba900c74c808e86297045f58f13](https://loom.com/share/folder/2761fba900c74c808e86297045f58f13)
+
 Built with [Astro 5](https://astro.build/) and [Keystatic](https://keystatic.com/), this starter includes:
 - Setup wizard for first-time project configuration
 - Composer-focused content model (works, perusal scores, social, contact)
