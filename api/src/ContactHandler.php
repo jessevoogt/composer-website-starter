@@ -87,12 +87,16 @@ final class ContactHandler
             return ['status' => 500, 'body' => ['success' => false, 'message' => 'Failed to send your message. Please try again.']];
         }
 
+        // Build submission metadata from client + server sources.
+        $meta = SubmissionMeta::build($body);
+
         // Store submission for admin review (non-blocking).
         try {
             $submissions = new SubmissionManager();
             $submissions->add('contact', $name, $email, [
                 'message'        => $message,
                 'newsletterOptIn' => $newsletterOptIn,
+                'meta'           => $meta,
             ]);
         } catch (\Exception $e) {
             error_log('[ContactHandler] submission storage error: ' . $e->getMessage());

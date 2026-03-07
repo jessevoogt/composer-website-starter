@@ -348,6 +348,171 @@ body {
 .optin-yes { color: var(--success); font-size: 11px; }
 .optin-no { color: var(--text-dim); font-size: 11px; }
 
+/* ── Meta button ──────────────────────────────────────────────────────── */
+.meta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 3px;
+  line-height: 1;
+}
+.meta-btn:hover { color: var(--text); border-color: var(--text-dim); }
+.meta-btn.no-meta {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* ── Meta dialog ──────────────────────────────────────────────────────── */
+.meta-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--bg-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 24px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  margin: auto;
+  outline: none;
+}
+.meta-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+.meta-dialog h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.meta-dialog-close {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.meta-dialog-close:hover { color: var(--text); border-color: var(--text-dim); }
+.meta-dialog-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meta-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+.meta-grid dt {
+  color: var(--text-dim);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.meta-grid dd {
+  color: var(--text);
+  word-break: break-all;
+}
+.meta-section {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.meta-section:first-child { margin-top: 0; }
+
+/* ── Journey timeline ────────────────────────────────────────────────── */
+.journey-session {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.journey-timeline {
+  position: relative;
+  padding-left: 22px;
+}
+.journey-timeline::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--border);
+}
+.journey-node {
+  position: relative;
+  padding: 6px 0;
+}
+.journey-node + .journey-node { margin-top: 2px; }
+.journey-node::before {
+  content: '';
+  position: absolute;
+  left: -21px;
+  top: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-soft);
+}
+.journey-node.audio::before {
+  background: var(--success);
+}
+.journey-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.journey-node-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+.journey-node.audio .journey-node-label { color: var(--success); }
+.journey-node-time {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.journey-node-title {
+  font-size: 13px;
+  color: var(--text);
+}
+.journey-node-url {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+.journey-duration {
+  display: inline-block;
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--success) 15%, var(--bg-soft));
+  color: var(--success);
+  font-size: 11px;
+  font-weight: 500;
+}
+.journey-dwell {
+  display: inline-block;
+  padding: 1px 6px;
+  background: color-mix(in srgb, var(--accent) 15%, var(--bg-soft));
+  color: var(--accent-hover, var(--accent));
+  font-size: 11px;
+  font-weight: 500;
+}
+
 /* ── Sortable columns ─────────────────────────────────────────────────── */
 .submission-table th.sortable {
   cursor: pointer;
@@ -433,6 +598,12 @@ body {
 </div>
 
 <div id="submission-list"></div>
+
+<!-- ── Meta dialog ─────────────────────────────────────────────────────── -->
+<dialog class="meta-dialog" id="meta-dialog" aria-labelledby="meta-dialog-title">
+  <h3 id="meta-dialog-title">Submission Metadata <button class="meta-dialog-close" id="meta-dialog-close" type="button" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></h3>
+  <div id="meta-dialog-content"></div>
+</dialog>
 
 <!-- ── Confirm dialog ───────────────────────────────────────────────────── -->
 <div class="confirm-overlay" id="confirm-overlay">
@@ -613,6 +784,7 @@ body {
   const clipboardSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
   const envelopeSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>'
   const checkSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+  const infoSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>'
 
   function renderSubmissions() {
     const list = submissionList
@@ -695,6 +867,7 @@ body {
       const cls = 'sortable' + (sortCol === col.key ? ' ' + sortDir : '')
       html += '<th class="' + cls + '" data-sort="' + col.key + '">' + col.label + '</th>'
     }
+    html += '<th></th>'  // meta info column
     html += '</tr></thead><tbody>'
 
     for (const sub of sorted) {
@@ -735,6 +908,8 @@ body {
         + '<td>' + detailHtml + '</td>'
         + '<td>' + (sub.newsletterOptIn ? '<span class="optin-yes">Yes</span>' : '<span class="optin-no">No</span>') + '</td>'
         + '<td style="white-space:nowrap">' + esc(date || '--') + '</td>'
+        + '<td><button class="meta-btn' + (sub.meta ? '' : ' no-meta') + '" type="button" data-sub-id="' + esc(id) + '"'
+        + (sub.meta ? '' : ' disabled') + ' aria-label="View metadata" title="' + (sub.meta ? 'View metadata' : 'No metadata') + '">' + infoSvg + '</button></td>'
         + '</tr>'
     }
 
@@ -855,6 +1030,16 @@ body {
         }
       })
     })
+
+    // Meta info buttons
+    container.querySelectorAll('.meta-btn:not(.no-meta)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const subId = btn.dataset.subId
+        const sub = submissionList.find(s => s.id === subId)
+        if (!sub || !sub.meta) return
+        showMetaDialog(sub.meta, sub.createdAt)
+      })
+    })
   }
 
   function bindFilterEvents(container) {
@@ -943,6 +1128,157 @@ body {
   // Close confirm on overlay click
   document.getElementById('confirm-overlay').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) hideConfirm()
+  })
+
+  // ── Meta dialog ──────────────────────────────────────────────────────
+  const metaDialog = document.getElementById('meta-dialog')
+  const metaContent = document.getElementById('meta-dialog-content')
+
+  function fmtTime(iso) {
+    try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
+    catch { return iso || '' }
+  }
+
+  function fmtDuration(seconds) {
+    if (!seconds) return ''
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return m > 0 ? m + 'm ' + s + 's' : s + 's'
+  }
+
+  function renderJourneyTimeline(journey, submittedAt) {
+    if (!journey || (!journey.pages && !journey.audioPlays)) return ''
+
+    // Build timeline entries
+    const entries = []
+    for (const page of (journey.pages || [])) {
+      entries.push({ type: 'page', ts: page.ts, url: page.url, title: page.title })
+    }
+    for (const play of (journey.audioPlays || [])) {
+      entries.push({ type: 'audio', ts: play.startedAt, title: play.title || play.key, duration: play.duration, key: play.key })
+    }
+    entries.sort((a, b) => (a.ts || '').localeCompare(b.ts || ''))
+
+    if (entries.length === 0) return ''
+
+    // Compute dwell times: for each page, time until the next event (or submission)
+    for (let i = 0; i < entries.length; i++) {
+      if (entries[i].type !== 'page') continue
+      const current = new Date(entries[i].ts).getTime()
+      const nextTs = i < entries.length - 1 ? entries[i + 1].ts : submittedAt
+      if (!nextTs) continue
+      const delta = Math.round((new Date(nextTs).getTime() - current) / 1000)
+      if (delta > 0 && !isNaN(delta)) entries[i].dwell = delta
+    }
+
+    // Session duration: session start → form submission (or last event as fallback)
+    let sessionDuration = ''
+    if (journey.startedAt) {
+      const start = new Date(journey.startedAt).getTime()
+      const end = new Date(submittedAt || entries[entries.length - 1].ts).getTime()
+      const totalSec = Math.round((end - start) / 1000)
+      if (totalSec > 0 && !isNaN(totalSec)) sessionDuration = fmtDuration(totalSec)
+    }
+
+    let html = '<div class="meta-section">User Journey</div>'
+
+    // Session header
+    html += '<div class="journey-session">'
+    if (journey.startedAt) html += 'Session started ' + esc(fmtTime(journey.startedAt))
+    if (sessionDuration) html += ' · ' + esc(sessionDuration) + ' total'
+    const pageCount = (journey.pages || []).length
+    const audioCount = (journey.audioPlays || []).length
+    const parts = []
+    if (pageCount) parts.push(pageCount + ' page' + (pageCount !== 1 ? 's' : ''))
+    if (audioCount) parts.push(audioCount + ' audio play' + (audioCount !== 1 ? 's' : ''))
+    if (parts.length) html += ' · ' + parts.join(', ')
+    html += '</div>'
+
+    // Timeline nodes
+    html += '<div class="journey-timeline">'
+    for (const entry of entries) {
+      if (entry.type === 'page') {
+        html += '<div class="journey-node page">'
+          + '<div class="journey-node-header"><span class="journey-node-label">Page</span><span class="journey-node-time">' + esc(fmtTime(entry.ts)) + '</span>'
+          + (entry.dwell ? '<span class="journey-dwell">' + esc(fmtDuration(entry.dwell)) + '</span>' : '')
+          + '</div>'
+          + '<div class="journey-node-url">' + esc(entry.url) + '</div>'
+          + (entry.title ? '<div class="journey-node-title">' + esc(entry.title) + '</div>' : '')
+          + '</div>'
+      } else {
+        html += '<div class="journey-node audio">'
+          + '<div class="journey-node-header"><span class="journey-node-label">Audio</span><span class="journey-node-time">' + esc(fmtTime(entry.ts)) + '</span>'
+          + (entry.duration ? '<span class="journey-duration">' + esc(fmtDuration(entry.duration)) + '</span>' : '')
+          + '</div>'
+          + '<div class="journey-node-title">' + esc(entry.title || entry.key) + '</div>'
+          + '</div>'
+      }
+    }
+    html += '</div>'
+    return html
+  }
+
+  function showMetaDialog(meta, submittedAt) {
+    const sections = [
+      { label: 'Page & Referrer', keys: [
+        ['pageUrl', 'Page URL'],
+        ['referrer', 'Referrer'],
+      ]},
+      { label: 'Location', keys: [
+        ['country', 'Country'],
+        ['city', 'City'],
+        ['region', 'Region'],
+        ['countryCode', 'Country Code'],
+        ['ip', 'IP Address'],
+      ]},
+      { label: 'Browser & Device', keys: [
+        ['browser', 'Browser'],
+        ['os', 'OS'],
+        ['language', 'Language'],
+        ['screenWidth', 'Screen', (m) => (m.screenWidth && m.screenHeight) ? m.screenWidth + ' × ' + m.screenHeight : ''],
+        ['viewportWidth', 'Viewport', (m) => (m.viewportWidth && m.viewportHeight) ? m.viewportWidth + ' × ' + m.viewportHeight : ''],
+        ['userAgent', 'User Agent'],
+      ]},
+      { label: 'Accessibility', keys: [
+        ['prefersReducedMotion', 'Reduced Motion', (m) => m.prefersReducedMotion === true ? 'Yes' : m.prefersReducedMotion === false ? 'No' : ''],
+      ]},
+    ]
+
+    let gridHtml = ''
+    for (const section of sections) {
+      let sectionHtml = ''
+      for (const entry of section.keys) {
+        const [key, label, formatter] = entry
+        const value = formatter ? formatter(meta) : meta[key]
+        if (value === undefined || value === null || value === '') continue
+        sectionHtml += '<dt>' + esc(label) + '</dt><dd>' + esc(String(value)) + '</dd>'
+      }
+      if (sectionHtml) {
+        gridHtml += '<div class="meta-section">' + esc(section.label) + '</div>' + sectionHtml
+      }
+    }
+
+    let html = ''
+    if (gridHtml) {
+      html += '<dl class="meta-grid">' + gridHtml + '</dl>'
+    }
+
+    // Journey timeline
+    if (meta.journey) {
+      html += renderJourneyTimeline(meta.journey, submittedAt)
+    }
+
+    if (!html) {
+      html = '<div class="meta-section">No metadata available</div>'
+    }
+
+    metaContent.innerHTML = html
+    metaDialog.showModal()
+  }
+
+  document.getElementById('meta-dialog-close').addEventListener('click', () => metaDialog.close())
+  metaDialog.addEventListener('click', (e) => {
+    if (e.target === metaDialog) metaDialog.close()
   })
 
   // ── Refresh ───────────────────────────────────────────────────────────

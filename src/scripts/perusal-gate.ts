@@ -21,6 +21,7 @@
 import { navigate } from 'astro:transitions/client'
 import { prefersReducedMotion as prefersReducedMotionCheck } from './a11y-utils'
 import { trackAnalyticsEvent } from './analytics-events'
+import { collectClientMeta } from '../utils/submission-meta'
 import { createToken } from '../utils/perusal-token'
 import {
   type GateConfig,
@@ -276,6 +277,8 @@ function initGateDialog(
     if (newsletterCheckbox) {
       submissionData.newsletter = newsletterCheckbox.checked ? 'true' : 'false'
     }
+
+    submissionData._meta = JSON.stringify(collectClientMeta())
 
     // ── Dual channel: always fire webhook as backup data capture ──
     submitToWebhook(config.webhookUrl, submissionData)

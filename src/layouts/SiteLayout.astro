@@ -1143,6 +1143,33 @@ const themeToolbarData = isDevMode
     <script src="../scripts/contact-form.ts"></script>
     <script src="../scripts/perusal-gate.ts"></script>
     <script src="../scripts/cross-tab-audio.ts"></script>
+    <script is:inline>
+      // Synchronous page capture — runs during HTML parsing, before deferred module scripts.
+      // Ensures the initial page (e.g. homepage) is logged even if the user navigates away
+      // before module scripts execute. The module script deduplicates via URL check.
+      (function () {
+        try {
+          console.log('[journey-inline] running on', window.location.pathname)
+          var K = '_journey'
+          var raw = sessionStorage.getItem(K)
+          var d = raw ? JSON.parse(raw) : null
+          if (!d || typeof d !== 'object' || !Array.isArray(d.pages)) {
+            console.log('[journey-inline] creating fresh journey')
+            d = { sessionId: crypto.randomUUID(), startedAt: new Date().toISOString(), pages: [], audioPlays: [] }
+          }
+          var u = window.location.pathname
+          var last = d.pages[d.pages.length - 1]
+          if (!last || last.url !== u) {
+            console.log('[journey-inline] logging page:', u)
+            d.pages.push({ url: u, title: document.title || '', ts: new Date().toISOString() })
+            sessionStorage.setItem(K, JSON.stringify(d))
+          } else {
+            console.log('[journey-inline] dedup skip:', u)
+          }
+        } catch (e) { console.error('[journey-inline] error:', e) }
+      })()
+    </script>
+    <script src="../scripts/session-journey.ts"></script>
 
     <script is:inline>
       document.addEventListener('astro:page-load', () => {

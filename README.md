@@ -171,6 +171,29 @@ If you do not want to use built-in SFTP deploy:
 
 If you use an alternative deploy path, you can ignore `npm run deploy` and `source/site/deploy.yaml`.
 
+## 6. Submissions admin
+
+A built-in submissions admin is available at `/keystatic/submissions/` (also accessible from the Keystatic toolbar). It displays all contact form and perusal score request submissions.
+
+### Metadata
+
+Each submission includes a **Metadata** button that opens a dialog showing contextual data collected at submission time:
+
+- **Page & Referrer** — which page they submitted from, and how they found your site
+- **Location** — country, city, region, IP address (collected server-side by the PHP API)
+- **Browser & Device** — browser, OS, language, screen size, viewport size
+- **Accessibility** — whether the visitor prefers reduced motion
+
+### User journey timeline
+
+The metadata dialog also displays a **User Journey** timeline — a chronological visualization of the visitor's session before they submitted the form:
+
+- **Page visits** — each page visited, with URL, title, timestamp, and dwell time
+- **Audio plays** — recordings listened to via the featured player, with title and duration
+- **Session duration** — total time from first page load to form submission
+
+Journey data is stored in the visitor's browser (`sessionStorage`) and only sent when a form is submitted. No cookies or server-side session storage are involved.
+
 ## Core commands
 
 ```bash

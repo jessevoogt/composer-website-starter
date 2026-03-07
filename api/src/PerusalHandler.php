@@ -108,12 +108,16 @@ final class PerusalHandler
             // Silently ignore — the magic link was already sent successfully.
         }
 
+        // Build submission metadata from client + server sources.
+        $meta = SubmissionMeta::build($body);
+
         // Store submission for admin review (non-blocking).
         try {
             $submissions = new SubmissionManager();
             $submissions->add('perusal', $firstName, $email, [
                 'workId'          => $workId,
                 'newsletterOptIn' => $newsletterOptIn,
+                'meta'           => $meta,
             ]);
         } catch (\Exception $e) {
             error_log('[PerusalHandler] submission storage error: ' . $e->getMessage());

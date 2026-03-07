@@ -57,6 +57,9 @@ final class SubmissionHandler
             if (isset($sub['newsletterOptIn'])) {
                 $entry['newsletterOptIn'] = $sub['newsletterOptIn'];
             }
+            if (isset($sub['meta'])) {
+                $entry['meta'] = $sub['meta'];
+            }
 
             $list[] = $entry;
         }

@@ -19,6 +19,7 @@
 import { navigate } from 'astro:transitions/client'
 import { trackAnalyticsEvent } from './analytics-events'
 import { initTextareaCounter } from './character-counter'
+import { collectClientMeta } from '../utils/submission-meta'
 
 interface ContactFormWindow extends Window {
   __contactFormBound?: boolean
@@ -120,6 +121,7 @@ function initContactForm(): () => void {
       }
     }
     data.timestamp = new Date().toISOString()
+    data._meta = JSON.stringify(collectClientMeta())
 
     // Newsletter opt-in: include checkbox state if the field exists.
     const newsletterCheckbox = form!.querySelector<HTMLInputElement>('[name="newsletter"]')
