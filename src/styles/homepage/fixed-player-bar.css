@@ -1,0 +1,354 @@
+/* --- Homepage: Fixed Player Bar ------------------------------------------ */
+
+/* Give the fixed player bar its own View Transition group so it is
+   not captured as part of the root snapshot (which gets hidden during
+   page transitions). The bar keeps its own position:fixed because
+   view-transition-name only creates a containing block for descendants,
+   not for the element itself. */
+html.has-fixed-player .fixed-player-bar {
+  view-transition-name: fixed-player-bar;
+}
+
+::view-transition-old(fixed-player-bar),
+::view-transition-new(fixed-player-bar) {
+  animation: none;
+}
+
+::view-transition-group(fixed-player-bar) {
+  z-index: 100;
+}
+
+.fixed-player-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translate3d(-50%, calc(100% + 0.75rem), 0);
+  opacity: 0;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:
+    transform 300ms ease,
+    opacity 300ms ease;
+  will-change: transform;
+  box-shadow:
+    0 -14px 36px rgb(0 0 0 / 0.32),
+    0 0 0 1px rgb(255 255 255 / 0.02) inset;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, #c9d8e4 22%);
+  border-bottom: 0;
+  border-radius: var(--player-radius) var(--player-radius) 0 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface-soft) 90%, #000 10%) 0%,
+    color-mix(in srgb, var(--surface) 92%, #000 8%) 100%
+  );
+  padding: 0.35rem clamp(0.65rem, 1.2vw, 1rem) max(0.4rem, env(safe-area-inset-bottom));
+  width: min(50%, 42rem);
+  pointer-events: none;
+}
+
+html.has-fixed-player .fixed-player-bar {
+  transform: translate3d(-50%, 0, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+html[data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-player-reveal-done) .fixed-player-bar {
+  transform: translate3d(-50%, calc(100% + 0.75rem), 0);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Defer fixed player bar on homepage at mobile/tablet-portrait until scroll */
+@media (max-width: 68.75rem) and (orientation: portrait), (max-height: 35.75rem) and (orientation: landscape) {
+  html.has-fixed-player:not(.has-fixed-player-reveal-done) .fixed-player-bar {
+    transition:
+      transform 1500ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 1200ms ease-out;
+  }
+
+  html.home-player-deferred .fixed-player-bar {
+    transform: translate3d(-50%, calc(100% + 0.75rem), 0);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.fixed-player-bar[hidden] {
+  display: none;
+}
+
+.fixed-player-bar-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.fixed-player-bar-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.fixed-player-bar-main-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: clamp(0.08rem, 0.25vw, 0.18rem);
+}
+
+.fixed-player-bar .featured-control.fixed-player-bar-top-control {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.fixed-player-bar .featured-control.fixed-player-bar-top-play {
+  opacity: 1;
+  transition:
+    color 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    width 220ms ease,
+    height 220ms ease;
+  width: 2rem;
+  height: 2rem;
+}
+
+.fixed-player-bar-volume-control {
+  display: grid;
+  position: relative;
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.fixed-player-bar .fixed-player-bar-info,
+.fixed-player-bar .fixed-player-bar-mute {
+  flex: 0 0 auto;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.fixed-player-bar-volume-panel {
+  display: grid;
+  position: absolute;
+  place-items: center;
+  transform: translate(-50%, 0.3rem) scale(0.96);
+  transform-origin: bottom center;
+  opacity: 0;
+  z-index: 2;
+  transition:
+    opacity 170ms ease 130ms,
+    transform 200ms ease 130ms;
+  inset-block-end: calc(100% - 0.12rem);
+  inset-inline-start: 50%;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.32);
+  border: 1px solid color-mix(in srgb, var(--line) 72%, #c9d8e4 28%);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-soft) 88%, #000 12%);
+  padding: 0.35rem 0.3rem;
+  width: 2rem;
+  pointer-events: none;
+}
+
+.fixed-player-bar-volume-control:focus-within .fixed-player-bar-volume-panel {
+  transform: translate(-50%, 0) scale(1);
+  opacity: 1;
+  transition-delay: 0ms;
+  pointer-events: auto;
+}
+
+.fixed-player-bar-volume {
+  display: block;
+  -webkit-appearance: auto;
+  appearance: auto;
+  cursor: ns-resize;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  width: 0.9rem;
+  height: 5.25rem;
+  accent-color: var(--player-track-progress);
+  writing-mode: vertical-lr;
+  direction: rtl;
+}
+
+.fixed-player-bar-marquee-slot {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  color: inherit;
+}
+
+.fixed-player-bar-marquee {
+  display: flex;
+  align-items: center;
+  mask-image: linear-gradient(90deg, #000 0, #000 94%, transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 94%, transparent 100%);
+  padding-block: 1px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.fixed-player-bar-marquee:not(.is-overflowing) {
+  justify-content: center;
+}
+
+.fixed-player-bar-marquee-content {
+  display: block;
+  transform: translateX(0);
+  margin-block-start: 1px;
+  pointer-events: none;
+  color: color-mix(in srgb, var(--ink-soft) 82%, var(--ink) 18%);
+  font-weight: 500;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fixed-player-bar-marquee-content {
+    animation: fixed-player-marquee 28s linear infinite;
+    animation-play-state: paused;
+    will-change: transform;
+  }
+
+  .fixed-player-bar-marquee:not(.is-overflowing) .fixed-player-bar-marquee-content {
+    animation: none;
+  }
+
+  .fixed-player-bar-marquee:hover .fixed-player-bar-marquee-content {
+    animation-play-state: paused;
+  }
+
+  .fixed-player-bar-marquee.is-overflowing .fixed-player-bar-marquee-content {
+    animation-play-state: running;
+  }
+
+  .fixed-player-bar-marquee.is-overflowing:hover .fixed-player-bar-marquee-content {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes fixed-player-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  10% {
+    transform: translateX(0);
+  }
+  90% {
+    transform: translateX(var(--marquee-distance));
+  }
+  100% {
+    transform: translateX(var(--marquee-distance));
+  }
+}
+
+.fixed-player-bar-controls {
+  display: block;
+  min-width: 0;
+}
+
+.fixed-player-bar .featured-player-shell {
+  position: static;
+  flex: 1 1 0%;
+  transform: none;
+  opacity: 1;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  min-width: 0;
+  pointer-events: auto;
+}
+
+.fixed-player-bar .featured-player-ui {
+  grid-template-rows: auto;
+  grid-template-columns: minmax(3ch, auto) minmax(7rem, 1fr) minmax(3ch, auto);
+  align-items: center;
+  gap: 0.14rem clamp(0.16rem, 0.42vw, 0.32rem);
+}
+
+.fixed-player-bar .featured-control {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.fixed-player-bar .featured-player-ui > .featured-control-prev,
+.fixed-player-bar .featured-player-ui > .featured-control-play,
+.fixed-player-bar .featured-player-ui > .featured-control-next,
+.fixed-player-bar .featured-player-ui > .featured-control-mute {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .fixed-player-bar .featured-control-bounce:hover {
+    transform: translateY(-1px) scale(1.04);
+  }
+
+  .fixed-player-bar .featured-control-play.featured-control-bounce:hover {
+    transform: translateY(-1px) scale(1.03);
+  }
+
+  .fixed-player-bar-volume-control:hover .fixed-player-bar-volume-panel {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+    transition-delay: 0ms;
+    pointer-events: auto;
+  }
+}
+
+.fixed-player-bar .featured-seek {
+  grid-row: 1;
+  grid-column: 2;
+  align-self: center;
+  height: 0.94rem;
+}
+
+.fixed-player-bar .featured-seek::-webkit-slider-thumb {
+  margin-top: calc((2px - 0.6rem) / 2);
+  width: 0.6rem;
+  height: 0.6rem;
+}
+
+.fixed-player-bar .featured-seek::-moz-range-thumb {
+  width: 0.6rem;
+  height: 0.6rem;
+}
+
+.fixed-player-bar .featured-time-current,
+.fixed-player-bar .featured-time-total {
+  grid-row: 1;
+  margin-top: 0;
+  min-width: 3ch;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.fixed-player-bar .featured-time-current {
+  grid-column: 1;
+  text-align: left;
+}
+
+.fixed-player-bar .featured-time-total {
+  grid-column: 3;
+  text-align: right;
+}
+
+.fixed-player-bar .featured-time-total::before {
+  content: '';
+}
+
+.has-fixed-player .site-footer {
+  padding-bottom: calc(clamp(1.1rem, 3vw, 1.7rem) + 4.5rem + env(safe-area-inset-bottom));
+}
+

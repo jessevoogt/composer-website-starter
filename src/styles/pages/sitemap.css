@@ -1,0 +1,41 @@
+/* --- Sitemap Grid -------------------------------------------------------- */
+
+.sitemap-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+}
+
+@media (min-width: 40rem) {
+  .sitemap-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 64rem) {
+  .sitemap-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.sitemap-card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.sitemap-card h3 {
+  margin-bottom: 0.5rem;
+  font-size: var(--font-size-0);
+}
+
+.sitemap-card p {
+  margin-bottom: 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.sitemap-card code {
+  font-size: 0.82rem;
+}
+

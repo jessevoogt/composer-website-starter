@@ -3,6 +3,7 @@
  * Handles opening/closing the global search dialog and focus management.
  */
 
+import { prefersReducedMotion as prefersReducedMotionCheck } from './a11y-utils'
 import { focusTextInput } from './focus-policy'
 import { trackAnalyticsEvent } from './analytics-events'
 import { isNavigationPending, onNavigationFailed } from './navigation-intent'
@@ -30,7 +31,7 @@ function initWorksSearchModal(): () => void {
   const scopePanels = Array.from(modal.querySelectorAll<HTMLElement>('[data-works-search-modal-scope]'))
   const mobileMenuDialog = document.querySelector<HTMLDialogElement>('#mobile-menu-modal')
   const mobileQuery = window.matchMedia('(max-width: 57.999rem)')
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const prefersReducedMotion = prefersReducedMotionCheck()
   const mobileMenuSearchEventName = 'mobile-menu-search-request'
   const closeAnimationMs = 180
 

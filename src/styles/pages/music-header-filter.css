@@ -1,0 +1,266 @@
+/* --- Music Page: Header & Filter ----------------------------------------- */
+
+.music-page-header .page-header-inner > h1 {
+  margin-bottom: 0;
+  font-size: clamp(2.4881rem, 2.1594rem + 1.6435vw, 3rem);
+}
+
+.music-page-header .page-header-inner > .page-header-subtitle {
+  margin: var(--space-2xs) 0 0;
+}
+
+.music-filter-wrapper {
+  width: 100%;
+}
+
+.music-filter-input-row {
+  position: relative;
+}
+
+.music-filter-icon {
+  display: inline-flex;
+  position: absolute;
+  top: 50%;
+  left: 0.85rem;
+  justify-content: center;
+  align-items: center;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  pointer-events: none;
+  color: var(--ink-soft);
+}
+
+.music-filter-icon svg {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 100%;
+  height: 100%;
+}
+
+.music-filter-input {
+  transition:
+    border-color 170ms ease,
+    box-shadow 170ms ease;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 0.65rem 2.8rem 0.65rem 2.45rem;
+  width: 100%;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--font-size-0);
+}
+
+.music-filter-input::-webkit-search-cancel-button,
+.music-filter-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.music-filter-input::placeholder {
+  opacity: 0.6;
+  color: var(--ink-soft);
+}
+
+.music-filter-input:focus-visible {
+  outline: 2px dashed var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-color: var(--accent, var(--ink));
+}
+
+.music-filter-clear {
+  display: grid;
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  place-items: center;
+  transform: translateY(-50%);
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0.25rem;
+  width: 2rem;
+  height: 2rem;
+  color: var(--ink-soft);
+}
+
+.music-filter-clear:hover,
+.music-filter-clear:focus-visible {
+  color: var(--ink);
+}
+
+.music-filter-clear:focus-visible {
+  outline: 2px dashed var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.music-filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3xs) var(--space-s);
+  margin-top: var(--space-2xs);
+}
+
+.music-filter-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-s);
+  border: 0;
+  padding: 0;
+}
+
+.music-filter-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: var(--font-size--1);
+  line-height: 1;
+}
+
+.music-filter-checkbox:hover {
+  color: var(--ink);
+}
+
+.music-filter-checkbox input[type='checkbox'] {
+  display: grid;
+  place-content: center;
+  appearance: none;
+  cursor: pointer;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.music-filter-checkbox input[type='checkbox']:checked {
+  border-color: var(--accent, var(--ink));
+  background: var(--accent, var(--ink));
+}
+
+.music-filter-checkbox input[type='checkbox']:checked::after {
+  display: block;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  background: var(--surface);
+  width: 0.55em;
+  height: 0.55em;
+  content: '';
+}
+
+.music-filter-checkbox input[type='checkbox']:focus-visible {
+  outline: 2px dashed var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Sort control */
+.music-filter-sort {
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: var(--font-size--1);
+  line-height: 1;
+}
+
+.music-sort-dropdown .shared-dropdown-trigger {
+  background: var(--surface);
+  padding: 0.35em 0.55em;
+  color: var(--ink-soft);
+  font-size: inherit;
+}
+
+.music-sort-dropdown .shared-dropdown-trigger:hover {
+  border-color: var(--ink-soft);
+  color: var(--ink);
+}
+
+/* Hide controls row when it has no checkboxes, no filter note, and no sort */
+.music-filter-controls:not(:has(.music-filter-checkboxes)):not(:has(.music-filter-note)):not(:has(.music-filter-sort)) {
+  display: none;
+}
+
+.music-grid-wrapper {
+  position: relative;
+}
+
+.music-filter-status {
+  position: absolute;
+  top: 0;
+  transform: translateY(-100%);
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--font-size--1);
+}
+
+.music-card-grid {
+  margin-top: var(--space-xs);
+}
+
+/* Scroll reveal: initial hidden state for below-fold cards */
+.music-card-reveal {
+  transform: translateY(1.5rem);
+  opacity: 0;
+}
+
+/* Scroll reveal: animated visible state */
+.music-card-revealed {
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    opacity 400ms ease-out,
+    transform 400ms ease-out;
+}
+
+@media (max-width: 63.99rem) {
+  .music-page-header .page-header-inner > .page-header-subtitle {
+    margin-bottom: var(--space-s);
+    font-size: var(--font-size-0);
+  }
+}
+
+@media (min-width: 64rem), (min-width: 48rem) and (orientation: landscape) {
+  .music-card-grid {
+    margin-top: var(--space-2xs);
+  }
+
+  .music-page-header .page-header-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 32rem);
+    grid-template-areas:
+      'title filter'
+      'subtitle filter';
+    column-gap: clamp(1rem, 3vw, 3rem);
+    row-gap: var(--space-2xs);
+    align-items: start;
+  }
+
+  .music-page-header .page-header-inner > h1 {
+    grid-area: title;
+  }
+
+  .music-page-header .page-header-inner > .page-header-subtitle {
+    grid-area: subtitle;
+    margin: 0;
+  }
+
+  .music-filter-wrapper {
+    grid-area: filter;
+    align-self: start;
+    justify-self: end;
+    width: min(100%, 32rem);
+  }
+}
+
+/* Reduced motion: skip scroll-reveal animation */
+@media (prefers-reduced-motion: reduce) {
+  .music-card-reveal {
+    transform: none;
+    opacity: 1;
+  }
+}
+

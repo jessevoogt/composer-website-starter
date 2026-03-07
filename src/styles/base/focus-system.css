@@ -1,0 +1,22 @@
+/* --- Focus System -------------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px dashed var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Use border + subtle glow for text-entry control focus (mouse + keyboard). */
+input:not([type='button']):not([type='submit']):not([type='reset']):not([type='checkbox']):not([type='radio']):not(
+    [type='file']
+  ):not([type='range']):not([type='color']):focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0.6rem rgb(255 255 255 / 0.3);
+  border-color: var(--focus-ring-color);
+}
+

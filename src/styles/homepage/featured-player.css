@@ -1,0 +1,267 @@
+/* --- Homepage: Featured Player ------------------------------------------- */
+
+.featured-player-shell {
+  --player-control-ink: color-mix(in srgb, var(--ink) 88%, var(--ink-soft) 12%);
+  --player-control-ink-strong: color-mix(in srgb, var(--ink) 95%, #ffffff 5%);
+  --player-track-ink: color-mix(in srgb, var(--ink-soft) 68%, var(--ink) 32%);
+  --player-track-progress: var(--accent);
+  --player-thumb-ink: color-mix(in srgb, var(--ink) 90%, var(--accent-strong) 10%);
+  border: 0;
+  padding: 0;
+}
+
+.featured-player-shell[hidden] {
+  display: none;
+}
+
+.featured-player-ui {
+  display: grid;
+  grid-template-columns: auto auto auto 1fr auto auto auto;
+  align-items: center;
+  gap: clamp(0.42rem, 0.8vw, 0.68rem);
+}
+
+.featured-control {
+  display: grid;
+  place-items: center;
+  opacity: 1;
+  transition:
+    color 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 3rem;
+  height: 3rem;
+  color: var(--player-control-ink);
+}
+
+.featured-control svg {
+  width: 100%;
+  height: 100%;
+}
+
+.featured-control-mute svg {
+  width: 130%;
+  max-width: none;
+  height: 130%;
+}
+
+.featured-control-nav {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .featured-control:hover {
+    opacity: 1;
+    color: var(--player-control-ink-strong);
+  }
+
+  .featured-control-bounce:hover {
+    transform: translateY(-2px);
+  }
+
+  .featured-control {
+    opacity: 0.9;
+  }
+
+  .featured-control-nav {
+    opacity: 0.72;
+  }
+
+  .featured-control-nav:hover {
+    opacity: 0.92;
+  }
+}
+
+.featured-control-play .icon-pause,
+.featured-control-mute .icon-sound-off {
+  display: none;
+}
+
+.listen-section.has-player-playing .featured-control-play .icon-play,
+.fixed-player-bar.has-player-playing .featured-control-play .icon-play {
+  display: none;
+}
+
+.listen-section.has-player-playing .featured-control-play .icon-pause,
+.fixed-player-bar.has-player-playing .featured-control-play .icon-pause {
+  display: block;
+}
+
+.listen-section.has-player-muted .featured-control-mute .icon-sound-on,
+.fixed-player-bar.has-player-muted .featured-control-mute .icon-sound-on {
+  display: none;
+}
+
+.listen-section.has-player-muted .featured-control-mute .icon-sound-off,
+.fixed-player-bar.has-player-muted .featured-control-mute .icon-sound-off {
+  display: block;
+}
+
+.featured-seek {
+  --seek-progress: 0%;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  margin: 0;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  min-width: 0;
+  height: 1.4rem;
+  touch-action: pan-y;
+}
+
+.featured-seek::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    var(--player-track-progress) 0%,
+    var(--player-track-progress) var(--seek-progress),
+    color-mix(in srgb, var(--player-track-ink) 82%, transparent) var(--seek-progress),
+    color-mix(in srgb, var(--player-track-ink) 82%, transparent) 100%
+  );
+  height: 2px;
+}
+
+.featured-seek::-webkit-slider-thumb {
+  transform-origin: center;
+  -webkit-appearance: none;
+  appearance: none;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+  margin-top: calc((2px - 1rem) / 2);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--player-thumb-ink) 32%, transparent);
+  border: 0;
+  border-radius: 50%;
+  background: var(--player-thumb-ink);
+  width: 1rem;
+  height: 1rem;
+}
+
+.featured-seek::-moz-range-track {
+  border: 0;
+  background: color-mix(in srgb, var(--player-track-ink) 82%, transparent);
+  height: 2px;
+}
+
+.featured-seek::-moz-range-progress {
+  border: 0;
+  background: var(--player-track-progress);
+  height: 2px;
+}
+
+.featured-seek::-moz-range-thumb {
+  transform-origin: center;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--player-thumb-ink) 32%, transparent);
+  border: 0;
+  border-radius: 50%;
+  background: var(--player-thumb-ink);
+  width: 1rem;
+  height: 1rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .featured-seek:hover::-webkit-slider-thumb {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--player-thumb-ink) 42%, transparent);
+  }
+
+  .featured-seek:hover::-moz-range-thumb {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--player-thumb-ink) 42%, transparent);
+  }
+}
+
+.featured-time {
+  pointer-events: none;
+  color: color-mix(in srgb, var(--ink) 90%, var(--ink-soft) 10%);
+  font-weight: 600;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: nowrap;
+}
+
+.featured-time-current {
+  min-width: 3.2ch;
+  text-align: right;
+}
+
+.featured-time-total {
+  min-width: 3.6ch;
+  text-align: left;
+}
+
+.featured-time-total::before {
+  opacity: 0.72;
+  content: '/ ';
+}
+
+.featured-recording-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.44rem;
+  margin: 0 0 1rem;
+  color: color-mix(in srgb, var(--ink) 88%, var(--ink-soft) 12%);
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+}
+
+.featured-recording-meta > span:not(:last-child)::after {
+  margin-left: 0.44rem;
+  content: '\2022';
+  color: color-mix(in srgb, var(--ink-soft) 76%, transparent);
+}
+
+@media (max-width: 68.75rem) {
+  .listen-section .featured-recording-meta {
+    display: grid;
+    align-items: start;
+    gap: 0.28rem;
+  }
+
+  .listen-section .featured-recording-meta > span:not(:last-child)::after {
+    margin-left: 0;
+    content: none;
+  }
+}
+
+.featured-recording-action {
+  margin: 0.35rem 0 0;
+}
+
+.featured-work-link {
+  gap: 0.58rem;
+}
+
+.featured-work-link-arrow {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transform: translateX(0);
+  transition: transform 180ms ease;
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.featured-work-link:hover .featured-work-link-arrow,
+.featured-work-link:focus-visible .featured-work-link-arrow {
+  transform: translateX(0.2rem);
+}
+
+.featured-work-link-arrow svg {
+  width: 100%;
+  height: 100%;
+}
+

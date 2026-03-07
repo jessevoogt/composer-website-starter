@@ -1,0 +1,175 @@
+/* --- Buttons ------------------------------------------------------------- */
+
+.immersive-btn {
+  cursor: pointer;
+  line-height: 1;
+  font-family: var(--font-heading);
+  text-decoration: none;
+  text-transform: none;
+}
+
+.immersive-btn-icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 1em;
+  height: 1em;
+}
+
+.immersive-btn-label {
+  display: inline-flex;
+  position: relative;
+  top: var(--immersive-btn-label-shift, 0);
+  align-items: center;
+  line-height: 1;
+}
+
+.immersive-btn-primary {
+  --immersive-btn-label-shift: var(--immersive-btn-label-shift-standard, 0);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transition:
+    border-color 170ms ease,
+    background-color 170ms ease,
+    color 170ms ease,
+    box-shadow 170ms ease;
+  cursor: pointer;
+  border: 1px solid rgb(var(--btn-ghost-rgb) / 0.72);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.64rem 1.02rem;
+  color: var(--btn-ghost);
+  font-weight: 600;
+  font-size: clamp(1.02rem, 0.9vw, 1.2rem);
+  line-height: 1;
+  font-family: var(--font-heading);
+  letter-spacing: 0.03em;
+  text-decoration: none;
+}
+
+.immersive-btn-primary:not(:disabled):hover {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--ink);
+}
+
+.immersive-btn-inline {
+  --immersive-btn-label-shift: var(--immersive-btn-label-shift-standard, 0);
+  display: inline-block;
+  cursor: pointer;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink-soft) 50%, transparent);
+  background: transparent;
+  padding: 0.1rem 0;
+  color: color-mix(in srgb, var(--ink-soft) 70%, var(--ink) 30%);
+  font-weight: 500;
+  font-size: clamp(1.02rem, 0.84vw, 1.18rem);
+  line-height: 1;
+  font-family: var(--font-heading);
+  letter-spacing: 0.015em;
+  text-decoration: none;
+}
+
+.immersive-btn-inline:not(:disabled):hover,
+.immersive-btn-inline:not(:disabled):focus-visible {
+  border-bottom-color: var(--btn-ghost);
+  color: var(--btn-ghost);
+}
+
+.immersive-btn-control {
+  --immersive-btn-label-shift: var(--immersive-btn-label-shift-control, 0);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  border: 1px solid rgb(var(--btn-ghost-rgb) / 0.72);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.45rem 0.68rem;
+  color: var(--btn-ghost);
+  font: 600 0.82rem/1 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.immersive-btn-control:not(:disabled):hover,
+.immersive-btn-control:not(:disabled):focus-visible {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--ink);
+}
+
+.immersive-btn-control:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.immersive-btn-orange {
+  --immersive-btn-label-shift: var(--immersive-btn-label-shift-standard, 0);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  transition:
+    border-color 170ms ease,
+    background-color 170ms ease,
+    box-shadow 170ms ease;
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--cta-bg) 82%, #000);
+  border-radius: var(--radius-sm);
+  background: var(--cta-bg);
+  padding: 0.55rem 0.9rem;
+  color: var(--cta-ink);
+  font: 700 0.82rem/1 var(--font-heading);
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+
+.immersive-btn-orange:not(:disabled):hover,
+.immersive-btn-orange:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--cta-bg) 72%, #000);
+  background: color-mix(in srgb, var(--cta-bg) 86%, #000);
+  color: var(--cta-ink);
+}
+
+.immersive-btn-orange:not(:disabled):active {
+  border-color: color-mix(in srgb, var(--cta-bg) 65%, #000);
+  background: color-mix(in srgb, var(--cta-bg) 72%, #000);
+  color: var(--cta-ink);
+}
+
+.immersive-btn-orange:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.work-carousel-btn {
+  gap: 0.4rem;
+}
+
+.work-carousel-btn-icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transform: translateX(0);
+  transition: transform 180ms ease;
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.work-carousel-btn-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.work-carousel-btn-prev:not(:disabled):hover .work-carousel-btn-icon-prev,
+.work-carousel-btn-prev:not(:disabled):focus-visible .work-carousel-btn-icon-prev {
+  transform: translateX(-0.2rem);
+}
+
+.work-carousel-btn-next:not(:disabled):hover .work-carousel-btn-icon-next,
+.work-carousel-btn-next:not(:disabled):focus-visible .work-carousel-btn-icon-next {
+  transform: translateX(0.2rem);
+}
+

@@ -1,0 +1,39 @@
+/* --- Works Tag Directory ------------------------------------------------- */
+
+.works-tag-directory {
+  display: grid;
+  gap: var(--space-l);
+}
+
+.works-tag-directory-section h2 {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.4vw, 1.3rem);
+  line-height: 1.25;
+}
+
+.works-tag-directory-description {
+  margin-top: var(--space-3xs);
+  margin-bottom: var(--space-xs);
+  color: var(--ink-soft);
+}
+
+.works-tag-directory-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.works-tag-directory-list .tag-badge {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.works-tag-directory-list .tag-badge-label {
+  gap: 0.35rem;
+}
+
+.works-tag-directory-count {
+  color: var(--ink-soft);
+  font-size: 0.82em;
+}
+

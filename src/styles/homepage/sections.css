@@ -1,0 +1,63 @@
+/* --- Homepage: Sections -------------------------------------------------- */
+
+.masthead,
+.section,
+.site-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.section {
+  --section-pad-block: clamp(2.3rem, 6vw, 4.1rem);
+  --section-pad-inline: var(--content-gutter);
+  --section-pad-block-start: var(--section-pad-block);
+  --section-pad-block-end: var(--section-pad-block);
+  --section-gradient-split-stop: calc(43% - (1% * var(--section-diverge)));
+  --section-gradient-solid-stop: 100%;
+  background:
+    linear-gradient(
+      90deg,
+      rgb(
+          calc((var(--bg-r) - 4) + (6 * var(--section-diverge))) calc((var(--bg-g) - 6) + (9 * var(--section-diverge)))
+            calc((var(--bg-b) - 8) + (12 * var(--section-diverge))) /
+            calc((0.03 + (0.15 * var(--section-diverge))) * var(--section-diverge))
+        )
+        0%,
+      rgb(
+          calc(var(--bg-r) + (1 * var(--section-diverge))) calc(var(--bg-g) + (2 * var(--section-diverge)))
+            calc(var(--bg-b) + (3 * var(--section-diverge))) /
+            calc((0.78 + (0.17 * var(--section-diverge))) * var(--section-diverge))
+        )
+        var(--section-gradient-split-stop),
+      transparent var(--section-gradient-solid-stop)
+    ),
+    var(--bg);
+  padding: var(--section-pad-block-start) var(--section-pad-inline) var(--section-pad-block-end);
+}
+
+.section + .section {
+  border-top: 1px solid var(--line);
+}
+
+.section-solid {
+  background: linear-gradient(180deg, var(--bg-soft), var(--bg));
+}
+
+.section h2 {
+  margin-bottom: 1rem;
+  font-weight: 600;
+  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+  line-height: 1.1;
+  letter-spacing: 0.015em;
+}
+
+.section p {
+  color: var(--ink-soft);
+}
+
+.section-grid {
+  display: grid;
+  align-items: stretch;
+  gap: 1.2rem;
+}
+

@@ -1,0 +1,22 @@
+/* --- Page Header Section ------------------------------------------------- */
+
+.page-header-section {
+  border-bottom: 0;
+  background: none;
+  padding: clamp(1rem, 2.5vw, 1.75rem) var(--content-gutter);
+}
+
+.page-header-section .page-header-inner {
+  margin-inline: auto;
+  max-width: calc(var(--page-max-width, var(--grid-max-width)) - (2 * var(--content-gutter)));
+}
+
+.page-header-section h1 {
+  margin-bottom: 0.5rem;
+}
+
+.page-header-section p {
+  max-width: 60ch;
+  color: var(--ink-soft);
+}
+

@@ -1,0 +1,212 @@
+/* --- Contact Form -------------------------------------------------------- */
+
+.contact-shell {
+  margin-top: var(--space-l);
+}
+
+.contact-shell-email-only {
+  margin-top: 0;
+  width: 100%;
+}
+
+.contact-stage {
+  position: relative;
+  /* border: 1px solid color-mix(in srgb, var(--line) 84%, transparent);
+   background: color-mix(in srgb, var(--surface) 88%, transparent);
+  padding: clamp(1rem, 3vw, 1.9rem); */
+  margin-inline: var(--contact-stage-inline-margin);
+  max-width: var(--contact-stage-max-width);
+}
+
+.contact-stage-email-only {
+  width: min(var(--contact-email-max-width), calc(100% - (2 * var(--content-gutter))));
+  max-width: none;
+}
+
+.contact-stage-email-only .contact-email {
+  margin-top: 0;
+}
+
+.contact-title {
+  margin-block-end: clamp(0.5rem, 1.5vw, 1rem);
+}
+
+.contact-intro-text {
+  margin-block-end: var(--space-l);
+  max-width: 56ch;
+  color: var(--ink-soft);
+}
+
+.contact-intro {
+  margin-top: 0;
+  margin-bottom: 1.2rem;
+  max-width: 56ch;
+  color: color-mix(in srgb, var(--ink) 84%, var(--ink-soft) 16%);
+}
+
+.contact-email {
+  margin-top: 0.25rem;
+}
+
+.contact-email a {
+  transition:
+    text-decoration-color 170ms ease,
+    color 170ms ease;
+  color: var(--ink);
+  font-weight: 500;
+  font-size: var(--font-size-2);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent);
+  text-underline-offset: 0.25em;
+}
+
+.contact-email a:hover,
+.contact-email a:focus-visible {
+  text-decoration-color: var(--accent);
+}
+
+.contact-form {
+  display: grid;
+  gap: 0.72rem;
+  max-width: 42rem;
+}
+
+.contact-field {
+  position: relative;
+  --contact-field-bg: var(--bg-soft);
+}
+
+.contact-field label {
+  position: absolute;
+  top: 50%;
+  left: 0.76rem;
+  transform: translateY(-50%);
+  transform-origin: left top;
+  transition:
+    transform 170ms ease,
+    top 170ms ease,
+    color 170ms ease;
+  pointer-events: none;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+  line-height: 1;
+}
+
+.contact-field-message label {
+  top: 1.06rem;
+  transform: none;
+  z-index: 2;
+  background: var(--contact-field-bg);
+  padding-inline: 0.22rem;
+}
+
+.contact-field-message::before {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  left: 1px;
+  opacity: 0;
+  z-index: 1;
+  transition: opacity 170ms ease;
+  background: linear-gradient(to bottom, var(--contact-field-bg) 70%, transparent);
+  height: 1.55rem;
+  pointer-events: none;
+  content: '';
+}
+
+.contact-field-message:focus-within::before,
+.contact-field-message:has(textarea:not(:placeholder-shown))::before,
+.contact-field-message:has(textarea:-webkit-autofill)::before {
+  opacity: 1;
+}
+
+.contact-field input,
+.contact-field textarea {
+  transition:
+    border-color 170ms ease,
+    box-shadow 170ms ease,
+    background-color 170ms ease;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--contact-field-bg);
+  padding: 1.22rem 0.76rem 0.52rem;
+  width: 100%;
+  color: var(--ink);
+  font: inherit;
+}
+
+.contact-field textarea {
+  padding-top: 1.46rem;
+  min-height: 7.8rem;
+  resize: vertical;
+}
+
+.contact-field input::placeholder,
+.contact-field textarea::placeholder {
+  opacity: 0;
+  color: transparent;
+}
+
+.contact-field input:focus:placeholder-shown::placeholder,
+.contact-field textarea:focus:placeholder-shown::placeholder {
+  opacity: 0.72;
+  color: color-mix(in srgb, var(--ink-soft) 76%, var(--ink) 24%);
+}
+
+.contact-field:focus-within input,
+.contact-field:focus-within textarea {
+  box-shadow: 0 0 0.6rem rgb(var(--accent-rgb) / 0.3);
+  border-color: var(--focus-ring-color);
+}
+
+.contact-field:focus-within label,
+.contact-field input:not(:placeholder-shown) + label,
+.contact-field textarea:not(:placeholder-shown) + label,
+.contact-field input:-webkit-autofill + label,
+.contact-field textarea:-webkit-autofill + label {
+  top: 0.36rem;
+  transform: scale(0.82);
+  color: color-mix(in srgb, var(--ink-soft) 60%, var(--ink) 40%);
+}
+
+.contact-field-message:focus-within label,
+.contact-field-message textarea:not(:placeholder-shown) + label,
+.contact-field-message textarea:-webkit-autofill + label {
+  top: 0.36rem;
+  transform: scale(0.82);
+}
+
+.contact-form .immersive-btn-primary {
+  margin-top: 0.25rem;
+  padding: 0.58rem 0.95rem;
+  width: fit-content;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+
+.contact-form .contact-submit-btn {
+  gap: 0.48rem;
+}
+
+.contact-submit-icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  transform: scale(1);
+  transform-origin: center;
+  transition: transform 180ms ease;
+  width: 20px;
+  height: 20px;
+}
+
+.contact-submit-btn:not(:disabled):hover .contact-submit-icon,
+.contact-submit-btn:not(:disabled):focus-visible .contact-submit-icon {
+  transform: scale(1.2);
+}
+
+.contact-submit-icon svg {
+  width: 100%;
+  height: 100%;
+}
+

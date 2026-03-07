@@ -1,0 +1,6 @@
+/* --- Video Wrapper ------------------------------------------------------- */
+
+.video-wrapper {
+  max-width: var(--media-max-width);
+}
+

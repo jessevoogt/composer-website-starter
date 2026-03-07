@@ -47,22 +47,23 @@ const activeRules = rules
   // on non-Apache servers (e.g. Astro dev, Cloudflare, Nginx) and locally in dev.
   ;(() => {
     const path = window.location.pathname
+    const qs = window.location.search + window.location.hash
     for (const rule of activeRules) {
       const from = rule.from.replace(/\/$/, '')
       if (rule.matchType === 'prefix') {
         const bare = from + '/'
         if (path === bare || path.startsWith(bare)) {
           const rest = path.slice(bare.length)
-          window.location.replace(rule.to + rest)
+          window.location.replace(rule.to + rest + qs)
           return
         }
         if (path === from) {
-          window.location.replace(rule.to)
+          window.location.replace(rule.to + qs)
           return
         }
       } else {
         if (path === from || path === from + '/') {
-          window.location.replace(rule.to)
+          window.location.replace(rule.to + qs)
           return
         }
       }

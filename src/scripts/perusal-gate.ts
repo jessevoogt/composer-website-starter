@@ -19,6 +19,7 @@
  */
 
 import { navigate } from 'astro:transitions/client'
+import { prefersReducedMotion as prefersReducedMotionCheck } from './a11y-utils'
 import { trackAnalyticsEvent } from './analytics-events'
 import { createToken } from '../utils/perusal-token'
 import {
@@ -68,7 +69,7 @@ function initGateDialog(
 
   if (!dialog || !form || !panel) return () => {}
 
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const prefersReducedMotion = prefersReducedMotionCheck()
   const closeAnimationMs = 180
 
   let closeTimer = 0

@@ -9,6 +9,7 @@
  * - All animations are skipped when prefers-reduced-motion is active.
  */
 
+import { prefersReducedMotion } from './a11y-utils'
 import { scoreItem } from './search-scoring'
 import type { SearchableWorkItem } from './search-types'
 
@@ -30,10 +31,6 @@ function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number): (.
     clearTimeout(timer)
     timer = setTimeout(() => fn(...args), ms)
   }
-}
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 // ---------------------------------------------------------------------------

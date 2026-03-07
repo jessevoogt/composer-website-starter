@@ -1,0 +1,47 @@
+/* --- Breadcrumbs --------------------------------------------------------- */
+
+.breadcrumbs {
+  margin-inline: auto;
+  padding: var(--space-xs) var(--content-gutter);
+  max-width: var(--page-max-width, var(--grid-max-width));
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  list-style: none;
+}
+
+.breadcrumbs li {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.breadcrumbs li:not(:last-child)::after {
+  content: '/';
+  color: color-mix(in srgb, var(--ink-soft) 50%, transparent);
+}
+
+.breadcrumbs a {
+  border-bottom: 1px solid transparent;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover,
+.breadcrumbs a:focus-visible {
+  border-color: var(--accent);
+  color: var(--btn-ghost);
+}
+
+.breadcrumbs [aria-current='page'] {
+  color: var(--ink);
+}
+

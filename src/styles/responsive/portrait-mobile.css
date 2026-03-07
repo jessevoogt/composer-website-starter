@@ -1,0 +1,17 @@
+/* --- Portrait mobile: push hero content to bottom of viewport ------------ */
+
+@media (max-width: 68.75rem) and (orientation: portrait) {
+  .content-column {
+    align-items: flex-end;
+    padding-bottom: clamp(4.5rem, 12vw, 7rem);
+  }
+}
+
+/* Apply a strong upward parallax lift to hero copy as the listen section approaches. */
+html.has-fixed-player:not(.home-player-deferred) .immersive-home .content-column {
+  padding-bottom: calc(
+    clamp(6.6rem, 12vh, 10rem) +
+      (clamp(4.5rem, 22vh, 12.5rem) * clamp(0, calc(var(--listen-scroll-progress) * 1.75), 1))
+  );
+}
+

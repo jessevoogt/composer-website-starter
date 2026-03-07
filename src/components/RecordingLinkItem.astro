@@ -1,0 +1,142 @@
+---
+/**
+ * Renders a single recording link with 4-priority rendering logic:
+ * 1. mp3 + image → image with play/pause overlay
+ * 2. YouTube (no mp3) + image → image opens lightbox
+ * 3. YouTube (no mp3) + no image → text lightbox link
+ * 4. Other URL → plain link
+ *
+ * Used by RecordingLinkCarousel in both carousel and single-link views.
+ */
+import PlayButton from '@components/ui/PlayButton.astro'
+
+interface RecordingLinkImage {
+  resolvedSrc: string
+  alt?: string
+  position?: string
+}
+
+interface Props {
+  mp3?: string
+  image?: RecordingLinkImage
+  href?: string
+  label?: string
+  labelClass?: string
+  youtubeUrl?: string
+  recordingKey: string
+  videoTitle: string
+}
+
+const { mp3, image, href, label, labelClass, youtubeUrl, recordingKey, videoTitle } = Astro.props
+---
+
+{/* Priority 1: mp3 + image → image with play/pause overlay */}
+{mp3 && image ? (
+  <>
+    {label ? <div class={labelClass}><strong>{label}</strong></div> : null}
+    <figure class="recording-play-figure" data-recording-figure>
+      <img
+        src={image.resolvedSrc}
+        alt={image.alt || ''}
+        loading="lazy"
+        decoding="async"
+        class="recording-play-image"
+        style={image.position ? `object-position: ${image.position};` : undefined}
+      />
+      <PlayButton
+        class="recording-play-btn"
+        innerClass="recording-play-btn-inner"
+        data-recording-play={recordingKey}
+        data-recording-mp3={mp3}
+        aria-label="Play recording"
+      >
+        <svg class="recording-play-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+        </svg>
+        <svg class="recording-play-icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9.4 7.4V16.6M14.6 7.4V16.6"></path>
+        </svg>
+        <Fragment slot="sr-label">Play recording</Fragment>
+      </PlayButton>
+    </figure>
+    {youtubeUrl ? (
+      <p class="recording-youtube-link">
+        <a
+          href={youtubeUrl}
+          data-youtube-lightbox-trigger
+          data-youtube-lightbox-url={youtubeUrl}
+          data-youtube-lightbox-title={videoTitle}
+          aria-label="Watch on YouTube"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+            <path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z" />
+          </svg>
+          <span>Watch on YouTube</span>
+        </a>
+      </p>
+    ) : null}
+  </>
+) : null}
+
+{/* Priority 2: YouTube only (no mp3) + image → image opens lightbox */}
+{!mp3 && youtubeUrl && image ? (
+  <>
+    {label ? <div class={labelClass}><strong>{label}</strong></div> : null}
+    <figure class="recording-play-figure">
+      <img
+        src={image.resolvedSrc}
+        alt={image.alt || ''}
+        loading="lazy"
+        decoding="async"
+        class="recording-play-image"
+        style={image.position ? `object-position: ${image.position};` : undefined}
+      />
+      <PlayButton
+        href={youtubeUrl}
+        class="recording-play-btn"
+        innerClass="recording-play-btn-inner"
+        data-youtube-lightbox-trigger
+        data-youtube-lightbox-url={youtubeUrl}
+        data-youtube-lightbox-title={videoTitle}
+        aria-label="Watch on YouTube"
+      >
+        <svg class="recording-play-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none"></path>
+        </svg>
+        <Fragment slot="sr-label">Watch on YouTube</Fragment>
+      </PlayButton>
+    </figure>
+  </>
+) : null}
+
+{/* Priority 3: YouTube only (no mp3) + no image → text lightbox link */}
+{!mp3 && youtubeUrl && !image ? (
+  <>
+    {label ? <div class={labelClass}><strong>{label}</strong></div> : null}
+    <p class="recording-youtube-link">
+      <a
+        href={youtubeUrl}
+        data-youtube-lightbox-trigger
+        data-youtube-lightbox-url={youtubeUrl}
+        data-youtube-lightbox-title={videoTitle}
+        aria-label="Watch on YouTube"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true">
+          <path d="M21.58 7.19c-.23-.86-.91-1.54-1.77-1.77C18.25 5 12 5 12 5s-6.25 0-7.81.42c-.86.23-1.54.91-1.77 1.77C2 8.75 2 12 2 12s0 3.25.42 4.81c.23.86.91 1.54 1.77 1.77C5.75 19 12 19 12 19s6.25 0 7.81-.42c.86-.23 1.54-.91 1.77-1.77C22 15.25 22 12 22 12s0-3.25-.42-4.81zM10 15V9l5.2 3-5.2 3z" />
+        </svg>
+        <span>Watch on YouTube</span>
+      </a>
+    </p>
+  </>
+) : null}
+
+{/* Priority 4: other URL → plain link */}
+{!mp3 && !youtubeUrl && href ? (
+  <>
+    {label ? <div class={labelClass}><strong>{label}</strong></div> : null}
+    <div>
+      <strong>Link:</strong>
+      <a href={href} target="_blank" rel="noreferrer noopener">{href}</a>
+    </div>
+  </>
+) : null}

@@ -1,0 +1,159 @@
+/* --- Recording Play Figure ----------------------------------------------- */
+
+.recording-play-figure {
+  position: relative;
+  margin-top: 0.5rem;
+  border-radius: var(--radius-md);
+  aspect-ratio: 16 / 10;
+  max-width: var(--media-max-width);
+  overflow: hidden;
+}
+
+.recording-play-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.recording-play-btn {
+  display: grid;
+  position: absolute;
+  place-items: center;
+  z-index: 2;
+  transition:
+    background 220ms ease,
+    color 180ms ease;
+  cursor: pointer;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgb(var(--bg-rgb) / 0.09) 0%, rgb(var(--bg-rgb) / 0.26) 100%);
+  padding: 0;
+  color: color-mix(in srgb, var(--ink) 90%, var(--accent-strong) 10%);
+}
+
+.recording-play-btn:hover,
+.recording-play-btn:focus-visible {
+  background: linear-gradient(180deg, rgb(var(--bg-rgb) / 0.04) 0%, rgb(var(--bg-rgb) / 0.18) 100%);
+  color: var(--ink);
+}
+
+.recording-play-btn:focus-visible {
+  outline: none;
+}
+
+.recording-play-btn:focus-visible .recording-play-btn-inner {
+  outline: 4px dashed var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.recording-play-btn-inner {
+  display: grid;
+  place-items: center;
+  transform: scale(0.9);
+  opacity: 0.85;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    border-color 180ms ease,
+    background 200ms ease;
+  border: 1px solid color-mix(in srgb, var(--ink) 46%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, #0d131a 38%, transparent);
+  width: clamp(4rem, 10vw, 6.5rem);
+  height: clamp(4rem, 10vw, 6.5rem);
+}
+
+.recording-play-btn:hover .recording-play-btn-inner,
+.recording-play-btn:focus-visible .recording-play-btn-inner {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.recording-play-btn-inner svg {
+  width: 100%;
+  height: 100%;
+}
+
+.recording-play-icon-pause {
+  display: none;
+}
+
+.recording-play-figure.is-playing .recording-play-icon-play {
+  display: none;
+}
+
+.recording-play-figure.is-playing .recording-play-icon-pause {
+  display: block;
+}
+
+@keyframes recording-playing-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 12px 2px rgb(255 255 255 / calc(0.15 * var(--glow-on)));
+  }
+
+  50% {
+    box-shadow: 0 0 20px 4px rgb(255 255 255 / calc(0.28 * var(--glow-on)));
+  }
+}
+
+.recording-play-figure.is-playing {
+  animation: recording-playing-glow 3.5s ease-in-out infinite;
+  box-shadow: 0 0 12px 2px rgb(255 255 255 / calc(0.15 * var(--glow-on)));
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .recording-play-btn-inner {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.recording-youtube-link {
+  margin-top: 0.5rem;
+  font-size: var(--font-size--1);
+}
+
+.recording-youtube-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  transition: color 170ms ease;
+  color: var(--ink-muted, var(--ink));
+  text-decoration: underline;
+}
+
+.recording-youtube-link a:hover,
+.recording-youtube-link a:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.recording-youtube-link svg {
+  flex-shrink: 0;
+  transition:
+    transform 170ms ease,
+    color 170ms ease;
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.recording-youtube-link a:hover svg,
+.recording-youtube-link a:focus-visible svg {
+  transform: scale(1.18);
+  color: #f00;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recording-youtube-link svg {
+    transition: color 170ms ease;
+  }
+
+  .recording-youtube-link a:hover svg,
+  .recording-youtube-link a:focus-visible svg {
+    transform: none;
+  }
+}
+

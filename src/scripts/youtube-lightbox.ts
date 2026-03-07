@@ -4,6 +4,7 @@
  * a "Watch on YouTube" link, pausing any active audio player first.
  */
 
+import { prefersReducedMotion as prefersReducedMotionCheck } from './a11y-utils'
 import { trackAnalyticsEvent } from './analytics-events'
 
 interface YoutubeLightboxWindow extends Window {
@@ -27,7 +28,7 @@ function initYoutubeLightbox(): () => void {
   const dialogEl = dialog as HTMLDialogElement
   const panelEl = panel as HTMLElement
   const containerEl = embedContainer as HTMLElement
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const prefersReducedMotion = prefersReducedMotionCheck()
   const closeAnimationMs = 180
 
   let closeTimer = 0

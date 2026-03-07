@@ -1,0 +1,262 @@
+/* --- Homepage-only: Stage Backdrop --------------------------------------- */
+
+.immersive-home {
+  --hero-shift: 0px;
+  --copy-shift: 0px;
+  --scrim-shift: 0px;
+  --hero-freeze-gray: 0;
+  --hero-freeze-contrast: 1;
+  --hero-image-scale-x: 1;
+  --header-reveal: 0;
+  --listen-left: 42vw;
+  --listen-drift-x: 0px;
+  --listen-left-shade: 0;
+  --listen-reveal-progress: 1;
+  --listen-scroll-progress: 0;
+  --listen-fade-out-progress: 1;
+  --section-diverge: 0;
+  --stage-width: min(41vw, 46rem);
+  --hero-media-height: clamp(16rem, 42vh, 28rem);
+  --hero-title-size: clamp(0.82rem, 0.82rem + 0.18vw, 0.95rem);
+  --hero-tagline-size: clamp(1.62rem, 3.2vw, 3.72rem);
+  --hero-citation-size: clamp(0.82rem, 0.82rem + 0.18vw, 0.98rem);
+  --split-line-base: color-mix(in srgb, var(--accent) 38%, var(--line) 62%);
+  --split-line-opacity: 0.3;
+  --split-line-thickness: 1px;
+  --split-line-active-opacity: var(--split-line-opacity);
+  --split-line: color-mix(in srgb, var(--split-line-base) calc(var(--split-line-active-opacity) * 100%), transparent);
+  --split-line-glow-shadow: none;
+  --hero-split-line-image-glow-width: 0px;
+  --hero-split-line-image-glow: none;
+  --hero-split-line-content-glow-width: 0px;
+  --hero-split-line-content-glow: none;
+  --hero-image-filter: saturate(0.72) contrast(1.06) brightness(0.72);
+  --hero-bridge-gradient: linear-gradient(
+    90deg,
+    rgb(var(--bg-rgb) / 0.03) 0%,
+    rgb(var(--bg-rgb) / 0.22) 24%,
+    rgb(var(--bg-rgb) / 0.54) 48%,
+    rgb(var(--bg-rgb) / 0.78) 68%,
+    var(--bg) 100%
+  );
+  position: relative;
+  isolation: isolate;
+  min-height: 100svh;
+}
+
+.stage-backdrop {
+  position: fixed;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: 0;
+  opacity: var(--listen-fade-out-progress);
+  z-index: 0;
+  width: var(--stage-width);
+  height: 100svh;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.immersive-home[data-hero-divider-glow='subtle'] {
+  --split-line-glow-shadow:
+    0 0 0.48rem color-mix(in srgb, var(--split-line-base) 46%, transparent),
+    0 0 1.35rem color-mix(in srgb, var(--split-line-base) 24%, transparent),
+    0 0 2.6rem color-mix(in srgb, var(--split-line-base) 8%, transparent);
+}
+
+.immersive-home[data-hero-divider-glow='medium'] {
+  --split-line-glow-shadow:
+    0 0 0.64rem color-mix(in srgb, var(--split-line-base) 58%, transparent),
+    0 0 1.95rem color-mix(in srgb, var(--split-line-base) 34%, transparent),
+    0 0 3.9rem color-mix(in srgb, var(--split-line-base) 12%, transparent);
+}
+
+.immersive-home[data-hero-divider-glow='strong'] {
+  --split-line-glow-shadow:
+    0 0 0.84rem color-mix(in srgb, var(--split-line-base) 72%, transparent),
+    0 0 2.7rem color-mix(in srgb, var(--split-line-base) 44%, transparent),
+    0 0 5.4rem color-mix(in srgb, var(--split-line-base) 18%, transparent),
+    0 0 7.8rem color-mix(in srgb, var(--split-line-base) 6%, transparent);
+}
+
+.stage-backdrop-image {
+  position: absolute;
+  transform: translate3d(0, var(--hero-shift), 0) scaleX(var(--hero-image-scale-x)) scale(1.18);
+  opacity: 0;
+  filter: var(--hero-image-filter) grayscale(var(--hero-freeze-gray)) contrast(var(--hero-freeze-contrast));
+  transition: opacity 4000ms ease;
+  will-change: transform, filter;
+  inset: -10% -9% -6% -9%;
+  width: auto;
+  min-width: calc(100% + 1px);
+  max-width: none;
+  height: 120%;
+  object-fit: cover;
+}
+
+.stage-backdrop-image.is-loaded {
+  opacity: 1;
+}
+
+.immersive-home[data-active-hero='profile'] .stage-backdrop-image {
+  /* Keep profile framing left-shifted but anchor the right edge to the split. */
+  top: -5%;
+  right: 0;
+  bottom: -6%;
+  left: auto;
+  transform-origin: right 30%;
+  width: 136%;
+  min-width: calc(100% + 1px);
+}
+
+.stage-backdrop-scrim {
+  position: absolute;
+  transform: none;
+  opacity: var(--image-overlay-opacity, 1);
+  will-change: auto;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgb(var(--bg-rgb) / 0.24) 0%, rgb(var(--bg-rgb) / 0.76) 100%),
+    linear-gradient(
+      90deg,
+      rgb(var(--bg-rgb) / 0.1) 0%,
+      rgb(var(--bg-rgb) / 0.18) 24%,
+      rgb(var(--bg-rgb) / 0.34) 50%,
+      rgb(var(--bg-rgb) / 0.58) 74%,
+      rgb(var(--bg-rgb) / 1) 100%
+    );
+}
+
+.immersive-home[data-active-hero='profile'] .stage-backdrop-scrim {
+  background:
+    linear-gradient(180deg, rgb(var(--bg-rgb) / 0.24) 0%, rgb(var(--bg-rgb) / 0.76) 100%),
+    linear-gradient(
+      90deg,
+      rgb(var(--bg-rgb) / 0.94) 0%,
+      rgb(var(--bg-rgb) / 0.58) 28%,
+      rgb(var(--bg-rgb) / 0.24) 50%,
+      rgb(var(--bg-rgb) / 0.08) 68%,
+      rgb(var(--bg-rgb) / 0) 86%
+    ),
+    linear-gradient(
+      90deg,
+      rgb(var(--bg-rgb) / 0.05) 0%,
+      rgb(var(--bg-rgb) / 0.14) 34%,
+      rgb(var(--bg-rgb) / 0.3) 58%,
+      rgb(var(--bg-rgb) / 0.58) 78%,
+      rgb(var(--bg-rgb) / 1) 100%
+    );
+}
+
+.immersive-home[data-hero-layout='columns'][data-hero-image-position='right'] {
+  --hero-bridge-gradient: linear-gradient(
+    270deg,
+    rgb(var(--bg-rgb) / 0.03) 0%,
+    rgb(var(--bg-rgb) / 0.22) 24%,
+    rgb(var(--bg-rgb) / 0.54) 48%,
+    rgb(var(--bg-rgb) / 0.78) 68%,
+    var(--bg) 100%
+  );
+}
+
+.immersive-home[data-hero-layout='stacked'],
+.immersive-home[data-hero-layout='centered-image'],
+.immersive-home[data-hero-layout='image-only'] {
+  --hero-bridge-gradient: linear-gradient(
+    180deg,
+    rgb(var(--bg-rgb) / 0.06) 0%,
+    rgb(var(--bg-rgb) / 0.22) 24%,
+    rgb(var(--bg-rgb) / 0.54) 48%,
+    rgb(var(--bg-rgb) / 0.82) 72%,
+    var(--bg) 100%
+  );
+}
+
+.immersive-home[data-hero-layout='columns'][data-hero-image-position='right'] .stage-backdrop {
+  right: 0;
+  left: auto;
+}
+
+.immersive-home[data-hero-layout='stacked'] .stage-backdrop,
+.immersive-home[data-hero-layout='centered-image'] .stage-backdrop,
+.immersive-home[data-hero-layout='image-only'] .stage-backdrop {
+  top: 0;
+  right: 0;
+  left: 0;
+  width: 100vw;
+}
+
+.immersive-home[data-hero-layout='stacked'] .stage-backdrop {
+  height: var(--hero-media-height);
+}
+
+.immersive-home[data-hero-layout='stacked'][data-hero-stacked-order='second'] .stage-backdrop {
+  top: auto;
+  bottom: 0;
+}
+
+.immersive-home[data-hero-layout='centered-image'] .stage-backdrop,
+.immersive-home[data-hero-layout='image-only'] .stage-backdrop {
+  height: 100svh;
+}
+
+.immersive-home[data-active-hero='profile'][data-hero-layout='columns'][data-hero-image-position='right']
+  .stage-backdrop-image {
+  right: auto;
+  left: 0;
+  transform-origin: left 30%;
+}
+
+.immersive-home[data-hero-layout='columns'][data-hero-image-position='right'] .stage-backdrop-scrim {
+  background:
+    linear-gradient(180deg, rgb(var(--bg-rgb) / 0.24) 0%, rgb(var(--bg-rgb) / 0.76) 100%),
+    linear-gradient(
+      270deg,
+      rgb(var(--bg-rgb) / 0.1) 0%,
+      rgb(var(--bg-rgb) / 0.18) 24%,
+      rgb(var(--bg-rgb) / 0.34) 50%,
+      rgb(var(--bg-rgb) / 0.58) 74%,
+      rgb(var(--bg-rgb) / 1) 100%
+    );
+}
+
+.immersive-home[data-active-hero='profile'][data-hero-layout='columns'][data-hero-image-position='right']
+  .stage-backdrop-scrim {
+  background:
+    linear-gradient(180deg, rgb(var(--bg-rgb) / 0.24) 0%, rgb(var(--bg-rgb) / 0.76) 100%),
+    linear-gradient(
+      270deg,
+      rgb(var(--bg-rgb) / 0.94) 0%,
+      rgb(var(--bg-rgb) / 0.58) 28%,
+      rgb(var(--bg-rgb) / 0.24) 50%,
+      rgb(var(--bg-rgb) / 0.08) 68%,
+      rgb(var(--bg-rgb) / 0) 86%
+    ),
+    linear-gradient(
+      270deg,
+      rgb(var(--bg-rgb) / 0.05) 0%,
+      rgb(var(--bg-rgb) / 0.14) 34%,
+      rgb(var(--bg-rgb) / 0.3) 58%,
+      rgb(var(--bg-rgb) / 0.58) 78%,
+      rgb(var(--bg-rgb) / 1) 100%
+    );
+}
+
+.immersive-home[data-hero-layout='stacked'] .stage-backdrop-scrim,
+.immersive-home[data-hero-layout='centered-image'] .stage-backdrop-scrim {
+  background:
+    linear-gradient(180deg, rgb(var(--bg-rgb) / 0.08) 0%, rgb(var(--bg-rgb) / 0.76) 100%),
+    linear-gradient(
+      180deg,
+      rgb(var(--bg-rgb) / 0.02) 0%,
+      rgb(var(--bg-rgb) / 0.12) 38%,
+      rgb(var(--bg-rgb) / 0.44) 68%,
+      rgb(var(--bg-rgb) / 0.82) 100%
+    );
+}
+
+.immersive-home[data-hero-layout='image-only'] .stage-backdrop-scrim {
+  background: linear-gradient(180deg, rgb(var(--bg-rgb) / 0.06) 0%, rgb(var(--bg-rgb) / 0.42) 100%);
+}
+

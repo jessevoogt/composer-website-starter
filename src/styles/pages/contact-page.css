@@ -1,0 +1,26 @@
+/* --- Contact Page -------------------------------------------------------- */
+
+.page-content-contact-email-only {
+  display: flex;
+  flex-direction: column;
+  justify-content: var(--contact-page-justify);
+  align-items: center;
+  gap: clamp(0.9rem, 2.2vw, 1.6rem);
+}
+
+.page-content-contact-email-only .page-header-section {
+  padding-top: 0;
+  padding-bottom: 0;
+  width: 100%;
+}
+
+.page-content-contact-email-only .page-header-section .page-header-inner {
+  margin-inline: var(--contact-stage-inline-margin);
+  width: min(var(--contact-email-max-width), calc(100% - (2 * var(--content-gutter))));
+  max-width: none;
+}
+
+.page-content-contact-email-only .page-header-section p {
+  margin-inline: var(--contact-stage-inline-margin);
+}
+

@@ -1,0 +1,40 @@
+/* --- Work Card Grid ------------------------------------------------------ */
+
+.work-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 39.99rem) {
+  .work-card-grid {
+    gap: 3rem;
+    margin-inline: calc(var(--content-gutter) * -1);
+  }
+}
+
+@media (min-width: 40rem) {
+  .work-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 64rem) {
+  .work-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.works-listing-summary {
+  margin-top: var(--space-xs);
+  margin-bottom: 0;
+  font-size: var(--font-size--1);
+}
+
+.works-listing-grid {
+  margin-top: var(--space-xs);
+}
+

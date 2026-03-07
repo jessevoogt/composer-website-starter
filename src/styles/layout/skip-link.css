@@ -1,0 +1,22 @@
+/* --- Skip Link ----------------------------------------------------------- */
+
+.skip-link {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  transform: translateY(-160%);
+  z-index: 1000;
+  transition: transform 180ms ease-out;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  padding: 0.55rem 0.8rem;
+  color: var(--ink);
+  font: 600 0.95rem/1.2 var(--font-heading);
+  text-decoration: none;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+

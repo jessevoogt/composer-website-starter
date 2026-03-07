@@ -4,6 +4,7 @@
  * and handles cleanup on Astro page transitions.
  */
 
+import { prefersReducedMotion as prefersReducedMotionCheck } from '../a11y-utils'
 import { readPageData } from './types'
 import { initMenu } from './menu'
 import { initCarousel } from './carousel'
@@ -46,7 +47,7 @@ document.addEventListener('astro:page-load', () => {
   }
 
   const data = readPageData()
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const prefersReducedMotion = prefersReducedMotionCheck()
   const introKey = 'jv-immersive-intro-v2'
 
   // First-visit intro animation

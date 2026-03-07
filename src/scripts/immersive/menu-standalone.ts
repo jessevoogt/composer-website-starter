@@ -4,6 +4,7 @@
  * We skip init here if the immersive root is present (homepage) to avoid double-init.
  */
 
+import { prefersReducedMotion } from '../a11y-utils'
 import { initMenu } from './menu'
 
 document.addEventListener('astro:page-load', () => {
@@ -11,8 +12,7 @@ document.addEventListener('astro:page-load', () => {
   const isHomepage = !!document.querySelector('[data-immersive-root]')
   if (isHomepage) return
 
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const teardown = initMenu(prefersReducedMotion)
+  const teardown = initMenu(prefersReducedMotion())
 
   document.addEventListener('astro:before-swap', () => teardown(), { once: true })
 })

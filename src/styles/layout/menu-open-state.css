@@ -1,0 +1,10 @@
+/* --- Menu Open State ----------------------------------------------------- */
+
+body.immersive-menu-open {
+  overflow: hidden;
+}
+
+body.works-search-modal-open {
+  overflow: hidden;
+}
+

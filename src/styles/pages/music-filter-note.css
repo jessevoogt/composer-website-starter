@@ -1,0 +1,13 @@
+/* --- Music Page: Filter Note ---------------------------------------------- */
+
+.music-filter-note {
+  margin: 0;
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: var(--font-size--1);
+}
+
+.music-filter-note a {
+  color: var(--ink);
+}
+

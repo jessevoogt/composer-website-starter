@@ -1,0 +1,107 @@
+/* --- Site Footer --------------------------------------------------------- */
+
+.site-footer {
+  display: flex;
+  position: relative;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.9rem;
+  z-index: 1;
+  border-top: 1px solid var(--line);
+  background: var(--bg-soft);
+  padding: clamp(1.1rem, 3vw, 1.7rem) var(--content-gutter)
+    calc(clamp(1.1rem, 3vw, 1.7rem) + env(safe-area-inset-bottom));
+}
+
+.site-footer p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  --footer-link-gap: 0.9rem;
+}
+
+.footer-links a {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  border-bottom: 1px solid transparent;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.footer-links a + a::before {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: calc((var(--footer-link-gap) * -0.5) - 0.5px);
+  transform: translateY(-50%);
+  background: color-mix(in srgb, var(--line) 78%, var(--accent) 22%);
+  width: 1px;
+  height: 0.9em;
+  content: '';
+}
+
+.footer-links a:hover,
+.footer-links a:focus-visible {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+@media (max-width: 26.25rem) {
+  .site-footer {
+    gap: 0.6rem;
+    padding-top: 0.95rem;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .site-footer p {
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+
+  .footer-links {
+    gap: 0.75rem;
+    --footer-link-gap: 0.75rem;
+  }
+
+  .footer-links a {
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+}
+
+@media (max-width: 26.25rem) and (min-width: 22.9375rem) {
+  .site-footer {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-links {
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 22.9375rem) {
+  .site-footer {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: 0;
+    width: 100%;
+  }
+}
+

@@ -1,0 +1,126 @@
+/* --- Design Tokens ------------------------------------------------------- */
+
+:root {
+  color-scheme: var(--color-scheme, dark);
+  interpolate-size: allow-keywords;
+
+  /* Color palette — dark theme */
+  --bg-r: 16;
+  --bg-g: 22;
+  --bg-b: 29;
+  --bg-soft-r: 20;
+  --bg-soft-g: 27;
+  --bg-soft-b: 35;
+  --bg-rgb: var(--bg-r) var(--bg-g) var(--bg-b);
+  --bg-soft-rgb: var(--bg-soft-r) var(--bg-soft-g) var(--bg-soft-b);
+  --bg: rgb(var(--bg-rgb));
+  --bg-soft: rgb(var(--bg-soft-rgb));
+  --surface: #18212b;
+  --surface-soft: #212b36;
+  --line: #2c3c4b;
+  --ink: #ecf2f7;
+  --ink-rgb: 236 242 247;
+  --ink-soft: #aab8c4;
+  --glow-on: 1;
+  --btn-ghost: #d5edf9;
+  --btn-ghost-rgb: 213 237 249;
+  --accent: #97c6de;
+  --accent-strong: #d5edf9;
+  --button-bg: #89b9d3;
+  --button-ink: #08131d;
+  --cta-bg: #b45309;
+  --cta-ink: #ffffff;
+  --nav-active-underline: #97c6de;
+  --nav-active-text: #d5edf9;
+  --image-overlay-opacity: 1;
+
+  /* Border radius scale — overridden by theme */
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --about-profile-radius: 999px;
+  --about-profile-position: 50% 22%;
+  --tag-badge-radius: 999px;
+  --contact-stage-max-width: 56rem;
+  --contact-email-max-width: 33rem;
+  --contact-stage-inline-margin: auto;
+  --contact-page-justify: center;
+
+  /* Focus */
+  --focus-ring-color: #ff9f3f;
+  --focus-ring-offset: 2px;
+
+  /* Typography — font families */
+  --font-heading: 'Gothic A1', sans-serif;
+  --font-body: 'Atkinson Hyperlegible', sans-serif;
+
+  /* Typography — fluid type scale (Utopia) */
+  --font-size--2: clamp(0.6944rem, 0.6855rem + 0.0446vw, 0.72rem);
+  --font-size--1: clamp(0.8331rem, 0.8099rem + 0.1163vw, 0.9rem);
+  --font-size-0: clamp(1rem, 0.9565rem + 0.2174vw, 1.125rem);
+  --font-size-1: clamp(1.2rem, 1.1283rem + 0.3587vw, 1.4063rem);
+  --font-size-2: clamp(1.44rem, 1.3293rem + 0.5533vw, 1.7581rem);
+  --font-size-3: clamp(1.7281rem, 1.5649rem + 0.8163vw, 2.1975rem);
+  --font-size-4: clamp(2.0738rem, 1.8396rem + 1.1707vw, 2.7469rem);
+  --font-size-5: clamp(2.4881rem, 2.1594rem + 1.6435vw, 3.4331rem);
+  --font-size-6: clamp(2.9863rem, 2.5323rem + 2.2696vw, 4.2913rem);
+
+  /* Spacing — fluid scale (Utopia) */
+  --space-3xs: clamp(0.25rem, 0.2283rem + 0.1087vw, 0.3125rem);
+  --space-2xs: clamp(0.5rem, 0.4783rem + 0.1087vw, 0.5625rem);
+  --space-xs: clamp(0.75rem, 0.7065rem + 0.2174vw, 0.875rem);
+  --space-s: clamp(1rem, 0.9565rem + 0.2174vw, 1.125rem);
+  --space-m: clamp(1.5rem, 1.4348rem + 0.3261vw, 1.6875rem);
+  --space-l: clamp(2rem, 1.913rem + 0.4348vw, 2.25rem);
+  --space-xl: clamp(3rem, 2.8696rem + 0.6522vw, 3.375rem);
+  --space-2xl: clamp(4rem, 3.8261rem + 0.8696vw, 4.5rem);
+  --space-3xl: clamp(6rem, 5.7391rem + 1.3043vw, 6.75rem);
+
+  /* Layout */
+  --grid-max-width: 72rem;
+  --grid-gutter: clamp(1.2rem, 4vw, 3.4rem);
+  --media-max-width: 36rem;
+  --header-height-interior: clamp(3.45rem, 4.8vw, 4.05rem);
+  --header-height-home: var(--header-height-interior);
+  --header-height: var(--header-height-interior);
+  --header-breadcrumb-height: 0px;
+  --anchor-scroll-offset: calc(var(--header-height) + var(--header-breadcrumb-height));
+  --content-gutter: var(--stage-content-gutter, var(--grid-gutter));
+  --menu-toggle-width: 2.95rem;
+  --menu-toggle-height: 2.2rem;
+  --mobile-search-toggle-size: 1.25rem;
+  --mobile-search-control-height: 2rem;
+  --mobile-search-open-icon-pad-inline-end: 0.34rem;
+  --brand-name-offset-y: 0;
+  --header-control-top: max(
+    calc((var(--header-height) - var(--menu-toggle-height)) / 2),
+    calc(env(safe-area-inset-top) + 0.55rem)
+  );
+  --header-control-inline-end: max(var(--content-gutter), calc(env(safe-area-inset-right) + 0.9rem));
+  --mobile-search-anchor-top: calc(
+    var(--header-control-top) + ((var(--menu-toggle-height) - var(--mobile-search-toggle-size)) / 2)
+  );
+  --mobile-search-anchor-right: calc(var(--header-control-inline-end) + var(--menu-toggle-width) + 0.45rem);
+  --mobile-search-open-top: calc(
+    var(--mobile-search-anchor-top) + ((var(--mobile-search-toggle-size) - var(--mobile-search-control-height)) / 2)
+  );
+
+  /* Social strip sizing */
+  --social-offset: 16px;
+  --social-icon-size: clamp(2.45rem, 2.1rem + 0.72vw, 2.95rem);
+  --social-glyph-size: clamp(2rem, 1.45rem + 0.88vw, 2.5rem);
+  --social-content-gap: clamp(2rem, 3vw, 3rem);
+  --stage-base-gutter: clamp(1.2rem, 4vw, 3.4rem);
+  --stage-content-gutter: var(--stage-base-gutter);
+}
+
+@media (min-width: 58rem) {
+  :root {
+    --social-icon-size: clamp(2.8rem, 2.25rem + 0.95vw, 3.45rem);
+    --social-glyph-size: clamp(2rem, 1.58rem + 0.74vw, 2.65rem);
+    --stage-social-gutter: calc(var(--social-offset) + var(--social-icon-size) + var(--social-content-gap));
+    --stage-content-gutter: clamp(var(--stage-base-gutter), calc(12.8vw - 5.1rem), var(--stage-social-gutter));
+  }
+}
+

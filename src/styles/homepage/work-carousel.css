@@ -1,0 +1,151 @@
+/* --- Homepage: Work Carousel --------------------------------------------- */
+
+.work-carousel {
+  position: relative;
+  container-type: inline-size;
+  --work-gap: 1rem;
+  --work-columns: 2;
+  --work-card-basis: calc((100% - var(--work-gap)) / 2);
+}
+
+@media (max-width: 37.5rem) {
+  .work-carousel {
+    --work-columns: 1;
+    --work-card-basis: 100%;
+  }
+}
+
+@media (min-width: 78rem) {
+  .work-carousel {
+    --work-columns: 3;
+    --work-card-basis: calc((100% - (var(--work-gap) * 2)) / 3);
+  }
+}
+
+@media (min-width: 120rem) {
+  .work-carousel {
+    --work-columns: 4;
+    --work-card-basis: calc((100% - (var(--work-gap) * 3)) / 4);
+  }
+}
+
+.work-carousel-frame {
+  padding-bottom: 0.3rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.work-carousel-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.work-carousel-header > h2 {
+  margin-bottom: 0;
+}
+
+.work-carousel-controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 0.5rem;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.work-carousel:not(.has-overflow) .work-carousel-controls {
+  display: none;
+}
+
+.work-carousel-swipe-hint {
+  display: none;
+  align-items: center;
+  gap: 0.42rem;
+  margin: -0.2rem 0 0.6rem;
+  color: color-mix(in srgb, var(--ink-soft) 86%, transparent);
+  font: 600 0.72rem/1.2 var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.work-carousel-swipe-hint-icon {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  animation: work-swipe-cue 1100ms ease-in-out infinite;
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.work-carousel-swipe-hint-icon svg {
+  transform: rotate(0deg);
+  transition: transform 220ms ease;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes work-swipe-cue {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(0.2rem);
+  }
+}
+
+@keyframes work-swipe-cue-back {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(-0.2rem);
+  }
+}
+
+.work-carousel.at-end .work-carousel-swipe-hint-icon {
+  animation-name: work-swipe-cue-back;
+}
+
+.work-carousel.at-end .work-carousel-swipe-hint-icon svg {
+  transform: rotate(180deg);
+}
+
+@media (max-width: 37.5rem) and (hover: none) and (pointer: coarse) {
+  .work-carousel-controls {
+    display: none;
+  }
+
+  .work-carousel.has-overflow .work-carousel-swipe-hint {
+    display: inline-flex;
+  }
+}
+
+.work-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--work-gap);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-width: 100%;
+  list-style: none;
+}
+
+.work-grid .work-card {
+  flex: 0 0 var(--work-card-basis);
+  min-width: 0;
+  scroll-snap-align: start;
+}
+

@@ -1,0 +1,128 @@
+/* --- YouTube Lightbox ---------------------------------------------------- */
+
+.youtube-lightbox {
+  position: fixed;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  margin: 0;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  overflow: clip;
+  color: var(--ink);
+}
+
+.youtube-lightbox::backdrop {
+  opacity: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 180ms ease;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.youtube-lightbox[open] {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.youtube-lightbox[open].is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.youtube-lightbox.is-visible::backdrop {
+  opacity: 0.7;
+}
+
+.youtube-lightbox-panel {
+  position: relative;
+  transform: translate3d(0, 0.5rem, 0) scale(0.97);
+  opacity: 0;
+  transition:
+    opacity 280ms ease,
+    transform 280ms ease;
+  transition-delay: 0ms;
+  margin-inline: auto;
+  outline: none;
+  width: min(64rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+}
+
+.youtube-lightbox[open].is-visible .youtube-lightbox-panel {
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+  transition-delay: 100ms;
+}
+
+.youtube-lightbox-embed {
+  border-radius: var(--radius-md);
+  background: #000;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: auto;
+  max-height: calc(100dvh - 5.5rem);
+  overflow: hidden;
+}
+
+.youtube-lightbox[open].is-visible .youtube-lightbox-embed {
+  animation: listen-playing-glow 3.5s ease-in-out infinite;
+  box-shadow: 0 0 28px 4px rgb(255 255 255 / calc(0.15 * var(--glow-on)));
+}
+
+.youtube-lightbox-embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.youtube-lightbox-close {
+  display: grid;
+  position: absolute;
+  top: -2.5rem;
+  right: 0;
+  place-items: center;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0.2rem;
+  width: 2rem;
+  height: 2rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.youtube-lightbox-close svg {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 2rem;
+  height: 2rem;
+}
+
+.youtube-lightbox-close:hover,
+.youtube-lightbox-close:focus-visible {
+  color: #fff;
+}
+
+.youtube-lightbox-close:focus-visible {
+  outline: 2px dashed var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+@media (max-width: 37.5rem) {
+  .youtube-lightbox-panel {
+    width: calc(100vw - 1rem);
+  }
+
+  .youtube-lightbox-close {
+    top: -2.2rem;
+  }
+}
+

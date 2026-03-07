@@ -1,0 +1,45 @@
+/* --- Homepage: Hero Switcher (dev only) ---------------------------------- */
+
+.hero-switcher {
+  display: flex;
+  position: fixed;
+  top: calc(var(--header-height) + 0.6rem);
+  right: var(--content-gutter);
+  align-items: center;
+  gap: 0.4rem;
+  z-index: 55;
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-soft) 92%, transparent);
+  padding: 0.35rem;
+}
+
+.hero-switcher[hidden] {
+  display: none !important;
+}
+
+.hero-switcher-button {
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.42rem 0.58rem;
+  color: var(--ink-soft);
+  font: 600 0.73rem/1 inherit;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-switcher-button:hover,
+.hero-switcher-button:focus-visible {
+  border-color: color-mix(in srgb, var(--line) 80%, var(--accent) 20%);
+  color: var(--ink);
+}
+
+.hero-switcher-button.is-active {
+  border-color: color-mix(in srgb, var(--button-bg) 80%, #fff 20%);
+  background: color-mix(in srgb, var(--button-bg) 82%, #fff 18%);
+  color: var(--button-ink);
+}
+

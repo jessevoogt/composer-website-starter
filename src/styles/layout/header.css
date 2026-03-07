@@ -1,0 +1,221 @@
+/* --- Site Header --------------------------------------------------------- */
+
+/* On non-homepage pages, give the header its own View Transition group
+   so it stays stable during navigation instead of being captured (and
+   briefly hidden) as part of the root snapshot. Excluded on the homepage
+   where the header starts invisible and is revealed by parallax. */
+html:not([data-page='home']) .site-header {
+  view-transition-name: site-header;
+}
+
+::view-transition-old(site-header),
+::view-transition-new(site-header) {
+  animation: none;
+}
+
+::view-transition-group(site-header) {
+  z-index: 50;
+}
+
+.site-header {
+  display: flex;
+  position: fixed;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  z-index: 50;
+  backdrop-filter: blur(calc(8px * var(--header-reveal, 1)));
+  -webkit-backdrop-filter: blur(calc(8px * var(--header-reveal, 1)));
+  inset: 0 0 auto;
+  border-bottom: 1px solid rgb(var(--ink-rgb) / calc(0.1 * var(--header-reveal, 1)));
+  background: linear-gradient(
+    90deg,
+    rgb(var(--bg-rgb) / calc(0.4 * var(--header-reveal, 1))) 0%,
+    rgb(var(--bg-soft-rgb) / calc(0.95 * var(--header-reveal, 1))) 100%
+  );
+  padding-inline: var(--content-gutter);
+  height: var(--header-height);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Keep breadcrumbs stable during View Transitions. */
+.site-header-breadcrumbs {
+  view-transition-name: site-header-breadcrumbs;
+}
+
+::view-transition-old(site-header-breadcrumbs),
+::view-transition-new(site-header-breadcrumbs) {
+  animation: none;
+}
+
+::view-transition-group(site-header-breadcrumbs) {
+  z-index: 49;
+}
+
+.site-header-breadcrumbs {
+  --page-max-width: 82rem;
+  position: fixed;
+  z-index: 49;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  inset: var(--header-height) 0 auto;
+  border-bottom: 1px solid var(--line);
+  background: rgb(var(--bg-soft-rgb) / 0.88);
+  min-height: var(--header-breadcrumb-height);
+}
+
+.site-header-breadcrumbs .breadcrumbs {
+  margin-inline: 0;
+  padding: calc((var(--header-breadcrumb-height) - 1.1rem) / 2) var(--content-gutter);
+  width: 100%;
+  max-width: none;
+}
+
+.site-header-breadcrumbs .breadcrumbs ol {
+  --breadcrumb-focus-bleed: calc(2px + var(--focus-ring-offset));
+  flex-wrap: nowrap;
+  margin-inline: calc(0px - var(--breadcrumb-focus-bleed));
+  margin-block: calc(0px - var(--breadcrumb-focus-bleed));
+  padding-inline: var(--breadcrumb-focus-bleed);
+  padding-block: var(--breadcrumb-focus-bleed);
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.site-header-breadcrumbs .breadcrumbs ol::-webkit-scrollbar {
+  display: none;
+}
+
+/* Homepage: header starts invisible, parallax.ts reveals it on scroll */
+html[data-page='home'] {
+  --header-height: var(--header-height-home);
+}
+
+html[data-page='home'] .site-header {
+  --header-reveal: 0;
+}
+
+/* Responsive header layout switching */
+.header-layout {
+  display: none;
+}
+
+@media (min-width: 58rem) {
+  [data-header-layout='desktop'] {
+    display: contents;
+  }
+}
+
+@media (min-width: 48rem) and (max-width: 57.999rem) {
+  [data-header-layout='tablet'] {
+    display: contents;
+  }
+}
+
+@media (max-width: 47.999rem) {
+  [data-header-layout='mobile'] {
+    display: contents;
+  }
+}
+
+.header-slot {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.6rem, 1.5vw, 1rem);
+}
+
+.header-slot[data-slot='left'] {
+  margin-inline-end: auto;
+}
+
+.header-slot[data-slot='right'] {
+  margin-inline-start: auto;
+}
+
+.header-slot[data-slot='center'] {
+  margin-inline: auto;
+}
+
+.header-slot:empty {
+  display: none;
+}
+
+.brand-slot {
+  display: flex;
+  align-items: center;
+  min-width: max-content;
+}
+
+.desktop-nav {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.desktop-nav ul {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2.2vw, 1.8rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.desktop-nav a,
+.mobile-menu-link {
+  border-bottom: 1px solid transparent;
+  padding: 0.22rem;
+  color: var(--ink);
+  font-size: 0.93rem;
+  line-height: 1;
+  font-family: var(--font-heading);
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.desktop-nav a:hover,
+.mobile-menu-link:hover {
+  border-color: var(--nav-hover-underline);
+  color: var(--nav-hover-text);
+}
+
+.desktop-nav a[aria-current='page'] {
+  border-color: var(--nav-active-underline);
+  color: var(--nav-active-text);
+}
+
+.menu-search-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  align-items: center;
+  transition: all 180ms ease;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: var(--menu-toggle-width);
+  width: var(--mobile-search-toggle-size);
+  height: var(--menu-toggle-height);
+  height: var(--mobile-search-toggle-size);
+  color: var(--ink);
+}
+
+.menu-search-toggle svg {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 100%;
+  height: 100%;
+}
+
+.menu-search-toggle:hover,
+.menu-search-toggle:focus-visible,
+.menu-search-toggle[aria-expanded='true'] {
+  transform: scale(1.3);
+  color: var(--btn-ghost);
+}
+

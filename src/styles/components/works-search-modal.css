@@ -1,0 +1,118 @@
+/* --- Works Search Modal -------------------------------------------------- */
+
+.works-search-modal {
+  position: fixed;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  margin: 0;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: clamp(1rem, calc(env(safe-area-inset-top) + 30dvh), 16rem)
+    max(1rem, calc(env(safe-area-inset-right) + 0.75rem)) max(1rem, calc(env(safe-area-inset-bottom) + 0.75rem))
+    max(1rem, calc(env(safe-area-inset-left) + 0.75rem));
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  overflow: clip;
+  color: var(--ink);
+}
+
+.works-search-modal::backdrop {
+  opacity: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity 180ms ease;
+}
+
+.works-search-modal[open] {
+  display: grid;
+  place-items: start center;
+  pointer-events: none;
+}
+
+.works-search-modal[open].is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.works-search-modal.is-visible::backdrop {
+  opacity: 1;
+}
+
+.works-search-modal-panel {
+  position: relative;
+  transform: translate3d(0, 0.35rem, 0);
+  opacity: 0;
+  transition:
+    opacity 280ms ease,
+    transform 280ms ease;
+  transition-delay: 0ms;
+  margin-inline: auto;
+  outline: none;
+  padding: clamp(1.1rem, 3vw, 1.55rem);
+  width: min(42rem, calc(100vw - 2rem));
+}
+
+.works-search-modal[open].is-visible .works-search-modal-panel {
+  transform: translate3d(0, 0, 0);
+  opacity: 1;
+  transition-delay: 180ms;
+}
+
+.works-search-modal-panel .works-search {
+  margin: 0;
+  width: 100%;
+}
+
+.works-search-modal-panel .works-search-combobox-wrapper {
+  margin-inline: auto;
+  max-width: none;
+}
+
+.works-search-modal-panel .works-search-listbox {
+  max-height: min(23rem, 48dvh);
+}
+
+.works-search-modal-close {
+  display: grid;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  place-items: center;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0.2rem;
+  width: 2rem;
+  height: 2rem;
+  color: var(--ink-soft);
+}
+
+.works-search-modal-close svg {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 2rem;
+  height: 2rem;
+}
+
+.works-search-modal-close:hover,
+.works-search-modal-close:focus-visible {
+  color: var(--ink);
+}
+
+.works-search-modal-close:focus-visible {
+  outline: 2px dashed var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.works-search-modal.is-navigating .works-search-modal-panel {
+  opacity: 0.6;
+  transition: opacity 200ms ease;
+}
+

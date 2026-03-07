@@ -1,0 +1,38 @@
+/* --- Page Hero Background (driven by CSS custom properties) -------------- */
+
+.page-content-with-hero {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  overflow: clip;
+}
+
+.page-content-with-hero::before {
+  position: absolute;
+  opacity: var(--page-hero-opacity, 0.34);
+  z-index: -2;
+  filter: var(--page-hero-filter, saturate(0.72) contrast(1.06) brightness(0.54));
+  inset: 0;
+  background-image: var(--page-hero-image, none);
+  background-position: var(--page-hero-position, 50% 50%);
+  background-size: cover;
+  background-repeat: no-repeat;
+  content: '';
+}
+
+.page-content-with-hero::after {
+  position: absolute;
+  opacity: var(--image-overlay-opacity, 1);
+  z-index: -1;
+  inset: 0;
+  background:
+    linear-gradient(
+      118deg,
+      rgb(var(--scrim-rgb) / 0.9) 0%,
+      rgb(var(--scrim-rgb) / 0.74) 48%,
+      rgb(var(--scrim-rgb) / 0.58) 100%
+    ),
+    radial-gradient(66% 56% at 12% 0%, rgb(var(--accent-rgb) / 0.22) 0%, rgb(var(--accent-rgb) / 0) 72%);
+  content: '';
+}
+
