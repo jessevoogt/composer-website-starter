@@ -72,6 +72,10 @@ export { getHeroConfig, getHeroVariants } from './hero'
 export type { HeroVariant, HeroConfig } from './hero'
 export { getPerusalAccessConfig, isPerusalGatingActive, getPerusalViewerConfig } from './perusal'
 export type { PerusalAccessGatingMode, PerusalAccessConfig, PerusalViewerMode, WatermarkFont, PerusalViewerConfig } from './perusal'
+export { getFeaturedPlayerConfig } from './featured-player'
+export type { FeaturedPlayerConfig } from './featured-player'
+export { getNewsletterConfig } from './newsletter'
+export type { NewsletterConfig } from './newsletter'
 export { getGlobalLayout, getRedirects, getBreadcrumbsConfig, getEmailLayoutConfig, getScorePdfConfig } from './misc'
 export type {
   GlobalLayoutConfig,

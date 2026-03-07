@@ -12,11 +12,22 @@ import {
   asMetaText,
   toComparableMediaSrc,
   parseFeaturedRecordings,
+  parseFeaturedPlayerConfig,
   waitForScrollSettle,
   getFeaturedImageTransitionTransform,
   getFeaturedImageTransitionOpacity,
   findTouchByIdentifier,
 } from './utils'
+
+/** Find the header-player-anchor inside the active (visible) header layout. */
+function findVisibleHeaderPlayerAnchor(): HTMLElement | null {
+  const anchors = document.querySelectorAll<HTMLElement>('[data-header-player-anchor]')
+  for (const anchor of anchors) {
+    const layout = anchor.closest<HTMLElement>('[data-header-layout]')
+    if (layout && getComputedStyle(layout).display !== 'none') return anchor
+  }
+  return anchors[0] ?? null
+}
 
 export function initFeaturedPlayer(): () => void {
   const listenSection = document.querySelector<HTMLElement>('.listen-section')
@@ -76,10 +87,6 @@ export function initFeaturedPlayer(): () => void {
     !featuredPlayerShell ||
     !featuredPlayer ||
     !featuredToggle ||
-    !featuredMute ||
-    !featuredSeek ||
-    !featuredTimeCurrent ||
-    !featuredTimeTotal ||
     !fixedBar ||
     !fixedBarControls
   ) {
@@ -89,9 +96,9 @@ export function initFeaturedPlayer(): () => void {
   // Re-bind guarded elements so TypeScript narrows them in closures
   const playerShell: HTMLElement = featuredPlayerShell
   const player: HTMLAudioElement = featuredPlayer
-  const playerSeek: HTMLInputElement = featuredSeek
-  const playerTimeCurrent: HTMLElement = featuredTimeCurrent
-  const playerTimeTotal: HTMLElement = featuredTimeTotal
+  const playerSeek: HTMLInputElement | null = featuredSeek
+  const playerTimeCurrent: HTMLElement | null = featuredTimeCurrent
+  const playerTimeTotal: HTMLElement | null = featuredTimeTotal
   const playerBar: HTMLElement = fixedBar
   const playerBarControls: HTMLElement = fixedBarControls
   const playerToggleButtons = [featuredToggle, fixedBarToggle].filter(
@@ -111,6 +118,53 @@ export function initFeaturedPlayer(): () => void {
   )
 
   const featuredRecordings = parseFeaturedRecordings()
+  const featuredPlayerClientConfig = parseFeaturedPlayerConfig()
+  const isHeaderCenterMode = featuredPlayerClientConfig.position === 'header-center'
+  let headerPlayerAnchor = isHeaderCenterMode
+    ? findVisibleHeaderPlayerAnchor()
+    : null
+  const persistWrapper = fixedBar.closest('[data-featured-player-persist]')
+
+  // In dev mode, shift the Astro dev toolbar so it tucks behind the fixed player bar
+  // instead of behind the viewport edge. When tucked (data-hidden), z-index drops below
+  // the player bar so it slides behind it; when revealed, it sits above the bar.
+  let devToolbarObserver: MutationObserver | null = null
+  if (import.meta.env.DEV && featuredPlayerClientConfig.position === 'bottom') {
+    const injectDevToolbarStyle = (toolbar: Element): void => {
+      const shadow = toolbar.shadowRoot
+      if (!shadow || shadow.querySelector('[data-player-toolbar-fix]')) return
+      const bar = document.querySelector('.fixed-player-bar')
+      const barHeight = bar ? Math.ceil(bar.getBoundingClientRect().height) + 14 : 64
+      const tuckedBottom = Math.max(0, barHeight - 54)
+      const style = document.createElement('style')
+      style.setAttribute('data-player-toolbar-fix', '')
+      style.textContent = [
+        `#dev-toolbar-root { bottom: ${barHeight}px !important; }`,
+        `#dev-toolbar-root[data-hidden] { bottom: ${tuckedBottom}px !important; z-index: 90 !important; }`,
+      ].join('\n')
+      shadow.appendChild(style)
+    }
+
+    const existing = document.querySelector('astro-dev-toolbar')
+    if (existing) {
+      injectDevToolbarStyle(existing)
+    } else {
+      devToolbarObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node instanceof Element && node.tagName.toLowerCase() === 'astro-dev-toolbar') {
+              injectDevToolbarStyle(node)
+              devToolbarObserver?.disconnect()
+              devToolbarObserver = null
+              return
+            }
+          }
+        }
+      })
+      devToolbarObserver.observe(document.body, { childList: true })
+    }
+  }
+
   const inlineParent = featuredPlayerDock ?? playerShell.parentElement
 
   if (
@@ -167,6 +221,7 @@ export function initFeaturedPlayer(): () => void {
   let deferralDismissed = false
 
   function shouldDeferPlayerOnHome(): boolean {
+    if (isHeaderCenterMode) return false
     return (
       !deferralDismissed &&
       document.documentElement.getAttribute('data-page') === 'home' &&
@@ -323,6 +378,14 @@ export function initFeaturedPlayer(): () => void {
 
   function updateMarqueeOverflow(): void {
     if (!fixedBarMarquee || !fixedBarMarqueeContent) return
+
+    if (!featuredPlayerClientConfig.trackInfoScrollingText) {
+      fixedBarMarquee.classList.remove('is-overflowing')
+      fixedBarMarquee.style.removeProperty('--marquee-distance')
+      resetMarqueeToStart()
+      return
+    }
+
     const containerWidth = fixedBarMarquee.clientWidth
     const contentWidth = fixedBarMarqueeContent.scrollWidth
     const isOverflowing = contentWidth > containerWidth + 2
@@ -878,6 +941,9 @@ export function initFeaturedPlayer(): () => void {
     }
     playerShell.hidden = false
     playerBar.hidden = false
+    if (headerPlayerAnchor && playerBar.parentElement !== headerPlayerAnchor) {
+      headerPlayerAnchor.appendChild(playerBar)
+    }
     document.documentElement.classList.add('has-fixed-player')
     isFixedBarOpen = true
     updateMarqueeOverflow()
@@ -899,18 +965,20 @@ export function initFeaturedPlayer(): () => void {
       lastNonZeroVolume = volume
     }
 
-    if (!isSeeking) {
-      playerSeek.max = duration > 0 ? `${duration}` : '100'
-      playerSeek.value = duration > 0 ? `${Math.min(currentTime, duration)}` : '0'
-    }
+    if (playerSeek) {
+      if (!isSeeking) {
+        playerSeek.max = duration > 0 ? `${duration}` : '100'
+        playerSeek.value = duration > 0 ? `${Math.min(currentTime, duration)}` : '0'
+      }
 
-    const seekMax = Number.parseFloat(playerSeek.max)
-    const seekValue = Number.parseFloat(playerSeek.value)
-    const seekProgressPercent =
-      Number.isFinite(seekMax) && seekMax > 0 && Number.isFinite(seekValue)
-        ? Math.min(Math.max((seekValue / seekMax) * 100, 0), 100)
-        : 0
-    playerSeek.style.setProperty('--seek-progress', `${seekProgressPercent}%`)
+      const seekMax = Number.parseFloat(playerSeek.max)
+      const seekValue = Number.parseFloat(playerSeek.value)
+      const seekProgressPercent =
+        Number.isFinite(seekMax) && seekMax > 0 && Number.isFinite(seekValue)
+          ? Math.min(Math.max((seekValue / seekMax) * 100, 0), 100)
+          : 0
+      playerSeek.style.setProperty('--seek-progress', `${seekProgressPercent}%`)
+    }
 
     if (fixedBarVolume) {
       const volumePercent = Math.round((muted ? 0 : volume) * 100)
@@ -921,8 +989,8 @@ export function initFeaturedPlayer(): () => void {
     const currentTimeLabel = formatTime(currentTime)
     const totalTimeLabel = duration > 0 ? formatTime(duration) : '--:--'
 
-    playerTimeCurrent.textContent = currentTimeLabel
-    playerTimeTotal.textContent = totalTimeLabel
+    if (playerTimeCurrent) playerTimeCurrent.textContent = currentTimeLabel
+    if (playerTimeTotal) playerTimeTotal.textContent = totalTimeLabel
     listenSection?.classList.toggle('has-player-playing', playing)
     listenSection?.classList.toggle('has-player-muted', muted)
     playerBar.classList.toggle('has-player-playing', playing)
@@ -1353,6 +1421,7 @@ export function initFeaturedPlayer(): () => void {
   }
 
   const onFeaturedSeekInput = (): void => {
+    if (!playerSeek) return
     const duration = Number.isFinite(player.duration) ? player.duration : 0
     const nextValue = Number.parseFloat(playerSeek.value)
     if (duration > 0 && Number.isFinite(nextValue)) {
@@ -1391,6 +1460,7 @@ export function initFeaturedPlayer(): () => void {
   }
 
   const syncSeekFromClientX = (clientX: number): void => {
+    if (!playerSeek) return
     const seekRect = playerSeek.getBoundingClientRect()
     if (!(seekRect.width > 0)) return
 
@@ -1477,14 +1547,24 @@ export function initFeaturedPlayer(): () => void {
   }
 
   const onWindowResize = (): void => {
-    if (!fixedBarMarqueeContent) return
     if (resizeFrame) {
       window.cancelAnimationFrame(resizeFrame)
     }
     resizeFrame = window.requestAnimationFrame(() => {
       resizeFrame = 0
-      resetMarqueeToStart()
-      updateMarqueeOverflow()
+      if (isHeaderCenterMode) {
+        const newAnchor = findVisibleHeaderPlayerAnchor()
+        if (newAnchor && newAnchor !== headerPlayerAnchor) {
+          headerPlayerAnchor = newAnchor
+          if (isFixedBarOpen && playerBar.parentElement !== headerPlayerAnchor) {
+            headerPlayerAnchor.appendChild(playerBar)
+          }
+        }
+      }
+      if (fixedBarMarqueeContent) {
+        resetMarqueeToStart()
+        updateMarqueeOverflow()
+      }
     })
   }
 
@@ -1507,15 +1587,15 @@ export function initFeaturedPlayer(): () => void {
   }
   fixedBarVolume?.addEventListener('input', onFixedBarVolumeInput)
   fixedBarVolume?.addEventListener('change', onFixedBarVolumeInput)
-  playerSeek.addEventListener('pointerdown', onFeaturedSeekStart)
-  playerSeek.addEventListener('mousedown', onFeaturedSeekStart)
-  playerSeek.addEventListener('touchstart', onFeaturedSeekTouchStart, { passive: false })
-  playerSeek.addEventListener('input', onFeaturedSeekInputEvent)
-  playerSeek.addEventListener('change', onFeaturedSeekEnd)
-  playerSeek.addEventListener('pointerup', onFeaturedSeekEnd)
-  playerSeek.addEventListener('pointercancel', onFeaturedSeekEnd)
-  playerSeek.addEventListener('mouseup', onFeaturedSeekEnd)
-  playerSeek.addEventListener('keyup', onFeaturedSeekEnd)
+  playerSeek?.addEventListener('pointerdown', onFeaturedSeekStart)
+  playerSeek?.addEventListener('mousedown', onFeaturedSeekStart)
+  playerSeek?.addEventListener('touchstart', onFeaturedSeekTouchStart, { passive: false })
+  playerSeek?.addEventListener('input', onFeaturedSeekInputEvent)
+  playerSeek?.addEventListener('change', onFeaturedSeekEnd)
+  playerSeek?.addEventListener('pointerup', onFeaturedSeekEnd)
+  playerSeek?.addEventListener('pointercancel', onFeaturedSeekEnd)
+  playerSeek?.addEventListener('mouseup', onFeaturedSeekEnd)
+  playerSeek?.addEventListener('keyup', onFeaturedSeekEnd)
   window.addEventListener('touchmove', onFeaturedSeekTouchMove, { passive: false })
   window.addEventListener('touchend', onFeaturedSeekTouchEnd, { passive: false })
   window.addEventListener('touchcancel', onFeaturedSeekTouchCancel, { passive: false })
@@ -1534,6 +1614,17 @@ export function initFeaturedPlayer(): () => void {
   listenFigure?.addEventListener('pointercancel', onListenFigurePointerCancel)
   listenFigure?.addEventListener('touchmove', onListenFigureTouchMove, { passive: false })
   listenFigure?.addEventListener('click', onListenFigureClickCapture, true)
+
+  // Before view transition swap, move the bar back into the persist wrapper
+  // so it survives navigation (the persist system snapshots wrapper contents).
+  const onBeforeSwap = (): void => {
+    if (persistWrapper && playerBar.parentElement !== persistWrapper) {
+      persistWrapper.appendChild(playerBar)
+    }
+  }
+  if (headerPlayerAnchor) {
+    document.addEventListener('astro:before-swap', onBeforeSwap)
+  }
 
   const onRequestRecording = async (event: Event): Promise<void> => {
     const detail = (event as CustomEvent<{ key: string; play?: boolean }>).detail
@@ -1615,15 +1706,15 @@ export function initFeaturedPlayer(): () => void {
     }
     fixedBarVolume?.removeEventListener('input', onFixedBarVolumeInput)
     fixedBarVolume?.removeEventListener('change', onFixedBarVolumeInput)
-    playerSeek.removeEventListener('pointerdown', onFeaturedSeekStart)
-    playerSeek.removeEventListener('mousedown', onFeaturedSeekStart)
-    playerSeek.removeEventListener('touchstart', onFeaturedSeekTouchStart)
-    playerSeek.removeEventListener('input', onFeaturedSeekInputEvent)
-    playerSeek.removeEventListener('change', onFeaturedSeekEnd)
-    playerSeek.removeEventListener('pointerup', onFeaturedSeekEnd)
-    playerSeek.removeEventListener('pointercancel', onFeaturedSeekEnd)
-    playerSeek.removeEventListener('mouseup', onFeaturedSeekEnd)
-    playerSeek.removeEventListener('keyup', onFeaturedSeekEnd)
+    playerSeek?.removeEventListener('pointerdown', onFeaturedSeekStart)
+    playerSeek?.removeEventListener('mousedown', onFeaturedSeekStart)
+    playerSeek?.removeEventListener('touchstart', onFeaturedSeekTouchStart)
+    playerSeek?.removeEventListener('input', onFeaturedSeekInputEvent)
+    playerSeek?.removeEventListener('change', onFeaturedSeekEnd)
+    playerSeek?.removeEventListener('pointerup', onFeaturedSeekEnd)
+    playerSeek?.removeEventListener('pointercancel', onFeaturedSeekEnd)
+    playerSeek?.removeEventListener('mouseup', onFeaturedSeekEnd)
+    playerSeek?.removeEventListener('keyup', onFeaturedSeekEnd)
     window.removeEventListener('touchmove', onFeaturedSeekTouchMove)
     window.removeEventListener('touchend', onFeaturedSeekTouchEnd)
     window.removeEventListener('touchcancel', onFeaturedSeekTouchCancel)
@@ -1644,6 +1735,9 @@ export function initFeaturedPlayer(): () => void {
     listenFigure?.removeEventListener('pointercancel', onListenFigurePointerCancel)
     listenFigure?.removeEventListener('touchmove', onListenFigureTouchMove)
     listenFigure?.removeEventListener('click', onListenFigureClickCapture, true)
+    document.removeEventListener('astro:before-swap', onBeforeSwap)
+    devToolbarObserver?.disconnect()
+    devToolbarObserver = null
     clearHomeDeferral()
     clearRevealDoneWatcher()
     if (resizeFrame) {

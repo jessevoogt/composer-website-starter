@@ -8,3 +8,4 @@ watermarkAngle: -35
 watermarkFont: sans-serif
 watermarkFontScale: 100
 watermarkSpacing: 100
+showAudioPlayer: true

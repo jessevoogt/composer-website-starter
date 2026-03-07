@@ -270,7 +270,7 @@ final class Mailer
         }
 
         // Replace URL tokens with clickable links.
-        $urlTokens = ['workPageLink', 'siteUrl'];
+        $urlTokens = ['workPageLink', 'siteUrl', 'unsubscribeLink'];
         foreach ($urlTokens as $name) {
             if (isset($escaped[$name]) && $escaped[$name] !== '') {
                 $escaped[$name] = '<a href="' . $escaped[$name] . '" style="color:#4b5563;text-decoration:underline;">'
@@ -597,6 +597,7 @@ final class Mailer
         string $workTitle,
         string $workSubtitle = '',
         string $workId = '',
+        bool $newsletterOptIn = false,
     ): bool {
         $recipient = $_ENV['CONTACT_RECIPIENT'] ?? $this->fromEmail;
         $domain    = $this->siteDomain();
@@ -620,10 +621,12 @@ final class Mailer
         $html = $this->perusalNotificationHtml(
             $requesterName, $requesterEmail, $workTitle, $workSubtitle, $workPageUrl,
             $this->lastSentSubject, $this->lastSentBodyHtml, $this->lastSentFallbackUrl,
+            $newsletterOptIn,
         );
         $text = $this->perusalNotificationText(
             $requesterName, $requesterEmail, $workTitle, $workSubtitle, $workPageUrl,
             $this->lastSentSubject, $this->lastSentBody,
+            $newsletterOptIn,
         );
 
         return $this->send($recipient, $subject, $html, $text, $requesterEmail, $requesterName);
@@ -637,6 +640,7 @@ final class Mailer
         string $workPageUrl,
         string $sentSubject,
         string $sentBody,
+        bool $newsletterOptIn = false,
     ): string {
         $workLine = $workTitle;
         if ($workSubtitle !== '') {
@@ -652,6 +656,7 @@ final class Mailer
             '',
             "From: {$requesterName}",
             "Email: {$requesterEmail}",
+            'Newsletter: ' . ($newsletterOptIn ? 'Yes' : 'No'),
             "Work: {$workLine}",
             '',
             '--- Email sent to requester ---',
@@ -671,12 +676,16 @@ final class Mailer
         string $sentSubject,
         string $sentBodyHtml,
         string $sentFallbackUrl,
+        bool $newsletterOptIn = false,
     ): string {
         $name    = htmlspecialchars($requesterName, ENT_QUOTES, 'UTF-8');
         $email   = htmlspecialchars($requesterEmail, ENT_QUOTES, 'UTF-8');
         $work    = htmlspecialchars($workTitle, ENT_QUOTES, 'UTF-8');
         $sent    = htmlspecialchars($sentSubject, ENT_QUOTES, 'UTF-8');
         $composer = htmlspecialchars($this->fromName, ENT_QUOTES, 'UTF-8');
+        $newsletterBadge = $newsletterOptIn
+            ? '<span style="display:inline-block;margin-top:6px;padding:2px 8px;background-color:#d1fae5;color:#065f46;font-size:11px;font-weight:600;letter-spacing:0.03em;border-radius:3px;">NEWSLETTER: YES</span>'
+            : '<span style="display:inline-block;margin-top:6px;padding:2px 8px;background-color:#f3f4f6;color:#6b7280;font-size:11px;font-weight:600;letter-spacing:0.03em;border-radius:3px;">NEWSLETTER: NO</span>';
 
         // Work title — link to work detail page if URL is available.
         $workTitleHtml = $work;
@@ -706,6 +715,7 @@ final class Mailer
             . '<p style="margin:0;color:#1a1a2e;font-size:15px;font-weight:600;">' . $name . '</p>'
             . '<p style="margin:4px 0 0;color:#4b5563;font-size:14px;">'
             . '<a href="mailto:' . $email . '" style="color:#4b5563;text-decoration:underline;">' . $email . '</a></p>'
+            . $newsletterBadge
             . '</td></tr></table>'
             . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">'
             . '<tr><td style="padding:12px 16px;background-color:#f9fafb;border-left:3px solid #18212b;">'
@@ -823,14 +833,14 @@ final class Mailer
     /**
      * Send a contact form message to the site owner.
      */
-    public function sendContactMessage(string $senderName, string $senderEmail, string $message): bool
+    public function sendContactMessage(string $senderName, string $senderEmail, string $message, bool $newsletterOptIn = false): bool
     {
         $recipient = $_ENV['CONTACT_RECIPIENT'] ?? $this->fromEmail;
         $domain    = $this->siteDomain();
         $subject   = $this->sanitizeSubject("New message from {$senderName} via {$domain}");
 
-        $html = $this->contactHtml($senderName, $senderEmail, $message);
-        $text = $this->contactText($senderName, $senderEmail, $message);
+        $html = $this->contactHtml($senderName, $senderEmail, $message, $newsletterOptIn);
+        $text = $this->contactText($senderName, $senderEmail, $message, $newsletterOptIn);
 
         return $this->send($recipient, $subject, $html, $text, $senderEmail, $senderName);
     }
@@ -870,26 +880,31 @@ final class Mailer
         return $this->send($toEmail, $subject, $html, $text);
     }
 
-    private function contactText(string $senderName, string $senderEmail, string $message): string
+    private function contactText(string $senderName, string $senderEmail, string $message, bool $newsletterOptIn = false): string
     {
-        return implode("\n", [
+        $lines = [
             'New contact form message',
             '========================',
             '',
             "From: {$senderName}",
             "Email: {$senderEmail}",
+            'Newsletter: ' . ($newsletterOptIn ? 'Yes' : 'No'),
             '',
             'Message:',
             $message,
-        ]);
+        ];
+        return implode("\n", $lines);
     }
 
-    private function contactHtml(string $senderName, string $senderEmail, string $message): string
+    private function contactHtml(string $senderName, string $senderEmail, string $message, bool $newsletterOptIn = false): string
     {
         $name     = htmlspecialchars($senderName, ENT_QUOTES, 'UTF-8');
         $email    = htmlspecialchars($senderEmail, ENT_QUOTES, 'UTF-8');
         $msg      = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
         $composer = htmlspecialchars($this->fromName, ENT_QUOTES, 'UTF-8');
+        $newsletterBadge = $newsletterOptIn
+            ? '<span style="display:inline-block;margin-top:6px;padding:2px 8px;background-color:#d1fae5;color:#065f46;font-size:11px;font-weight:600;letter-spacing:0.03em;border-radius:3px;">NEWSLETTER: YES</span>'
+            : '<span style="display:inline-block;margin-top:6px;padding:2px 8px;background-color:#f3f4f6;color:#6b7280;font-size:11px;font-weight:600;letter-spacing:0.03em;border-radius:3px;">NEWSLETTER: NO</span>';
 
         $innerHtml = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">'
             . '<tr><td style="padding:12px 16px;background-color:#f9fafb;border-left:3px solid #18212b;">'
@@ -897,6 +912,7 @@ final class Mailer
             . '<p style="margin:0;color:#1a1a2e;font-size:15px;font-weight:600;">' . $name . '</p>'
             . '<p style="margin:4px 0 0;color:#4b5563;font-size:14px;">'
             . '<a href="mailto:' . $email . '" style="color:#4b5563;text-decoration:underline;">' . $email . '</a></p>'
+            . $newsletterBadge
             . '</td></tr></table>'
             . '<p style="margin:0 0 8px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">Message</p>'
             . '<div style="color:#1a1a2e;font-size:15px;line-height:1.6;white-space:pre-wrap;">' . $msg . '</div>';
@@ -986,6 +1002,118 @@ final class Mailer
             . '</td></tr></table>';
 
         return $this->wrapEmail($bodyHtml . $originalMessageHtml, $this->fromName);
+    }
+
+    // ── Newsletter email ──────────────────────────────────────────────────────
+
+    /**
+     * Send a newsletter email to a single subscriber.
+     *
+     * Reuses the existing templateToHtml() and wrapEmail() for consistent styling.
+     * Adds an unsubscribe link block and List-Unsubscribe headers.
+     *
+     * @param string $toEmail          Subscriber email address.
+     * @param string $firstName        Subscriber first name.
+     * @param string $subject          Newsletter subject line.
+     * @param string $bodyText         Newsletter body (plain text with {{token}} placeholders).
+     * @param string $unsubscribeToken Subscriber's unsubscribe token.
+     * @return bool Whether the send was accepted (2xx status).
+     */
+    public function sendNewsletter(
+        string $toEmail,
+        string $firstName,
+        string $subject,
+        string $bodyText,
+        string $unsubscribeToken,
+    ): bool {
+        $frontendUrl = rtrim($_ENV['FRONTEND_URL'] ?? '', '/');
+        $apiEndpoint = rtrim($_ENV['API_ENDPOINT'] ?? '', '/');
+        if ($apiEndpoint === '') {
+            $apiEndpoint = $frontendUrl . '/api';
+        }
+
+        $unsubscribeUrl = $apiEndpoint . '/unsubscribe?token=' . rawurlencode($unsubscribeToken);
+
+        $tokens = [
+            'firstName'       => $firstName,
+            'composerName'    => $this->fromName,
+            'siteUrl'         => $frontendUrl,
+            'unsubscribeLink' => $unsubscribeUrl,
+        ];
+
+        // Subject (with token replacement).
+        $resolvedSubject = $this->sanitizeSubject($this->replaceTokensText($subject, $tokens));
+
+        // Body — render using the same template system.
+        $text     = $this->replaceTokensText($bodyText, $tokens);
+        $bodyHtml = $this->templateToHtml($bodyText, $tokens);
+
+        // Add unsubscribe block above the footer.
+        $domain = $this->siteDomain();
+        $unsubEsc = htmlspecialchars($unsubscribeUrl, ENT_QUOTES, 'UTF-8');
+        $domainEsc = htmlspecialchars($domain, ENT_QUOTES, 'UTF-8');
+        $unsubscribeBlock = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
+            . '<tr><td style="padding:16px 0 0;">'
+            . '<p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.5;text-align:center;">'
+            . 'You are receiving this because you subscribed on ' . $domainEsc . '.<br>'
+            . '<a href="' . $unsubEsc . '" style="color:#6b7280;text-decoration:underline;">Unsubscribe</a>'
+            . '</p>'
+            . '</td></tr></table>';
+
+        $html = $this->wrapEmail($bodyHtml . $unsubscribeBlock, $this->fromName);
+
+        // Add unsubscribe link to plain text.
+        $text .= "\n\n---\nYou are receiving this because you subscribed on {$domain}.\nUnsubscribe: {$unsubscribeUrl}";
+
+        try {
+            // Build email with List-Unsubscribe headers (RFC 8058).
+            $email = new Mail();
+            $email->setFrom($this->fromEmail, $this->fromName);
+            $email->setSubject($resolvedSubject);
+            $email->addTo($toEmail);
+            $email->addContent('text/plain', $text);
+            $email->addContent('text/html', $html);
+
+            // List-Unsubscribe headers for native unsubscribe in email clients.
+            $email->addHeader('List-Unsubscribe', '<' . $unsubscribeUrl . '>');
+            $email->addHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
+
+            if ($this->showHeaderFavicon && $this->logoBase64 !== null) {
+                $email->addAttachment($this->logoBase64, 'image/png', 'logo.png', 'inline', 'header-logo');
+            }
+            if ($this->showSignatureLogo && $this->brandLogoBase64 !== null) {
+                $email->addAttachment($this->brandLogoBase64, 'image/png', 'brand-logo.png', 'inline', 'brand-logo');
+            }
+
+            $response = $this->client->send($email);
+            $status   = $response->statusCode();
+            if ($status >= 200 && $status < 300) {
+                return true;
+            }
+            $this->lastSendError = 'HTTP ' . $status;
+            $responseBody = $response->body();
+            if ($responseBody !== '') {
+                $decoded = json_decode($responseBody, true);
+                if (is_array($decoded) && isset($decoded['errors'][0]['message'])) {
+                    $this->lastSendError .= ': ' . $decoded['errors'][0]['message'];
+                }
+            }
+            return false;
+        } catch (\Throwable $e) {
+            $this->lastSendError = $e->getMessage();
+            return false;
+        }
+    }
+
+    /** Error message from the last failed sendNewsletter() call. */
+    private string $lastSendError = '';
+
+    /**
+     * Get the error message from the last failed send, if any.
+     */
+    public function getLastSendError(): string
+    {
+        return $this->lastSendError;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────

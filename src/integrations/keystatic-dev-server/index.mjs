@@ -29,6 +29,8 @@ import {
   SETUP_DEPLOY_API_PATH,
   SETUP_STATUS_API_PATH,
   SETUP_FINALIZE_API_PATH,
+  NEWSLETTER_ADMIN_API_PREFIX,
+  SUBMISSIONS_ADMIN_API_PREFIX,
   state,
 } from './constants.mjs'
 
@@ -63,6 +65,24 @@ import {
   handleKeystaticAdmin,
   setSharedState,
 } from './routes/keystatic-api.mjs'
+import {
+  handleNewsletterAdmin,
+  handleNewsletterConfig,
+  handleNewsletterSubscribersProxy,
+  handleNewsletterSubscriberDetailProxy,
+  handleNewsletterSubscribersDeleteProxy,
+  handleNewsletterSubscribersUpdateProxy,
+  handleNewsletterSendProxy,
+  handleNewsletterTemplatesList,
+  handleNewsletterTemplateRead,
+} from './routes/newsletter-admin.mjs'
+import {
+  handleSubmissionsAdmin,
+  handleSubmissionsConfig,
+  handleSubmissionsListProxy,
+  handleSubmissionsDetailProxy,
+  handleSubmissionsDeleteProxy,
+} from './routes/submissions-admin.mjs'
 
 // ─── Vite plugin: combined Keystatic middleware + toolbar ─────────────────────
 
@@ -214,6 +234,65 @@ function keystatic_DevPlugin() {
       return
     }
 
+    // ── Newsletter Admin API ────────────────────────────────────────────────
+    if (pathname.startsWith(NEWSLETTER_ADMIN_API_PREFIX)) {
+      const sub = pathname.slice(NEWSLETTER_ADMIN_API_PREFIX.length)
+      if (sub === '/config' && req.method === 'GET') {
+        await handleNewsletterConfig(req, res)
+        return
+      }
+      if (sub === '/subscribers' && req.method === 'GET') {
+        await handleNewsletterSubscribersProxy(req, res)
+        return
+      }
+      if (sub === '/subscribers/detail' && req.method === 'GET') {
+        await handleNewsletterSubscriberDetailProxy(req, res)
+        return
+      }
+      if (sub === '/subscribers/delete' && req.method === 'POST') {
+        await handleNewsletterSubscribersDeleteProxy(req, res)
+        return
+      }
+      if (sub === '/subscribers/update' && req.method === 'POST') {
+        await handleNewsletterSubscribersUpdateProxy(req, res)
+        return
+      }
+      if (sub === '/send') {
+        await handleNewsletterSendProxy(req, res)
+        return
+      }
+      if (sub === '/templates' && req.method === 'GET') {
+        await handleNewsletterTemplatesList(req, res)
+        return
+      }
+      if (sub.startsWith('/templates/') && req.method === 'GET') {
+        const fileName = decodeURIComponent(sub.slice('/templates/'.length))
+        await handleNewsletterTemplateRead(req, res, fileName)
+        return
+      }
+    }
+
+    // ── Submissions Admin API ────────────────────────────────────────────────
+    if (pathname.startsWith(SUBMISSIONS_ADMIN_API_PREFIX)) {
+      const sub = pathname.slice(SUBMISSIONS_ADMIN_API_PREFIX.length)
+      if (sub === '/config' && req.method === 'GET') {
+        await handleSubmissionsConfig(req, res)
+        return
+      }
+      if (sub === '/list' && req.method === 'GET') {
+        await handleSubmissionsListProxy(req, res)
+        return
+      }
+      if (sub === '/detail' && req.method === 'GET') {
+        await handleSubmissionsDetailProxy(req, res)
+        return
+      }
+      if (sub === '/delete' && req.method === 'POST') {
+        await handleSubmissionsDeleteProxy(req, res)
+        return
+      }
+    }
+
     // ── Works Data API ─────────────────────────────────────────────────────
     if (pathname === '/api/works-data' && req.method === 'GET') {
       await handleWorksData(req, res)
@@ -223,6 +302,18 @@ function keystatic_DevPlugin() {
     // ── Works Search HTML page ─────────────────────────────────────────────
     if (pathname === '/works-search' || pathname === '/works-search/') {
       await handleWorksSearch(req, res)
+      return
+    }
+
+    // ── Newsletter Admin HTML page (dev-only, under /keystatic/ namespace) ─
+    if (pathname === '/keystatic/newsletter' || pathname === '/keystatic/newsletter/') {
+      await handleNewsletterAdmin(req, res)
+      return
+    }
+
+    // ── Submissions Admin HTML page (dev-only, under /keystatic/ namespace) ─
+    if (pathname === '/keystatic/submissions' || pathname === '/keystatic/submissions/') {
+      await handleSubmissionsAdmin(req, res)
       return
     }
 

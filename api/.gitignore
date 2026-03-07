@@ -2,3 +2,5 @@
 /.env
 /storage/rate-limits/*
 !/storage/rate-limits/.gitkeep
+/storage/subscribers/*
+!/storage/subscribers/.gitkeep

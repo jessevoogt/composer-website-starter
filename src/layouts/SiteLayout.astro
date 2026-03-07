@@ -14,6 +14,7 @@ import {
   getFooterBlockConfig,
   getGlobalLayout,
   isPlaceholderConfig,
+  getFeaturedPlayerConfig,
 } from '@/utils/source-config'
 import {
   DEFAULT_THEME_FONT_BODY,
@@ -216,13 +217,28 @@ const allRecordingEntries = flattenRecordingEntries(
   perusalScores,
 )
 
+const featuredPlayerConfig = getFeaturedPlayerConfig()
 const featuredRecordings = allRecordingEntries.filter((entry) => entry.mp3)
 const fallbackRecording = allRecordingEntries.find((entry) => entry.mp3) ?? null
 
 const featuredPlayerRecordings: ClientRecordingEntry[] =
   featuredRecordings.length > 0 ? featuredRecordings : fallbackRecording ? [fallbackRecording] : []
 
+const isFeaturedPlayerEnabled = featuredPlayerConfig.enabled && featuredPlayerRecordings.length > 0
+const isPlayerInHeaderCenter = isFeaturedPlayerEnabled && featuredPlayerConfig.position === 'header-center'
 const serializedFeaturedPlayerRecordings = JSON.stringify(featuredPlayerRecordings)
+const serializedFeaturedPlayerConfig = JSON.stringify({
+  position: featuredPlayerConfig.position,
+  showScrubber: featuredPlayerConfig.showScrubber,
+  showMuteToggle: featuredPlayerConfig.showMuteToggle,
+  showVolumeControl: featuredPlayerConfig.showVolumeControl,
+  showDuration: featuredPlayerConfig.showDuration,
+  showInfoButton: featuredPlayerConfig.showInfoButton,
+  showTrackInfo: featuredPlayerConfig.showTrackInfo,
+  trackInfoScrollingText: featuredPlayerConfig.trackInfoScrollingText,
+  showPrevButton: featuredPlayerConfig.showPrevButton,
+  showNextButton: featuredPlayerConfig.showNextButton,
+})
 const candidateWorkIdForInitialRecording =
   pathSegments.length === 2 && pathSegments[0] === 'works' ? pathSegments[1] : undefined
 const workIdForInitialRecording =
@@ -434,6 +450,7 @@ const themeToolbarData = isDevMode
   data-theme-id={resolvedThemeId || undefined}
   data-page={isHomepage ? 'home' : undefined}
   data-has-header-breadcrumbs={hasHeaderBreadcrumbs ? 'true' : undefined}
+  data-player-position={isFeaturedPlayerEnabled ? featuredPlayerConfig.position : undefined}
 >
   <head>
     {isSetupNeeded && Astro.url.pathname !== '/setup/' && <meta http-equiv="refresh" content="0;url=/setup/" />}
@@ -534,9 +551,10 @@ const themeToolbarData = isDevMode
             ]
             return (
               <div class="header-layout" data-header-layout={bp}>
-                {slots.map(({ position, order, elements }) => {
-                  if (elements.length === 0) return null
-                  return (
+                {slots.flatMap(({ position, order, elements }) => {
+                  const result: any[] = []
+                  if (elements.length > 0) {
+                    result.push(
                     <div class="header-slot" data-slot={position} style={`order: ${order}`}>
                       {elements.map((element) => {
                         if (element === 'brand-logo') {
@@ -613,7 +631,12 @@ const themeToolbarData = isDevMode
                         return null
                       })}
                     </div>
-                  )
+                    )
+                  }
+                  if (isPlayerInHeaderCenter && order === 2) {
+                    result.push(<div class="header-player-anchor" data-header-player-anchor style="order: 2" />)
+                  }
+                  return result
                 })}
               </div>
             )
@@ -810,149 +833,36 @@ const themeToolbarData = isDevMode
       )
     }
 
-    <div data-featured-player-persist transition:persist>
-      <div data-featured-player-dock>
-        <div class="featured-player-shell" data-featured-player-shell hidden>
-          <div class="featured-player-ui" role="group" aria-label="Featured recording controls">
-            <button
-              type="button"
-              class="featured-control featured-control-bounce featured-control-nav featured-control-prev"
-              data-featured-prev
-              aria-label="Previous featured recording"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.9"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="m16.3 4.9-8.6 7.1 8.6 7.1"></path>
-              </svg>
-              <span class="sr-only">Play previous featured recording</span>
-            </button>
-            <button
-              type="button"
-              class="featured-control featured-control-bounce featured-control-play"
-              data-featured-toggle
-              aria-label="Pause featured recording"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path class="icon-play" d="M7 5.1L19 12L7 18.9V5.1Z" fill="currentColor" stroke="none"></path>
-                <path class="icon-pause" d="M8.4 5.7V18.3M15.6 5.7V18.3"></path>
-              </svg>
-              <span class="sr-only">Toggle featured recording playback</span>
-            </button>
-            <button
-              type="button"
-              class="featured-control featured-control-bounce featured-control-nav featured-control-next"
-              data-featured-next
-              aria-label="Next featured recording"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.9"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="m7.7 4.9 8.6 7.1-8.6 7.1"></path>
-              </svg>
-              <span class="sr-only">Play next featured recording</span>
-            </button>
-            <label class="sr-only" for="featured-track-seek">Seek featured recording</label>
-            <input
-              id="featured-track-seek"
-              class="featured-seek"
-              type="range"
-              min="0"
-              max="100"
-              step="0.1"
-              value="0"
-              data-featured-seek
-            />
-            <button
-              type="button"
-              class="featured-control featured-control-mute"
-              data-featured-mute
-              aria-label="Mute featured recording"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.4"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M4.5 10.1h4L13.7 6v12l-5.2-4.1h-4z"></path>
-                <path class="icon-sound-on" d="M16.6 9.1a4.4 4.4 0 0 1 0 5.8"></path>
-                <path class="icon-sound-on" d="M18.8 7.1a7.1 7.1 0 0 1 0 9.8"></path>
-                <path class="icon-sound-off" d="M16.2 9.2l4.2 5.6"></path>
-                <path class="icon-sound-off" d="M20.4 9.2l-4.2 5.6"></path>
-              </svg>
-              <span class="sr-only">Toggle featured recording mute</span>
-            </button>
-            <span class="featured-time featured-time-current" data-featured-time-current aria-live="off">0:00</span>
-            <span class="featured-time featured-time-total" data-featured-time-total aria-live="off">--:--</span>
-          </div>
-        </div>
-      </div>
-      <script
-        is:inline
-        type="application/json"
-        data-featured-recordings-data
-        set:html={serializedFeaturedPlayerRecordings}
-      />
-      <audio
-        id="featured-track-player"
-        preload="none"
-        data-featured-player
-        data-featured-recording-key={initialFeaturedRecordingKey || undefined}
-      >
-        <source src={defaultFeaturedAudioSrc} type="audio/mpeg" data-featured-source />
-        Your browser does not support the audio element.
-      </audio>
-      <div class="fixed-player-bar" data-fixed-player-bar hidden aria-label="Now playing" role="region">
-        <div class="fixed-player-bar-inner">
-          <div class="fixed-player-bar-meta">
-            <div class="fixed-player-bar-main-controls" role="group" aria-label="Playback controls">
-              <button
-                type="button"
-                class="featured-control featured-control-bounce featured-control-nav featured-control-prev fixed-player-bar-top-control fixed-player-bar-top-prev"
-                data-fixed-bar-prev
-                aria-label="Previous featured recording"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
+    {isFeaturedPlayerEnabled && (
+      <div data-featured-player-persist transition:persist>
+        <div data-featured-player-dock>
+          <div class="featured-player-shell" data-featured-player-shell hidden>
+            <div class="featured-player-ui" role="group" aria-label="Featured recording controls">
+              {featuredPlayerConfig.showPrevButton && (
+                <button
+                  type="button"
+                  class="featured-control featured-control-bounce featured-control-nav featured-control-prev"
+                  data-featured-prev
+                  aria-label="Previous featured recording"
                 >
-                  <path d="m16.3 4.9-8.6 7.1 8.6 7.1"></path>
-                </svg>
-                <span class="sr-only">Play previous featured recording</span>
-              </button>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m16.3 4.9-8.6 7.1 8.6 7.1"></path>
+                  </svg>
+                  <span class="sr-only">Play previous featured recording</span>
+                </button>
+              )}
               <button
                 type="button"
-                class="featured-control featured-control-bounce featured-control-play fixed-player-bar-top-control fixed-player-bar-top-play"
-                data-fixed-bar-toggle
+                class="featured-control featured-control-bounce featured-control-play"
+                data-featured-toggle
                 aria-label="Pause featured recording"
               >
                 <svg
@@ -969,98 +879,245 @@ const themeToolbarData = isDevMode
                 </svg>
                 <span class="sr-only">Toggle featured recording playback</span>
               </button>
-              <button
-                type="button"
-                class="featured-control featured-control-bounce featured-control-nav featured-control-next fixed-player-bar-top-control fixed-player-bar-top-next"
-                data-fixed-bar-next
-                aria-label="Next featured recording"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.9"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
+              {featuredPlayerConfig.showNextButton && (
+                <button
+                  type="button"
+                  class="featured-control featured-control-bounce featured-control-nav featured-control-next"
+                  data-featured-next
+                  aria-label="Next featured recording"
                 >
-                  <path d="m7.7 4.9 8.6 7.1-8.6 7.1"></path>
-                </svg>
-                <span class="sr-only">Play next featured recording</span>
-              </button>
-            </div>
-            <div class="fixed-player-bar-marquee-slot">
-              <span class="fixed-player-bar-marquee" data-fixed-bar-marquee>
-                <span class="fixed-player-bar-marquee-content" data-fixed-bar-marquee-content></span>
-              </span>
-            </div>
-            <a
-              href="/music/"
-              class="featured-control featured-control-bounce fixed-player-bar-info"
-              data-fixed-bar-link-icon
-              aria-label="More details for featured work"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.9"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="8.8"></circle>
-                <path d="M12 11.2v5"></path>
-                <path d="M12 7.8h.01"></path>
-              </svg>
-              <span class="sr-only">More details for featured work</span>
-            </a>
-            <div class="fixed-player-bar-volume-control">
-              <button
-                type="button"
-                class="featured-control featured-control-mute fixed-player-bar-mute"
-                data-fixed-bar-mute
-                aria-label="Mute featured recording"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.4"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m7.7 4.9 8.6 7.1-8.6 7.1"></path>
+                  </svg>
+                  <span class="sr-only">Play next featured recording</span>
+                </button>
+              )}
+              {featuredPlayerConfig.showScrubber && (
+                <Fragment>
+                  <label class="sr-only" for="featured-track-seek">Seek featured recording</label>
+                  <input
+                    id="featured-track-seek"
+                    class="featured-seek"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value="0"
+                    data-featured-seek
+                  />
+                </Fragment>
+              )}
+              {featuredPlayerConfig.showMuteToggle && (
+                <button
+                  type="button"
+                  class="featured-control featured-control-mute"
+                  data-featured-mute
+                  aria-label="Mute featured recording"
                 >
-                  <path d="M4.5 10.1h4L13.7 6v12l-5.2-4.1h-4z"></path>
-                  <path class="icon-sound-on" d="M16.6 9.1a4.4 4.4 0 0 1 0 5.8"></path>
-                  <path class="icon-sound-on" d="M18.8 7.1a7.1 7.1 0 0 1 0 9.8"></path>
-                  <path class="icon-sound-off" d="M16.2 9.2l4.2 5.6"></path>
-                  <path class="icon-sound-off" d="M20.4 9.2l-4.2 5.6"></path>
-                </svg>
-                <span class="sr-only">Toggle featured recording mute</span>
-              </button>
-              <div class="fixed-player-bar-volume-panel">
-                <label class="sr-only" for="fixed-bar-volume">Featured recording volume</label>
-                <input
-                  id="fixed-bar-volume"
-                  class="fixed-player-bar-volume"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value="100"
-                  data-fixed-bar-volume
-                  aria-label="Featured recording volume"
-                />
-              </div>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M4.5 10.1h4L13.7 6v12l-5.2-4.1h-4z"></path>
+                    <path class="icon-sound-on" d="M16.6 9.1a4.4 4.4 0 0 1 0 5.8"></path>
+                    <path class="icon-sound-on" d="M18.8 7.1a7.1 7.1 0 0 1 0 9.8"></path>
+                    <path class="icon-sound-off" d="M16.2 9.2l4.2 5.6"></path>
+                    <path class="icon-sound-off" d="M20.4 9.2l-4.2 5.6"></path>
+                  </svg>
+                  <span class="sr-only">Toggle featured recording mute</span>
+                </button>
+              )}
+              {featuredPlayerConfig.showDuration && (
+                <Fragment>
+                  <span class="featured-time featured-time-current" data-featured-time-current aria-live="off">0:00</span>
+                  <span class="featured-time featured-time-total" data-featured-time-total aria-live="off">--:--</span>
+                </Fragment>
+              )}
             </div>
           </div>
-          <div class="fixed-player-bar-controls">
-            <!-- shell gets appended here via JS -->
+        </div>
+        <script
+          is:inline
+          type="application/json"
+          data-featured-recordings-data
+          set:html={serializedFeaturedPlayerRecordings}
+        />
+        <script
+          is:inline
+          type="application/json"
+          data-featured-player-config
+          set:html={serializedFeaturedPlayerConfig}
+        />
+        <audio
+          id="featured-track-player"
+          preload="none"
+          data-featured-player
+          data-featured-recording-key={initialFeaturedRecordingKey || undefined}
+        >
+          <source src={defaultFeaturedAudioSrc} type="audio/mpeg" data-featured-source />
+          Your browser does not support the audio element.
+        </audio>
+        <div class="fixed-player-bar" data-fixed-player-bar hidden aria-label="Now playing" role="region">
+          <div class="fixed-player-bar-inner">
+            <div class="fixed-player-bar-meta">
+              <div class="fixed-player-bar-main-controls" role="group" aria-label="Playback controls">
+                {featuredPlayerConfig.showPrevButton && (
+                  <button
+                    type="button"
+                    class="featured-control featured-control-bounce featured-control-nav featured-control-prev fixed-player-bar-top-control fixed-player-bar-top-prev"
+                    data-fixed-bar-prev
+                    aria-label="Previous featured recording"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m16.3 4.9-8.6 7.1 8.6 7.1"></path>
+                    </svg>
+                    <span class="sr-only">Play previous featured recording</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  class="featured-control featured-control-bounce featured-control-play fixed-player-bar-top-control fixed-player-bar-top-play"
+                  data-fixed-bar-toggle
+                  aria-label="Pause featured recording"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path class="icon-play" d="M7 5.1L19 12L7 18.9V5.1Z" fill="currentColor" stroke="none"></path>
+                    <path class="icon-pause" d="M8.4 5.7V18.3M15.6 5.7V18.3"></path>
+                  </svg>
+                  <span class="sr-only">Toggle featured recording playback</span>
+                </button>
+                {featuredPlayerConfig.showNextButton && (
+                  <button
+                    type="button"
+                    class="featured-control featured-control-bounce featured-control-nav featured-control-next fixed-player-bar-top-control fixed-player-bar-top-next"
+                    data-fixed-bar-next
+                    aria-label="Next featured recording"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="m7.7 4.9 8.6 7.1-8.6 7.1"></path>
+                    </svg>
+                    <span class="sr-only">Play next featured recording</span>
+                  </button>
+                )}
+              </div>
+              {featuredPlayerConfig.showTrackInfo && (
+                <div class="fixed-player-bar-marquee-slot">
+                  <span class="fixed-player-bar-marquee" data-fixed-bar-marquee>
+                    <span class="fixed-player-bar-marquee-content" data-fixed-bar-marquee-content></span>
+                  </span>
+                </div>
+              )}
+              {featuredPlayerConfig.showInfoButton && (
+                <a
+                  href="/music/"
+                  class="featured-control featured-control-bounce fixed-player-bar-info"
+                  data-fixed-bar-link-icon
+                  aria-label="More details for featured work"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="8.8"></circle>
+                    <path d="M12 11.2v5"></path>
+                    <path d="M12 7.8h.01"></path>
+                  </svg>
+                  <span class="sr-only">More details for featured work</span>
+                </a>
+              )}
+              {featuredPlayerConfig.showMuteToggle && (
+                <div class="fixed-player-bar-volume-control">
+                  <button
+                    type="button"
+                    class="featured-control featured-control-mute fixed-player-bar-mute"
+                    data-fixed-bar-mute
+                    aria-label="Mute featured recording"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M4.5 10.1h4L13.7 6v12l-5.2-4.1h-4z"></path>
+                      <path class="icon-sound-on" d="M16.6 9.1a4.4 4.4 0 0 1 0 5.8"></path>
+                      <path class="icon-sound-on" d="M18.8 7.1a7.1 7.1 0 0 1 0 9.8"></path>
+                      <path class="icon-sound-off" d="M16.2 9.2l4.2 5.6"></path>
+                      <path class="icon-sound-off" d="M20.4 9.2l-4.2 5.6"></path>
+                    </svg>
+                    <span class="sr-only">Toggle featured recording mute</span>
+                  </button>
+                  {featuredPlayerConfig.showVolumeControl && (
+                    <div class="fixed-player-bar-volume-panel">
+                      <label class="sr-only" for="fixed-bar-volume">Featured recording volume</label>
+                      <input
+                        id="fixed-bar-volume"
+                        class="fixed-player-bar-volume"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value="100"
+                        data-fixed-bar-volume
+                        aria-label="Featured recording volume"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div class="fixed-player-bar-controls">
+              <!-- shell gets appended here via JS -->
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    )}
 
     <slot name="body-overlays" />
     <slot name="body-scripts" />

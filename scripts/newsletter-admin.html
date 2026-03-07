@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newsletter Admin</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --bg: #0e0e10;
+  --bg-soft: #18181b;
+  --bg-muted: #27272a;
+  --border: #3f3f46;
+  --text: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --radius: 6px;
+}
+html[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-soft: #f4f4f5;
+  --bg-muted: #e4e4e7;
+  --border: #d4d4d8;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --text-dim: #71717a;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+html { background: var(--bg); color: var(--text); }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px 80px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  margin: 0 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+.page-header .page-logo {
+  height: 28px;
+  width: auto;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.page-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.page-header .back-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap;
+  margin-left: auto;
+}
+.page-header .back-link:hover { color: var(--accent-hover); }
+
+/* ── Tabs ───────────────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: var(--text); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── Config banner ──────────────────────────────────────────────────────── */
+.config-banner {
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.config-banner.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.config-banner code {
+  background: var(--bg-muted);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+/* ── Subscriber list ────────────────────────────────────────────────────── */
+.subscriber-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  flex: 1;
+  padding: 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stat-card .stat-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.subscriber-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.subscriber-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+.subscriber-table th.col-check,
+.subscriber-table td.col-check {
+  width: 32px;
+  text-align: center;
+  padding-left: 8px;
+  padding-right: 4px;
+}
+.subscriber-table td {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--bg-muted);
+  color: var(--text-muted);
+}
+.subscriber-table tr:hover td {
+  background: var(--bg-soft);
+}
+.subscriber-table tr.selected td {
+  background: rgba(99,102,241,0.08);
+}
+.subscriber-table .source-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  background: var(--bg-muted);
+  color: var(--text-dim);
+}
+.subscriber-table .editable-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.subscriber-table .editable-cell .cell-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.subscriber-table .edit-btn,
+.subscriber-table .mailto-btn,
+.subscriber-table .copy-btn,
+.subscriber-table .copy-name-btn {
+  visibility: hidden;
+  display: inline-flex;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.subscriber-table .edit-btn:hover,
+.subscriber-table .mailto-btn:hover,
+.subscriber-table .copy-btn:hover,
+.subscriber-table .copy-name-btn:hover {
+  color: var(--text);
+}
+.subscriber-table tr:hover .edit-btn,
+.subscriber-table tr:hover .mailto-btn,
+.subscriber-table tr:hover .copy-btn,
+.subscriber-table tr:hover .copy-name-btn,
+.subscriber-table tr:focus-within .edit-btn,
+.subscriber-table tr:focus-within .mailto-btn,
+.subscriber-table tr:focus-within .copy-btn,
+.subscriber-table tr:focus-within .copy-name-btn {
+  visibility: visible;
+}
+.subscriber-table .edit-active {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.subscriber-table .edit-active input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-soft);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 13px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  outline: none;
+  box-sizing: border-box;
+}
+.subscriber-table .edit-active input:focus {
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.subscriber-table .edit-save,
+.subscriber-table .edit-cancel {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 3px 5px;
+  line-height: 1;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.subscriber-table .edit-save {
+  color: var(--success);
+  border-color: var(--success);
+}
+.subscriber-table .edit-save:hover {
+  background: rgba(34,197,94,0.12);
+}
+.subscriber-table .edit-cancel {
+  color: var(--text-dim);
+}
+.subscriber-table .edit-cancel:hover {
+  color: var(--text);
+  background: var(--bg-muted);
+}
+.email-masked {
+  color: var(--text-dim);
+  font-style: italic;
+}
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.bulk-actions .bulk-delete-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: #7f1d1d;
+  color: #fecaca;
+  border: 1px solid #991b1b;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.bulk-actions .bulk-delete-btn:hover {
+  background: #991b1b;
+}
+.bulk-actions .bulk-count {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-dim);
+}
+.empty-state p { margin: 4px 0; }
+
+.refresh-btn {
+  padding: 6px 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.refresh-btn:hover {
+  border-color: var(--text-dim);
+  color: var(--text);
+}
+
+/* ── Compose form ───────────────────────────────────────────────────────── */
+.compose-form { max-width: 680px; }
+.form-group {
+  margin-bottom: 20px;
+}
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.form-group input[type="text"] {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.form-group input[type="text"]:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
+}
+.form-group textarea {
+  width: 100%;
+  min-height: 280px;
+  padding: 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+.form-group textarea:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.25);
+}
+.form-group textarea::placeholder { color: var(--text-dim); }
+.form-group input[type="text"]::placeholder { color: var(--text-dim); }
+
+.token-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.token-hint code {
+  background: var(--bg-muted);
+  padding: 1px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.token-hint code:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.template-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.template-bar select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 6px 30px 6px 10px;
+  background: var(--bg-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239e9e9e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+.template-bar select:focus-visible {
+  border-color: var(--accent);
+}
+.template-bar .load-btn {
+  padding: 6px 14px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #fff;
+  font-size: 13px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.template-bar .load-btn:hover:not([disabled]) {
+  opacity: 0.85;
+}
+.template-bar .load-btn[disabled] {
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text-dim);
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+.btn-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.btn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-secondary {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--border);
+  color: var(--text);
+}
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(239,68,68,0.1);
+}
+
+/* ── Status messages ────────────────────────────────────────────────────── */
+.status-msg {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.5;
+  display: none;
+}
+.status-msg.visible { display: block; }
+.status-msg.success {
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: var(--success);
+}
+.status-msg.error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: var(--danger);
+}
+.status-msg.info {
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.3);
+  color: var(--accent-hover);
+}
+.status-msg.warning {
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  color: var(--warning);
+}
+
+/* ── Confirmation dialog ────────────────────────────────────────────────── */
+.confirm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.confirm-overlay.visible {
+  display: flex;
+}
+.confirm-dialog {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  max-width: 420px;
+  width: 90%;
+}
+.confirm-dialog h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.confirm-dialog p {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.confirm-dialog .btn-row {
+  justify-content: flex-end;
+}
+
+/* ── Loading spinner ────────────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--text-dim);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search)
+  var explicit = params.get('theme')
+  function apply(t) { document.documentElement.setAttribute('data-theme', t) }
+  if (explicit === 'light' || explicit === 'dark') {
+    apply(explicit)
+  } else {
+    apply(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  }
+  window.addEventListener('message', function(e) {
+    if (e.data && typeof e.data === 'object' && e.data.type === 'theme-change' && (e.data.theme === 'dark' || e.data.theme === 'light')) {
+      apply(e.data.theme)
+    }
+  })
+  if (!explicit) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      apply(e.matches ? 'dark' : 'light')
+    })
+  }
+})()
+</script>
+</head>
+<body>
+
+<header class="page-header">
+  <img src="/favicon.svg" alt="" class="page-logo">
+  <h1>Newsletter</h1>
+  <a href="/keystatic/" class="back-link">Back to CMS</a>
+</header>
+
+<div id="config-banner" class="config-banner" style="display:none"></div>
+
+<div class="tabs" role="tablist">
+  <button class="tab-btn active" role="tab" aria-selected="true" data-tab="subscribers">Subscribers</button>
+  <button class="tab-btn" role="tab" aria-selected="false" data-tab="compose">Send Newsletter</button>
+</div>
+
+<!-- ── Subscribers tab ──────────────────────────────────────────────────── -->
+<div id="tab-subscribers" class="tab-panel active" role="tabpanel">
+  <div class="subscriber-stats">
+    <div class="stat-card">
+      <div class="stat-value" id="subscriber-count">--</div>
+      <div class="stat-label">Subscribers</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="source-contact-count">--</div>
+      <div class="stat-label">From Contact Form</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="source-perusal-count">--</div>
+      <div class="stat-label">From Perusal Request</div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+    <button class="refresh-btn" id="refresh-btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg> Refresh</button>
+    <span id="subscriber-status" style="font-size:12px;color:var(--text-dim)"></span>
+  </div>
+
+  <div class="bulk-actions" id="bulk-actions" style="display:none;">
+    <button class="bulk-delete-btn" id="bulk-delete-btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Delete selected</button>
+    <span class="bulk-count" id="bulk-count"></span>
+  </div>
+
+  <div id="subscriber-list"></div>
+</div>
+
+<!-- ── Compose tab ──────────────────────────────────────────────────────── -->
+<div id="tab-compose" class="tab-panel" role="tabpanel">
+  <div class="compose-form">
+
+    <div class="template-bar">
+      <select id="template-select" aria-label="Template">
+        <option value="">Load a template...</option>
+      </select>
+      <button class="load-btn" id="load-template-btn" type="button" disabled>Load</button>
+    </div>
+
+    <div class="form-group">
+      <label for="nl-subject">Subject</label>
+      <input type="text" id="nl-subject" class="token-target" placeholder="e.g. New music, upcoming performances, and more">
+    </div>
+
+    <div class="form-group">
+      <label for="nl-body">Body</label>
+      <textarea id="nl-body" class="token-target" placeholder="Write your newsletter content here..."></textarea>
+    </div>
+
+    <div class="token-hint">
+      Tokens (click to insert into subject or body):
+      <code data-token="{{firstName}}">{{firstName}}</code>
+      <code data-token="{{composerName}}">{{composerName}}</code>
+      <code data-token="{{siteUrl}}">{{siteUrl}}</code>
+    </div>
+
+    <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer;user-select:none;margin-bottom:8px;">
+      <input type="checkbox" id="cc-owner-toggle" checked> Also send a copy to myself
+    </label>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="test-send-btn" type="button">
+        Send Test to Myself
+      </button>
+      <button class="btn btn-primary" id="send-all-btn" type="button">
+        Send to All Subscribers
+      </button>
+    </div>
+
+    <div id="compose-status" class="status-msg"></div>
+  </div>
+</div>
+
+<!-- ── Confirm dialog ───────────────────────────────────────────────────── -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-dialog" role="alertdialog" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+    <h3 id="confirm-title">Send newsletter?</h3>
+    <p id="confirm-desc">This will send the newsletter to all subscribers. This action cannot be undone.</p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-send">Yes, send to all</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict'
+
+  const API_BASE = '/api/dev/newsletter'
+  const searchParams = new URLSearchParams(window.location.search)
+  const isModalMode = searchParams.get('modal') === '1'
+
+  // ── Modal mode: hide back-link (parent panel has its own ✕ button) ───
+  if (isModalMode) {
+    const backLink = document.querySelector('.back-link')
+    if (backLink) backLink.style.display = 'none'
+    // Add right padding so header content doesn't collide with panel ✕ button
+    document.body.style.paddingRight = '48px'
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        // Don't close modal if the confirm dialog is open
+        const confirmOverlay = document.getElementById('confirm-overlay')
+        if (confirmOverlay && confirmOverlay.classList.contains('visible')) return
+        e.preventDefault()
+        window.parent.postMessage({ type: 'newsletter-admin-close' }, '*')
+      }
+    })
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────
+  const tabBtns = document.querySelectorAll('.tab-btn')
+  const tabPanels = document.querySelectorAll('.tab-panel')
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false') })
+      tabPanels.forEach(p => p.classList.remove('active'))
+      btn.classList.add('active')
+      btn.setAttribute('aria-selected', 'true')
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active')
+    })
+  })
+
+  // ── Config check ──────────────────────────────────────────────────────
+  let configOk = false
+
+  async function checkConfig() {
+    try {
+      const res = await fetch(API_BASE + '/config')
+      const data = await res.json()
+      const banner = document.getElementById('config-banner')
+
+      if (!data.hasSecret) {
+        banner.style.display = 'block'
+        banner.classList.add('error')
+        banner.innerHTML = '<strong>Newsletter secret not configured.</strong><br>'
+          + 'Add <code>NEWSLETTER_SECRET="..."</code> to <code>api/.env</code>. '
+          + 'Generate one with: <code>node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"</code>'
+        return
+      }
+
+      if (!data.apiEndpoint || data.apiEndpoint === '/api') {
+        banner.style.display = 'block'
+        banner.classList.add('error')
+        banner.innerHTML = '<strong>API endpoint not configured.</strong><br>'
+          + 'Set <code>FRONTEND_URL</code> or <code>API_ENDPOINT</code> in <code>api/.env</code>.'
+        return
+      }
+
+      configOk = true
+      banner.style.display = 'none'
+
+      // Load subscribers on startup
+      loadSubscribers()
+      loadTemplates()
+    } catch (err) {
+      const banner = document.getElementById('config-banner')
+      banner.style.display = 'block'
+      banner.classList.add('error')
+      banner.textContent = 'Failed to load newsletter config: ' + err.message
+    }
+  }
+
+  // ── Subscribers ───────────────────────────────────────────────────────
+  let subscriberList = []    // Current list (always masked emails + id)
+  let selectedIds = new Set() // Track selected subscriber IDs
+
+  async function loadSubscribers() {
+    if (!configOk) return
+
+    const statusEl = document.getElementById('subscriber-status')
+    statusEl.textContent = 'Loading...'
+
+    try {
+      const res = await fetch(API_BASE + '/subscribers')
+      const data = await res.json()
+
+      if (!data.success) {
+        statusEl.textContent = 'Error: ' + (data.message || 'Failed to load')
+        return
+      }
+
+      subscriberList = data.subscribers || []
+      const count = data.count ?? subscriberList.length
+
+      document.getElementById('subscriber-count').textContent = count
+      const contactCount = subscriberList.filter(s => s.source === 'contact').length
+      const perusalCount = subscriberList.filter(s => s.source === 'perusal').length
+      document.getElementById('source-contact-count').textContent = contactCount
+      document.getElementById('source-perusal-count').textContent = perusalCount
+
+      statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString()
+      selectedIds.clear()
+      renderSubscribers()
+    } catch (err) {
+      statusEl.textContent = 'Error: ' + err.message
+    }
+  }
+
+  function renderSubscribers() {
+    const list = subscriberList
+    const container = document.getElementById('subscriber-list')
+
+    if (list.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No subscribers yet.</p>'
+        + '<p style="font-size:12px">Subscribers are added when visitors check the newsletter box on the contact or perusal request forms.</p></div>'
+      updateBulkActions()
+      return
+    }
+
+    const pencilSvg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>'
+
+    let html = '<table class="subscriber-table"><thead><tr>'
+      + '<th class="col-check"><input type="checkbox" id="select-all-toggle" title="Select all"></th>'
+      + '<th>Email</th><th>Name</th><th>Source</th><th>Date</th>'
+      + '</tr></thead><tbody>'
+
+    for (const sub of list) {
+      const id = sub.id || ''
+      const email = sub.email || ''
+      const date = (sub.subscribedAt || '').slice(0, 10)
+      const checked = selectedIds.has(id) ? ' checked' : ''
+      const selectedClass = selectedIds.has(id) ? ' selected' : ''
+
+      html += '<tr class="sub-row' + selectedClass + '" data-id="' + esc(id) + '">'
+        + '<td class="col-check"><input type="checkbox" class="sub-check"' + checked + '></td>'
+        + '<td><div class="editable-cell" data-field="email">'
+        + '<span class="cell-value email-masked">' + esc(email) + '</span>'
+        + '<button class="mailto-btn" type="button" aria-label="Send email to subscriber"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></button>'
+        + '<button class="copy-btn" type="button" aria-label="Copy email to clipboard"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>'
+        + '<button class="edit-btn" type="button" aria-label="Edit email">' + pencilSvg + '</button>'
+        + '</div></td>'
+        + '<td><div class="editable-cell" data-field="firstName">'
+        + '<span class="cell-value">' + esc(sub.firstName || '--') + '</span>'
+        + '<button class="copy-name-btn" type="button" aria-label="Copy name to clipboard"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>'
+        + '<button class="edit-btn" type="button" aria-label="Edit name">' + pencilSvg + '</button>'
+        + '</div></td>'
+        + '<td><span class="source-badge">' + esc(sub.source || '--') + '</span></td>'
+        + '<td>' + esc(date || '--') + '</td>'
+        + '</tr>'
+    }
+
+    html += '</tbody></table>'
+    container.innerHTML = html
+    updateBulkActions()
+
+    // Select-all toggle
+    const selectAll = document.getElementById('select-all-toggle')
+    if (selectAll) {
+      selectAll.checked = list.length > 0 && selectedIds.size === list.length
+      selectAll.addEventListener('change', () => {
+        if (selectAll.checked) {
+          list.forEach(s => selectedIds.add(s.id))
+        } else {
+          selectedIds.clear()
+        }
+        renderSubscribers()
+      })
+    }
+
+    // Individual checkboxes
+    container.querySelectorAll('.sub-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = cb.closest('tr').dataset.id
+        if (cb.checked) selectedIds.add(id); else selectedIds.delete(id)
+        cb.closest('tr').classList.toggle('selected', cb.checked)
+        updateBulkActions()
+        const selectAll = document.getElementById('select-all-toggle')
+        if (selectAll) selectAll.checked = selectedIds.size === list.length
+      })
+    })
+
+    // Inline editing — fetches single subscriber detail on demand
+    container.querySelectorAll('.edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const cell = btn.closest('.editable-cell')
+        if (cell) startInlineEdit(cell)
+      })
+    })
+
+    // Mailto — fetch real email, then open mailto: link
+    container.querySelectorAll('.mailto-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('tr')
+        const subId = row.dataset.id
+        btn.disabled = true
+        btn.style.opacity = '0.4'
+        try {
+          const res = await fetch(API_BASE + '/subscribers/detail?id=' + encodeURIComponent(subId))
+          const data = await res.json()
+          if (data.success && data.email) {
+            const name = data.firstName || ''
+            const body = name ? 'Hi ' + name + ',\n\n' : ''
+            window.location.href = 'mailto:' + encodeURIComponent(data.email) + '?body=' + encodeURIComponent(body)
+          } else {
+            alert('Could not load email: ' + (data.message || 'Unknown error'))
+          }
+        } catch (err) {
+          alert('Could not load email: ' + err.message)
+        } finally {
+          btn.disabled = false
+          btn.style.opacity = ''
+        }
+      })
+    })
+
+    // Copy email to clipboard — fetch real email, then copy
+    container.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('tr')
+        const subId = row.dataset.id
+        btn.disabled = true
+        btn.style.opacity = '0.4'
+        try {
+          const res = await fetch(API_BASE + '/subscribers/detail?id=' + encodeURIComponent(subId))
+          const data = await res.json()
+          if (data.success && data.email) {
+            await navigator.clipboard.writeText(data.email)
+            // Brief checkmark feedback
+            const origHtml = btn.innerHTML
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+            setTimeout(() => { btn.innerHTML = origHtml }, 1200)
+          } else {
+            alert('Could not load email: ' + (data.message || 'Unknown error'))
+          }
+        } catch (err) {
+          alert('Could not copy email: ' + err.message)
+        } finally {
+          btn.disabled = false
+          btn.style.opacity = ''
+        }
+      })
+    })
+
+    // Copy name to clipboard — name is already visible, no fetch needed
+    container.querySelectorAll('.copy-name-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cell = btn.closest('.editable-cell')
+        const name = cell.querySelector('.cell-value').textContent.trim()
+        if (!name || name === '--') return
+        try {
+          await navigator.clipboard.writeText(name)
+          const origHtml = btn.innerHTML
+          btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+          setTimeout(() => { btn.innerHTML = origHtml }, 1200)
+        } catch (err) {
+          alert('Could not copy name: ' + err.message)
+        }
+      })
+    })
+  }
+
+  function updateBulkActions() {
+    const bar = document.getElementById('bulk-actions')
+    const count = selectedIds.size
+    if (count === 0) {
+      bar.style.display = 'none'
+    } else {
+      bar.style.display = 'flex'
+      document.getElementById('bulk-count').textContent = count + ' selected'
+    }
+  }
+
+  // ── Inline editing ────────────────────────────────────────────────────
+
+  async function startInlineEdit(cell) {
+    if (cell.querySelector('.edit-active')) return
+    const field = cell.dataset.field
+    const row = cell.closest('tr')
+    const subId = row.dataset.id
+    const valueSpan = cell.querySelector('.cell-value')
+    const editBtn = cell.querySelector('.edit-btn')
+
+    // Hide value + pencil, show loading then input
+    valueSpan.style.display = 'none'
+    if (editBtn) editBtn.style.visibility = 'hidden'
+
+    const wrapper = document.createElement('div')
+    wrapper.className = 'edit-active'
+    wrapper.innerHTML = '<span style="font-size:12px;color:var(--text-dim)">Loading...</span>'
+    cell.appendChild(wrapper)
+
+    // Fetch real subscriber detail
+    let detail
+    try {
+      const res = await fetch(API_BASE + '/subscribers/detail?id=' + encodeURIComponent(subId))
+      detail = await res.json()
+      if (!detail.success) {
+        wrapper.remove()
+        valueSpan.style.display = ''
+        if (editBtn) editBtn.style.visibility = ''
+        alert('Could not load subscriber: ' + (detail.message || 'Unknown error'))
+        return
+      }
+    } catch (err) {
+      wrapper.remove()
+      valueSpan.style.display = ''
+      if (editBtn) editBtn.style.visibility = ''
+      alert('Could not load subscriber: ' + err.message)
+      return
+    }
+
+    const currentValue = field === 'email' ? detail.email : detail.firstName
+    wrapper.innerHTML = ''
+
+    const input = document.createElement('input')
+    input.type = field === 'email' ? 'email' : 'text'
+    input.value = currentValue
+    input.setAttribute('aria-label', field === 'email' ? 'Email address' : 'Name')
+    input.required = true
+
+    const saveBtn = document.createElement('button')
+    saveBtn.type = 'button'
+    saveBtn.className = 'edit-save'
+    saveBtn.setAttribute('aria-label', 'Save')
+    saveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>'
+
+    const cancelBtn = document.createElement('button')
+    cancelBtn.type = 'button'
+    cancelBtn.className = 'edit-cancel'
+    cancelBtn.setAttribute('aria-label', 'Cancel')
+    cancelBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+
+    wrapper.appendChild(input)
+    wrapper.appendChild(saveBtn)
+    wrapper.appendChild(cancelBtn)
+    input.focus()
+    input.select()
+
+    function restore() {
+      wrapper.remove()
+      valueSpan.style.display = ''
+      if (editBtn) editBtn.style.visibility = ''
+    }
+
+    async function commit() {
+      if (!input.reportValidity()) return
+      const newValue = input.value.trim()
+      if (newValue === currentValue) {
+        restore()
+        return
+      }
+
+      const payload = { id: subId }
+      if (field === 'email') payload.email = newValue
+      else payload.firstName = newValue
+
+      saveBtn.disabled = true
+      cancelBtn.disabled = true
+      input.disabled = true
+
+      try {
+        const res = await fetch(API_BASE + '/subscribers/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = await res.json()
+        if (data.success) {
+          // Refresh the full list to get updated masked emails and new IDs
+          await loadSubscribers()
+        } else {
+          restore()
+          alert('Update failed: ' + (data.message || 'Unknown error'))
+        }
+      } catch (err) {
+        restore()
+        alert('Update failed: ' + err.message)
+      }
+    }
+
+    saveBtn.addEventListener('click', commit)
+    cancelBtn.addEventListener('click', restore)
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit() }
+      if (e.key === 'Escape') { e.preventDefault(); restore() }
+    })
+  }
+
+  // ── Bulk delete ──────────────────────────────────────────────────────
+
+  document.getElementById('bulk-delete-btn').addEventListener('click', async () => {
+    const count = selectedIds.size
+    if (count === 0) return
+    if (!confirm('Delete ' + count + ' subscriber' + (count > 1 ? 's' : '') + '? This cannot be undone.')) return
+
+    try {
+      const res = await fetch(API_BASE + '/subscribers/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        selectedIds.clear()
+        loadSubscribers()
+      } else {
+        alert('Delete failed: ' + (data.message || 'Unknown error'))
+      }
+    } catch (err) {
+      alert('Delete failed: ' + err.message)
+    }
+  })
+
+  document.getElementById('refresh-btn').addEventListener('click', loadSubscribers)
+
+  // ── Templates ─────────────────────────────────────────────────────────
+  async function loadTemplates() {
+    try {
+      const res = await fetch(API_BASE + '/templates')
+      const data = await res.json()
+      const select = document.getElementById('template-select')
+
+      // Clear existing options except first
+      while (select.options.length > 1) select.remove(1)
+
+      if (data.templates && data.templates.length > 0) {
+        for (const t of data.templates) {
+          const opt = document.createElement('option')
+          opt.value = t.name
+          opt.textContent = t.name
+          select.appendChild(opt)
+        }
+      }
+    } catch (err) {
+      // Silently fail — templates are optional
+    }
+  }
+
+  document.getElementById('template-select').addEventListener('change', (e) => {
+    document.getElementById('load-template-btn').disabled = !e.target.value
+  })
+
+  document.getElementById('load-template-btn').addEventListener('click', async () => {
+    const select = document.getElementById('template-select')
+    const name = select.value
+    if (!name) return
+
+    try {
+      const res = await fetch(API_BASE + '/templates/' + encodeURIComponent(name))
+      const data = await res.json()
+      if (data.subject) {
+        document.getElementById('nl-subject').value = data.subject
+      }
+      if (data.content) {
+        document.getElementById('nl-body').value = data.content
+      }
+      select.value = ''
+      document.getElementById('load-template-btn').disabled = true
+    } catch (err) {
+      showStatus('compose-status', 'error', 'Failed to load template: ' + err.message)
+    }
+  })
+
+  // ── Token insertion ───────────────────────────────────────────────────
+  let lastTokenTarget = document.getElementById('nl-body')
+  document.querySelectorAll('.token-target').forEach(el => {
+    el.addEventListener('focus', () => { lastTokenTarget = el })
+  })
+
+  document.querySelectorAll('.token-hint code[data-token]').forEach(el => {
+    el.addEventListener('click', () => {
+      const field = lastTokenTarget
+      const token = el.dataset.token
+      const start = field.selectionStart
+      const end = field.selectionEnd
+      const text = field.value
+      field.value = text.slice(0, start) + token + text.slice(end)
+      field.selectionStart = field.selectionEnd = start + token.length
+      field.focus()
+    })
+  })
+
+  // ── Test send ─────────────────────────────────────────────────────────
+  document.getElementById('test-send-btn').addEventListener('click', async () => {
+    if (!configOk) return
+    const subject = document.getElementById('nl-subject').value.trim()
+    const body = document.getElementById('nl-body').value.trim()
+
+    if (!subject) { showStatus('compose-status', 'warning', 'Subject is required.'); return }
+    if (!body) { showStatus('compose-status', 'warning', 'Body is required.'); return }
+
+    const btn = document.getElementById('test-send-btn')
+    btn.disabled = true
+    btn.innerHTML = '<span class="spinner"></span>Sending test...'
+    hideStatus('compose-status')
+
+    try {
+      const res = await fetch(API_BASE + '/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body, testOnly: true }),
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        showStatus('compose-status', 'success', 'Test email sent! Check your inbox (' + (data.recipient || 'site owner email') + ').')
+      } else {
+        showStatus('compose-status', 'error', 'Test failed: ' + (data.message || 'Unknown error'))
+      }
+    } catch (err) {
+      showStatus('compose-status', 'error', 'Test failed: ' + err.message)
+    } finally {
+      btn.disabled = false
+      btn.textContent = 'Send Test to Myself'
+    }
+  })
+
+  // ── Full send ─────────────────────────────────────────────────────────
+  const confirmOverlay = document.getElementById('confirm-overlay')
+  let pendingSend = null
+
+  document.getElementById('send-all-btn').addEventListener('click', () => {
+    if (!configOk) return
+    const subject = document.getElementById('nl-subject').value.trim()
+    const body = document.getElementById('nl-body').value.trim()
+
+    if (!subject) { showStatus('compose-status', 'warning', 'Subject is required.'); return }
+    if (!body) { showStatus('compose-status', 'warning', 'Body is required.'); return }
+
+    const count = document.getElementById('subscriber-count').textContent
+    document.getElementById('confirm-desc').textContent =
+      'This will send the newsletter to ' + count + ' subscriber' + (count === '1' ? '' : 's') + '. This action cannot be undone.'
+
+    pendingSend = { subject, body }
+    confirmOverlay.classList.add('visible')
+  })
+
+  document.getElementById('confirm-cancel').addEventListener('click', () => {
+    confirmOverlay.classList.remove('visible')
+    pendingSend = null
+  })
+
+  confirmOverlay.addEventListener('click', (e) => {
+    if (e.target === confirmOverlay) {
+      confirmOverlay.classList.remove('visible')
+      pendingSend = null
+    }
+  })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && confirmOverlay.classList.contains('visible')) {
+      confirmOverlay.classList.remove('visible')
+      pendingSend = null
+    }
+  })
+
+  document.getElementById('confirm-send').addEventListener('click', async () => {
+    if (!pendingSend) return
+    confirmOverlay.classList.remove('visible')
+
+    const { subject, body } = pendingSend
+    pendingSend = null
+
+    const btn = document.getElementById('send-all-btn')
+    btn.disabled = true
+    btn.innerHTML = '<span class="spinner"></span>Sending...'
+    hideStatus('compose-status')
+
+    try {
+      const res = await fetch(API_BASE + '/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, body, testOnly: false, ccOwner: document.getElementById('cc-owner-toggle').checked }),
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        const msg = 'Newsletter sent! ' + data.sent + ' delivered, ' + data.failed + ' failed, ' + data.total + ' total.'
+        showStatus('compose-status', data.failed > 0 ? 'warning' : 'success', msg)
+      } else {
+        showStatus('compose-status', 'error', 'Send failed: ' + (data.message || 'Unknown error'))
+      }
+    } catch (err) {
+      showStatus('compose-status', 'error', 'Send failed: ' + err.message)
+    } finally {
+      btn.disabled = false
+      btn.textContent = 'Send to All Subscribers'
+    }
+  })
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  function showStatus(id, type, msg) {
+    const el = document.getElementById(id)
+    el.className = 'status-msg visible ' + type
+    el.textContent = msg
+  }
+  function hideStatus(id) {
+    document.getElementById(id).className = 'status-msg'
+  }
+  function esc(str) {
+    const d = document.createElement('div')
+    d.textContent = str
+    return d.innerHTML
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────
+  checkConfig()
+})()
+</script>
+</body>
+</html>

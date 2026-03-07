@@ -60,6 +60,7 @@ const perusalViewerConfigSchema = z.object({
   watermarkFont: z.enum(watermarkFonts).default('sans-serif'),
   watermarkFontScale: z.number().int().min(50).max(200).default(100),
   watermarkSpacing: z.number().int().min(50).max(300).default(100),
+  showAudioPlayer: z.boolean().default(true),
 })
 
 export type PerusalViewerConfig = z.infer<typeof perusalViewerConfigSchema>

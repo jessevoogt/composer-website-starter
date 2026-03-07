@@ -76,6 +76,8 @@ export const VALID_SOCIAL_PLATFORMS = new Set([
   'bandcamp',
 ])
 export const WORKS_SEARCH_HTML_PATH = path.join(ROOT, 'scripts', 'works-search.html')
+export const NEWSLETTER_ADMIN_API_PREFIX = '/api/dev/newsletter'
+export const SUBMISSIONS_ADMIN_API_PREFIX = '/api/dev/submissions'
 export const IMAGE_EXTS_SEARCH = ['.webp', '.jpg', '.jpeg', '.png', '.tiff']
 export const DEPLOY_SCRIPT = path.join(ROOT, 'scripts', 'deploy.mjs')
 export const PREVIEW_PORT = Number(process.env.PREVIEW_PORT || 4323)

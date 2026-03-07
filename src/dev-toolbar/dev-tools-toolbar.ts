@@ -87,14 +87,6 @@ export default defineToolbarApp({
       .dt-btn.success { background: #14532d; color: #fafafa; }
       .dt-btn.error { background: #450a0a; color: #fafafa; }
       .dt-sep { height: 1px; background: rgba(255,255,255,0.1); margin: 2px 0; }
-      .dt-search-btn {
-        display: flex; width: 100%; box-sizing: border-box;
-        padding: 6px 10px; background: transparent; color: #e0e0e0;
-        border: 1px solid transparent; border-radius: 6px;
-        font: 500 13px/1.3 system-ui, -apple-system, sans-serif;
-        cursor: pointer; text-align: left; transition: background 100ms;
-      }
-      .dt-search-btn:hover { background: rgba(255,255,255,0.08); }
     `
     win.appendChild(style)
 
@@ -108,12 +100,16 @@ export default defineToolbarApp({
     heading.textContent = 'Dev Tools'
     menu.appendChild(heading)
 
-    // Search button
-    const searchBtn = document.createElement('button')
-    searchBtn.type = 'button'
-    searchBtn.className = 'dt-search-btn'
-    searchBtn.textContent = 'Search'
-    menu.appendChild(searchBtn)
+    // Full Content Editor link (opens /keystatic/ in new tab)
+    const editorLink = document.createElement('a')
+    editorLink.className = 'dt-btn'
+    editorLink.href = new URL('/keystatic/', getCanonicalLocalOrigin()).toString()
+    editorLink.target = '_blank'
+    editorLink.rel = 'noopener noreferrer'
+    editorLink.textContent = '\u2197 Full Content Editor'
+    editorLink.style.textDecoration = 'none'
+    editorLink.style.color = 'inherit'
+    menu.appendChild(editorLink)
 
     // Live link slot (fetched async)
     const liveSlot = document.createElement('span')
@@ -137,6 +133,27 @@ export default defineToolbarApp({
         }
       })
       .catch(() => liveSlot.remove())
+
+    // Search Works button
+    const searchBtn = document.createElement('button')
+    searchBtn.type = 'button'
+    searchBtn.className = 'dt-btn'
+    searchBtn.textContent = '\uD83D\uDD0D Search Works'
+    menu.appendChild(searchBtn)
+
+    // Newsletter button
+    const newsletterBtn = document.createElement('button')
+    newsletterBtn.type = 'button'
+    newsletterBtn.className = 'dt-btn'
+    newsletterBtn.textContent = '\u2709 Newsletter'
+    menu.appendChild(newsletterBtn)
+
+    // Submissions button
+    const submissionsBtn = document.createElement('button')
+    submissionsBtn.type = 'button'
+    submissionsBtn.className = 'dt-btn'
+    submissionsBtn.textContent = '\uD83D\uDCCB Submissions'
+    menu.appendChild(submissionsBtn)
 
     const sep = document.createElement('div')
     sep.className = 'dt-sep'
@@ -267,6 +284,68 @@ export default defineToolbarApp({
       menu.appendChild(btn)
     }
 
+    // ── Modal helper (shared by search + newsletter) ─────────────────────
+
+    function createModalOverlay(opts: {
+      id: string
+      ariaLabel: string
+      iframeSrc: string
+      iframeTitle: string
+      maxWidth: string
+      onClose: () => void
+    }): HTMLDivElement {
+      const overlay = document.createElement('div')
+      overlay.id = opts.id
+      Object.assign(overlay.style, {
+        position: 'fixed', inset: '0', zIndex: '100000',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '2rem 3rem', background: 'rgba(0,0,0,0.7)',
+      })
+
+      const panel = document.createElement('div')
+      Object.assign(panel.style, {
+        position: 'relative', width: '100%', maxWidth: opts.maxWidth,
+        height: '90vh', display: 'flex', borderRadius: '8px',
+        overflow: 'hidden', boxShadow: '0 0 0 1px rgba(255,255,255,0.08), 0 0 24px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)',
+        background: '#0e0e10',
+      })
+
+      const closeBtn = document.createElement('button')
+      closeBtn.type = 'button'
+      closeBtn.setAttribute('aria-label', opts.ariaLabel)
+      Object.assign(closeBtn.style, {
+        position: 'absolute', top: '8px', right: '8px', zIndex: '1',
+        background: 'rgba(24,24,27,0.9)', color: '#e4e4e7',
+        border: '1px solid #3f3f46', borderRadius: '6px',
+        width: '28px', height: '28px', fontSize: '16px',
+        cursor: 'pointer', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', transition: 'background 0.15s', lineHeight: '1',
+      })
+      closeBtn.textContent = '\u00d7'
+      closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = '#27272a' })
+      closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'rgba(24,24,27,0.9)' })
+      closeBtn.addEventListener('click', opts.onClose)
+      panel.appendChild(closeBtn)
+
+      const frame = document.createElement('iframe')
+      frame.src = opts.iframeSrc
+      frame.title = opts.iframeTitle
+      Object.assign(frame.style, {
+        flex: '1', border: 'none', background: 'transparent',
+        width: '100%', height: '100%',
+      })
+      panel.appendChild(frame)
+      overlay.appendChild(panel)
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) opts.onClose()
+      })
+
+      document.body.appendChild(overlay)
+      closeBtn.focus()
+      return overlay
+    }
+
     // ── Search modal ─────────────────────────────────────────────────────
     let searchOverlay: HTMLDivElement | null = null
 
@@ -279,65 +358,65 @@ export default defineToolbarApp({
     searchBtn.addEventListener('click', () => {
       if (searchOverlay) return
       app.toggleState({ state: false })
-
-      const overlay = document.createElement('div')
-      Object.assign(overlay.style, {
-        position: 'fixed',
-        inset: '0',
-        zIndex: '100000',
-        background: 'rgba(0, 0, 0, 0.7)',
-        display: 'flex',
-        padding: '1rem',
+      searchOverlay = createModalOverlay({
+        id: 'dt-search-modal',
+        ariaLabel: 'Close search',
+        iframeSrc: '/works-search/?modal=1&theme=dark',
+        iframeTitle: 'Works Search',
+        maxWidth: '1200px',
+        onClose: closeSearch,
       })
-
-      const closeModalBtn = document.createElement('button')
-      closeModalBtn.type = 'button'
-      closeModalBtn.setAttribute('aria-label', 'Close search')
-      Object.assign(closeModalBtn.style, {
-        position: 'absolute',
-        top: '0.25rem',
-        right: '0.25rem',
-        zIndex: '1',
-        background: 'rgba(24, 24, 27, 0.9)',
-        color: '#e4e4e7',
-        border: '1px solid #3f3f46',
-        borderRadius: '6px',
-        width: '28px',
-        height: '28px',
-        fontSize: '16px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        lineHeight: '1',
-      })
-      closeModalBtn.textContent = '\u00d7'
-      closeModalBtn.addEventListener('click', closeSearch)
-      overlay.appendChild(closeModalBtn)
-
-      const frame = document.createElement('iframe')
-      frame.src = '/works-search/?modal=1'
-      frame.title = 'Works Search'
-      Object.assign(frame.style, {
-        flex: '1',
-        border: 'none',
-        borderRadius: '6px',
-        background: '#0e0e10',
-      })
-      overlay.appendChild(frame)
-
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeSearch()
-      })
-
-      document.body.appendChild(overlay)
-      searchOverlay = overlay
-      closeModalBtn.focus()
     })
 
-    // Listen for search close messages from the search iframe
+    // ── Newsletter modal ─────────────────────────────────────────────────
+    let newsletterOverlay: HTMLDivElement | null = null
+
+    function closeNewsletter() {
+      if (!newsletterOverlay) return
+      newsletterOverlay.remove()
+      newsletterOverlay = null
+    }
+
+    newsletterBtn.addEventListener('click', () => {
+      if (newsletterOverlay) return
+      app.toggleState({ state: false })
+      newsletterOverlay = createModalOverlay({
+        id: 'dt-newsletter-modal',
+        ariaLabel: 'Close newsletter',
+        iframeSrc: '/keystatic/newsletter/?modal=1&theme=dark',
+        iframeTitle: 'Newsletter',
+        maxWidth: '1000px',
+        onClose: closeNewsletter,
+      })
+    })
+
+    // ── Submissions modal ──────────────────────────────────────────────────
+    let submissionsOverlay: HTMLDivElement | null = null
+
+    function closeSubmissions() {
+      if (!submissionsOverlay) return
+      submissionsOverlay.remove()
+      submissionsOverlay = null
+    }
+
+    submissionsBtn.addEventListener('click', () => {
+      if (submissionsOverlay) return
+      app.toggleState({ state: false })
+      submissionsOverlay = createModalOverlay({
+        id: 'dt-submissions-modal',
+        ariaLabel: 'Close submissions',
+        iframeSrc: '/keystatic/submissions/?modal=1&theme=dark',
+        iframeTitle: 'Submissions',
+        maxWidth: '1000px',
+        onClose: closeSubmissions,
+      })
+    })
+
+    // Listen for modal close messages from iframes
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'works-search-close') closeSearch()
+      if (e.data?.type === 'newsletter-admin-close') closeNewsletter()
+      if (e.data?.type === 'submissions-admin-close') closeSubmissions()
       if (e.data?.type === 'works-search-view' && e.data.slug) {
         closeSearch()
         window.location.href = `/music/${e.data.slug}/`
@@ -345,6 +424,15 @@ export default defineToolbarApp({
       if (e.data?.type === 'works-search-edit' && e.data.slug) {
         closeSearch()
         window.location.href = new URL(`/__studio/music/${e.data.slug}/`, getCanonicalLocalOrigin()).toString()
+      }
+    })
+
+    // Escape key for modals
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (searchOverlay) { e.preventDefault(); closeSearch() }
+        else if (newsletterOverlay) { e.preventDefault(); closeNewsletter() }
+        else if (submissionsOverlay) { e.preventDefault(); closeSubmissions() }
       }
     })
 

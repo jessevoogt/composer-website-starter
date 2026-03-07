@@ -344,6 +344,120 @@ export function getGlobalSingletons(deps: GlobalSingletonsDeps) {
       },
     }),
 
+    // ── Global: Newsletter ──────────────────────────────────────────────────
+    newsletter: singleton({
+      label: 'Global: Newsletter',
+      path: 'source/site/newsletter',
+      format: { data: 'yaml' },
+      schema: {
+        enabled: fields.checkbox({
+          label: 'Enable newsletter opt-in',
+          description:
+            'When enabled, a newsletter signup checkbox appears on the contact and perusal score request forms.',
+          defaultValue: false,
+        }),
+        checkboxLabel: fields.text({
+          label: 'Checkbox label',
+          description: 'The text shown next to the newsletter opt-in checkbox on forms.',
+          defaultValue: 'Keep me updated on new music and performances',
+        }),
+        checkboxDefaultChecked: fields.checkbox({
+          label: 'Checkbox checked by default',
+          description:
+            'When enabled, the checkbox is pre-checked. Note: GDPR requires unchecked (explicit opt-in) for EU visitors.',
+          defaultValue: false,
+        }),
+        showCheckboxInfo: fields.checkbox({
+          label: 'Show info tooltip',
+          description: 'When enabled, a small info button appears next to the checkbox with a privacy reassurance message.',
+          defaultValue: true,
+        }),
+        checkboxInfoText: fields.text({
+          label: 'Info tooltip text',
+          description: 'The privacy/reassurance message shown in the info tooltip next to the newsletter checkbox.',
+          defaultValue:
+            'We respect your privacy. Your email is only used for occasional updates about new music, performances, and recordings\u2009\u2014\u2009never shared or sold. You can unsubscribe at any time.',
+          multiline: true,
+        }),
+      },
+    }),
+
+    // ── Global: Featured Player ─────────────────────────────────────────────
+
+    featuredPlayer: singleton({
+      label: 'Global: Featured Player',
+      path: 'source/site/featured-player',
+      format: { data: 'yaml' },
+      schema: {
+        enabled: fields.checkbox({
+          label: 'Enable featured player',
+          description:
+            'Master toggle. When disabled, the featured player is hidden site-wide (inline shell, fixed bar, and homepage listen trigger). The player is also hidden automatically when no recordings with audio files exist.',
+          defaultValue: true,
+        }),
+        position: fields.select({
+          label: 'Bar position',
+          description:
+            'Bottom/Top anchor the player as a fixed floating bar. Header Center places it inside the header\u2019s center slot (no floating bar, no background/border).',
+          defaultValue: 'bottom',
+          options: [
+            { label: 'Bottom', value: 'bottom' },
+            { label: 'Top', value: 'top' },
+            { label: 'Header Center', value: 'header-center' },
+          ],
+        }),
+        showScrubber: fields.checkbox({
+          label: 'Show seek/scrubber bar',
+          description: 'Display the seek slider for scrubbing through the current track.',
+          defaultValue: true,
+        }),
+        showMuteToggle: fields.checkbox({
+          label: 'Show mute button',
+          description: 'Display the mute/unmute toggle button.',
+          defaultValue: true,
+        }),
+        showVolumeControl: fields.checkbox({
+          label: 'Show volume slider',
+          description:
+            'Display the vertical volume slider popup in the fixed bar. Only visible on devices with a mouse (fine pointer). Requires the mute button to be enabled.',
+          defaultValue: true,
+        }),
+        showDuration: fields.checkbox({
+          label: 'Show time display',
+          description: 'Display the current time and total duration readouts.',
+          defaultValue: true,
+        }),
+        showInfoButton: fields.checkbox({
+          label: 'Show info button',
+          description:
+            'Display the info icon in the fixed bar that links to the current work detail page.',
+          defaultValue: true,
+        }),
+        showTrackInfo: fields.checkbox({
+          label: 'Show track metadata',
+          description:
+            'Display the recording metadata (title, performer, date) on the homepage listen section and the scrolling text in the fixed bar.',
+          defaultValue: true,
+        }),
+        trackInfoScrollingText: fields.checkbox({
+          label: 'Enable scrolling text',
+          description:
+            'When enabled, the fixed bar uses a scrolling marquee animation for overflowing track metadata. When disabled, text is statically truncated. Only takes effect when track metadata is shown.',
+          defaultValue: true,
+        }),
+        showPrevButton: fields.checkbox({
+          label: 'Show previous track button',
+          description: 'Display the previous track button for cycling through recordings.',
+          defaultValue: true,
+        }),
+        showNextButton: fields.checkbox({
+          label: 'Show next track button',
+          description: 'Display the next track button for cycling through recordings.',
+          defaultValue: true,
+        }),
+      },
+    }),
+
     // ── Global: Site Identity ────────────────────────────────────────────────
     site: singleton({
       label: 'Global: Site Identity',

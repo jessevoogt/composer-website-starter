@@ -1112,7 +1112,7 @@ export function getToolbarHtml() {
         return a
       }
 
-      var devBtn = addLink('jv-dev-btn', ${JSON.stringify(ASTRO_DEV_URL)}, 'Dev')
+      var devBtn = addLink('jv-dev-btn', ${JSON.stringify(ASTRO_DEV_URL)}, '↗ Dev')
       ${LIVE_URL ? `var liveBtn = addLink('jv-live-btn', ${JSON.stringify(LIVE_URL)}, '↗ Live')` : ''}
 
       function addAction(id, text) {
@@ -1122,7 +1122,9 @@ export function getToolbarHtml() {
         return b
       }
 
-      var searchBtn = addAction('jv-search-btn', 'Search')
+      var searchBtn = addAction('jv-search-btn', '🔍 Search Works')
+      var nlBtn = addAction('jv-newsletter-btn', '✉ Newsletter')
+      var submissionsBtn = addAction('jv-submissions-btn', '📋 Submissions')
       var btn = addAction('jv-build-btn', '⚙ Build')
       var previewBtn = addAction('jv-preview-btn', '▶ Preview')
       var pubBtn = addAction('jv-publish-btn', '⬆ Publish')
@@ -1145,7 +1147,7 @@ export function getToolbarHtml() {
       })
 
       // Close dropdown after action button clicks
-      ;[searchBtn, btn, previewBtn, pubBtn, starterBtn].forEach(function (b) {
+      ;[searchBtn, nlBtn, submissionsBtn, btn, previewBtn, pubBtn, starterBtn].forEach(function (b) {
         b.addEventListener('click', closeMenu)
       })
 
@@ -1154,26 +1156,37 @@ export function getToolbarHtml() {
 
       function openSearchModal() {
         if (searchModalOverlay) return
+        var isDark = currentTheme === 'dark'
 
         var overlay = document.createElement('div')
         overlay.id = 'jv-search-modal'
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.7);display:flex;padding:1rem;'
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:2rem 3rem;'
+        overlay.style.background = isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.3)'
 
+        var panel = document.createElement('div')
+        panel.style.cssText = 'position:relative;width:100%;max-width:1200px;height:90vh;display:flex;border-radius:8px;overflow:hidden;'
+        panel.style.boxShadow = isDark ? '0 0 0 1px rgba(255,255,255,0.08), 0 0 24px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)' : '0 0 0 1px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.18)'
+        panel.style.background = isDark ? '#0e0e10' : '#ffffff'
+
+        var closeBg = isDark ? 'rgba(24,24,27,0.9)' : 'rgba(255,255,255,0.9)'
+        var closeHoverBg = isDark ? '#27272a' : '#f4f4f5'
         var closeBtn = document.createElement('button')
         closeBtn.type = 'button'
         closeBtn.setAttribute('aria-label', 'Close search')
-        closeBtn.style.cssText = 'position:absolute;top:0.25rem;right:0.25rem;z-index:1;background:rgba(24,24,27,0.9);color:#e4e4e7;border:1px solid #3f3f46;border-radius:6px;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;line-height:1;'
+        closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:1;background:' + closeBg + ';color:' + (isDark ? '#e4e4e7' : '#18181b') + ';border:1px solid ' + (isDark ? '#3f3f46' : '#d4d4d8') + ';border-radius:6px;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;line-height:1;'
         closeBtn.textContent = '\\u00d7'
-        closeBtn.addEventListener('mouseenter', function () { closeBtn.style.background = '#27272a' })
-        closeBtn.addEventListener('mouseleave', function () { closeBtn.style.background = 'rgba(24,24,27,0.9)' })
+        closeBtn.addEventListener('mouseenter', function () { closeBtn.style.background = closeHoverBg })
+        closeBtn.addEventListener('mouseleave', function () { closeBtn.style.background = closeBg })
         closeBtn.addEventListener('click', closeSearchModal)
-        overlay.appendChild(closeBtn)
+        panel.appendChild(closeBtn)
 
         var frame = document.createElement('iframe')
-        frame.src = '/works-search/?modal=1'
+        frame.src = '/works-search/?modal=1&theme=' + currentTheme
         frame.title = 'Works Search'
-        frame.style.cssText = 'flex:1;border:none;border-radius:6px;background:#0e0e10;'
-        overlay.appendChild(frame)
+        frame.style.cssText = 'flex:1;border:none;background:transparent;width:100%;height:100%;'
+        panel.appendChild(frame)
+
+        overlay.appendChild(panel)
 
         overlay.addEventListener('click', function (e) {
           if (e.target === overlay) closeSearchModal()
@@ -1218,6 +1231,150 @@ export function getToolbarHtml() {
 
       searchBtn.addEventListener('click', openSearchModal)
 
+      // ── Newsletter modal ─────────────────────────────────────────
+      var newsletterModalOverlay = null
+
+      function openNewsletterModal() {
+        if (newsletterModalOverlay) return
+        var isDark = currentTheme === 'dark'
+
+        var overlay = document.createElement('div')
+        overlay.id = 'jv-newsletter-modal'
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:2rem 3rem;'
+        overlay.style.background = isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.3)'
+
+        var panel = document.createElement('div')
+        panel.style.cssText = 'position:relative;width:100%;max-width:1000px;height:90vh;display:flex;border-radius:8px;overflow:hidden;'
+        panel.style.boxShadow = isDark ? '0 0 0 1px rgba(255,255,255,0.08), 0 0 24px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)' : '0 0 0 1px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.18)'
+        panel.style.background = isDark ? '#0e0e10' : '#ffffff'
+
+        var closeBg = isDark ? 'rgba(24,24,27,0.9)' : 'rgba(255,255,255,0.9)'
+        var closeHoverBg = isDark ? '#27272a' : '#f4f4f5'
+        var closeBtn = document.createElement('button')
+        closeBtn.type = 'button'
+        closeBtn.setAttribute('aria-label', 'Close newsletter')
+        closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:1;background:' + closeBg + ';color:' + (isDark ? '#e4e4e7' : '#18181b') + ';border:1px solid ' + (isDark ? '#3f3f46' : '#d4d4d8') + ';border-radius:6px;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;line-height:1;'
+        closeBtn.textContent = '\\u00d7'
+        closeBtn.addEventListener('mouseenter', function () { closeBtn.style.background = closeHoverBg })
+        closeBtn.addEventListener('mouseleave', function () { closeBtn.style.background = closeBg })
+        closeBtn.addEventListener('click', closeNewsletterModal)
+        panel.appendChild(closeBtn)
+
+        var frame = document.createElement('iframe')
+        frame.src = '/keystatic/newsletter/?modal=1&theme=' + currentTheme
+        frame.title = 'Newsletter'
+        frame.style.cssText = 'flex:1;border:none;background:transparent;width:100%;height:100%;'
+        panel.appendChild(frame)
+
+        overlay.appendChild(panel)
+
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) closeNewsletterModal()
+        })
+
+        document.body.appendChild(overlay)
+        newsletterModalOverlay = overlay
+        closeBtn.focus()
+      }
+
+      function closeNewsletterModal() {
+        if (!newsletterModalOverlay) return
+        newsletterModalOverlay.remove()
+        newsletterModalOverlay = null
+      }
+
+      window.addEventListener('message', function (e) {
+        if (!newsletterModalOverlay) return
+        if (e.origin !== window.location.origin) return
+        if (!e.data || typeof e.data !== 'object') return
+
+        if (e.data.type === 'newsletter-admin-close') {
+          closeNewsletterModal()
+        }
+      })
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && newsletterModalOverlay) {
+          e.preventDefault()
+          e.stopPropagation()
+          closeNewsletterModal()
+        }
+      })
+
+      nlBtn.addEventListener('click', openNewsletterModal)
+
+      // ── Submissions modal ───────────────────────────────────────
+      var submissionsModalOverlay = null
+
+      function openSubmissionsModal() {
+        if (submissionsModalOverlay) return
+        var isDark = currentTheme === 'dark'
+
+        var overlay = document.createElement('div')
+        overlay.id = 'jv-submissions-modal'
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:2rem 3rem;'
+        overlay.style.background = isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.3)'
+
+        var panel = document.createElement('div')
+        panel.style.cssText = 'position:relative;width:100%;max-width:1000px;height:90vh;display:flex;border-radius:8px;overflow:hidden;'
+        panel.style.boxShadow = isDark ? '0 0 0 1px rgba(255,255,255,0.08), 0 0 24px rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.5)' : '0 0 0 1px rgba(0,0,0,0.08), 0 12px 40px rgba(0,0,0,0.18)'
+        panel.style.background = isDark ? '#0e0e10' : '#ffffff'
+
+        var closeBg = isDark ? 'rgba(24,24,27,0.9)' : 'rgba(255,255,255,0.9)'
+        var closeHoverBg = isDark ? '#27272a' : '#f4f4f5'
+        var closeBtn = document.createElement('button')
+        closeBtn.type = 'button'
+        closeBtn.setAttribute('aria-label', 'Close submissions')
+        closeBtn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:1;background:' + closeBg + ';color:' + (isDark ? '#e4e4e7' : '#18181b') + ';border:1px solid ' + (isDark ? '#3f3f46' : '#d4d4d8') + ';border-radius:6px;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;line-height:1;'
+        closeBtn.textContent = '\u00d7'
+        closeBtn.addEventListener('mouseenter', function () { closeBtn.style.background = closeHoverBg })
+        closeBtn.addEventListener('mouseleave', function () { closeBtn.style.background = closeBg })
+        closeBtn.addEventListener('click', closeSubmissionsModal)
+        panel.appendChild(closeBtn)
+
+        var frame = document.createElement('iframe')
+        frame.src = '/keystatic/submissions/?modal=1&theme=' + currentTheme
+        frame.title = 'Submissions'
+        frame.style.cssText = 'flex:1;border:none;background:transparent;width:100%;height:100%;'
+        panel.appendChild(frame)
+
+        overlay.appendChild(panel)
+
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) closeSubmissionsModal()
+        })
+
+        document.body.appendChild(overlay)
+        submissionsModalOverlay = overlay
+        closeBtn.focus()
+      }
+
+      function closeSubmissionsModal() {
+        if (!submissionsModalOverlay) return
+        submissionsModalOverlay.remove()
+        submissionsModalOverlay = null
+      }
+
+      window.addEventListener('message', function (e) {
+        if (!submissionsModalOverlay) return
+        if (e.origin !== window.location.origin) return
+        if (!e.data || typeof e.data !== 'object') return
+
+        if (e.data.type === 'submissions-admin-close') {
+          closeSubmissionsModal()
+        }
+      })
+
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && submissionsModalOverlay) {
+          e.preventDefault()
+          e.stopPropagation()
+          closeSubmissionsModal()
+        }
+      })
+
+      submissionsBtn.addEventListener('click', openSubmissionsModal)
+
       // Toolbar lives OUTSIDE #root so React can never remove it.
       document.body.appendChild(toolbar)
 
@@ -1230,8 +1387,17 @@ export function getToolbarHtml() {
         return window.matchMedia('(prefers-color-scheme: dark)').matches
       }
 
+      var currentTheme = 'dark'
+
       function applyTheme() {
-        toolbar.setAttribute('data-theme', detectDark() ? 'dark' : 'light')
+        currentTheme = detectDark() ? 'dark' : 'light'
+        toolbar.setAttribute('data-theme', currentTheme)
+        // Notify open modal iframes of theme change
+        var iframes = document.querySelectorAll('#jv-search-modal iframe, #jv-newsletter-modal iframe, #jv-submissions-modal iframe')
+        for (var i = 0; i < iframes.length; i++) {
+          try { iframes[i].contentWindow.postMessage({ type: 'theme-change', theme: currentTheme }, window.location.origin) }
+          catch (e) { /* cross-origin guard */ }
+        }
       }
 
       applyTheme()

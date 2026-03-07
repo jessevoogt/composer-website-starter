@@ -102,7 +102,45 @@ If you deploy on another stack (Nginx, Caddy, serverless functions, etc.), you m
 
 The SendGrid integration in `api/src/Mailer.php` can be replaced or extended for another provider.
 
-## 4. Deployment feature (SFTP + deploy manifest) and alternatives
+## 4. Newsletter (optional)
+
+Collect subscriber emails through your contact and perusal score request forms, and send newsletters using the same email template styling as your transactional emails.
+
+### Quick setup
+
+1. In Keystatic > **Global: Newsletter**, enable **Enable newsletter opt-in**.
+2. Run \`npm run generate:data\` to sync the setting to your backend.
+3. Generate a secret for authenticating sends:
+   \`\`\`bash
+   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   \`\`\`
+4. Add it to \`api/.env\`:
+   \`\`\`
+   NEWSLETTER_SECRET="your-generated-hex-string"
+   \`\`\`
+5. Deploy.
+
+### Sending a newsletter
+
+1. Write your newsletter in a text file (supports \`{{firstName}}\`, \`{{composerName}}\`, \`{{siteUrl}}\` tokens).
+2. Run: \`node scripts/send-newsletter.mjs newsletter.txt\`
+3. The script sends a test to yourself first, then to all subscribers after confirmation.
+
+### Keystatic settings
+
+| Field | Description |
+| --- | --- |
+| **Enable newsletter opt-in** | Show/hide the checkbox on forms |
+| **Checkbox label** | Text next to the checkbox |
+| **Checkbox checked by default** | Pre-check the box (GDPR requires unchecked for EU) |
+| **Show info tooltip** | Show a privacy info button next to the checkbox |
+| **Info tooltip text** | Customizable privacy reassurance message |
+
+### Unsubscribe
+
+Every newsletter includes an unsubscribe link and supports email client native unsubscribe (Gmail, Outlook). Subscribers are removed immediately.
+
+## 5. Deployment feature (SFTP + deploy manifest) and alternatives
 
 Built-in deployment command:
 ```bash

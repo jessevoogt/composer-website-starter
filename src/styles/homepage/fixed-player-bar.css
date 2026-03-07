@@ -43,8 +43,16 @@ html.has-fixed-player .fixed-player-bar {
     color-mix(in srgb, var(--surface) 92%, #000 8%) 100%
   );
   padding: 0.35rem clamp(0.65rem, 1.2vw, 1rem) max(0.4rem, env(safe-area-inset-bottom));
-  width: min(50%, 42rem);
+  width: auto;
+  max-width: 36rem;
   pointer-events: none;
+}
+
+/* Lock to the capped width when wide content (marquee or scrubber) is present
+   so the bar doesn't jitter between tracks with different metadata lengths. */
+.fixed-player-bar:has(.fixed-player-bar-marquee-slot),
+.fixed-player-bar:has(.featured-seek) {
+  width: 36rem;
 }
 
 html.has-fixed-player .fixed-player-bar {
@@ -254,8 +262,7 @@ html[data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-play
 }
 
 .fixed-player-bar-controls {
-  display: block;
-  min-width: 0;
+  display: contents;
 }
 
 .fixed-player-bar .featured-player-shell {
@@ -271,11 +278,16 @@ html[data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-play
   pointer-events: auto;
 }
 
+/* Collapse the seek row entirely when it has no visible children
+   (scrubber and time displays all removed via config). */
+.fixed-player-bar .featured-player-shell:not(:has(.featured-seek)):not(:has(.featured-time)) {
+  display: none;
+}
+
 .fixed-player-bar .featured-player-ui {
-  grid-template-rows: auto;
-  grid-template-columns: minmax(3ch, auto) minmax(7rem, 1fr) minmax(3ch, auto);
+  display: flex;
   align-items: center;
-  gap: 0.14rem clamp(0.16rem, 0.42vw, 0.32rem);
+  gap: clamp(0.16rem, 0.42vw, 0.32rem);
 }
 
 .fixed-player-bar .featured-control {
@@ -308,8 +320,8 @@ html[data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-play
 }
 
 .fixed-player-bar .featured-seek {
-  grid-row: 1;
-  grid-column: 2;
+  flex: 1 1 0%;
+  min-width: 3rem;
   align-self: center;
   height: 0.94rem;
 }
@@ -327,7 +339,7 @@ html[data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-play
 
 .fixed-player-bar .featured-time-current,
 .fixed-player-bar .featured-time-total {
-  grid-row: 1;
+  flex: 0 0 auto;
   margin-top: 0;
   min-width: 3ch;
   font-size: 0.7rem;
@@ -335,12 +347,11 @@ html[data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-play
 }
 
 .fixed-player-bar .featured-time-current {
-  grid-column: 1;
+  order: -1;
   text-align: left;
 }
 
 .fixed-player-bar .featured-time-total {
-  grid-column: 3;
   text-align: right;
 }
 
@@ -350,5 +361,260 @@ html[data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-play
 
 .has-fixed-player .site-footer {
   padding-bottom: calc(clamp(1.1rem, 3vw, 1.7rem) + 4.5rem + env(safe-area-inset-bottom));
+}
+
+/* Less footer clearance when the seek row is hidden (bar is shorter). */
+.has-fixed-player:not(:has(.fixed-player-bar .featured-seek)):not(:has(.fixed-player-bar .featured-time)) .site-footer {
+  padding-bottom: calc(clamp(1.1rem, 3vw, 1.7rem) + 3.5rem + env(safe-area-inset-bottom));
+}
+
+/* ── Top-positioned player bar ──────────────────────────────────────────────── */
+
+html[data-player-position='top'] .fixed-player-bar {
+  bottom: auto;
+  top: 0;
+  transform: translate3d(-50%, calc(-100% - 0.75rem), 0);
+  box-shadow:
+    0 14px 36px rgb(0 0 0 / 0.32),
+    0 0 0 1px rgb(255 255 255 / 0.02) inset;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, #c9d8e4 22%);
+  border-top: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 78%, #c9d8e4 22%);
+  border-radius: 0 0 var(--player-radius) var(--player-radius);
+  padding: max(0.4rem, env(safe-area-inset-top)) clamp(0.65rem, 1.2vw, 1rem) 0.35rem;
+}
+
+html[data-player-position='top'].has-fixed-player .fixed-player-bar {
+  transform: translate3d(-50%, 0, 0);
+}
+
+html[data-player-position='top'][data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-player-reveal-done) .fixed-player-bar {
+  transform: translate3d(-50%, calc(-100% - 0.75rem), 0);
+}
+
+@media (max-width: 68.75rem) and (orientation: portrait), (max-height: 35.75rem) and (orientation: landscape) {
+  html[data-player-position='top'].home-player-deferred .fixed-player-bar {
+    transform: translate3d(-50%, calc(-100% - 0.75rem), 0);
+  }
+}
+
+html[data-player-position='top'] .fixed-player-bar-volume-panel {
+  inset-block-end: auto;
+  inset-block-start: calc(100% - 0.12rem);
+  transform-origin: top center;
+  transform: translate(-50%, -0.3rem) scale(0.96);
+}
+
+html[data-player-position='top'] .fixed-player-bar-volume-control:focus-within .fixed-player-bar-volume-panel {
+  transform: translate(-50%, 0) scale(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-player-position='top'] .fixed-player-bar-volume-control:hover .fixed-player-bar-volume-panel {
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* No extra footer padding when player is at top. */
+html[data-player-position='top'].has-fixed-player .site-footer {
+  padding-bottom: clamp(1.1rem, 3vw, 1.7rem);
+}
+
+html[data-player-position='top'].has-fixed-player:not(:has(.fixed-player-bar .featured-seek)):not(:has(.fixed-player-bar .featured-time)) .site-footer {
+  padding-bottom: clamp(1.1rem, 3vw, 1.7rem);
+}
+
+/* ── Header-center player bar ──────────────────────────────────────────────── */
+
+/* The anchor sits in the header flex flow with order: 2 (between left/right slots).
+   JS moves the .fixed-player-bar into this anchor so it participates in the
+   header layout as a static element — no fixed positioning needed. */
+.header-player-anchor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Prevent header slots from shrinking when the player anchor is flex: 1 */
+html[data-player-position='header-center'] .header-slot {
+  flex-shrink: 0;
+}
+
+html[data-player-position='header-center'] .fixed-player-bar {
+  position: static;
+  transform: none;
+  opacity: 1;
+  transition: none;
+  will-change: auto;
+  box-shadow: none;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+  view-transition-name: none;
+}
+
+/* Keep bar content-sized (centered by anchor) — override the fixed-mode :has() rules too. */
+html[data-player-position='header-center'] .fixed-player-bar:has(.fixed-player-bar-marquee-slot),
+html[data-player-position='header-center'] .fixed-player-bar:has(.featured-seek) {
+  width: auto;
+}
+
+/* Cap the marquee so it doesn't drive the bar wider than the available space. */
+html[data-player-position='header-center'] .fixed-player-bar .fixed-player-bar-marquee-slot {
+  max-width: 14rem;
+}
+
+/* Header-center: always neutralise transforms, but respect homepage intro timing for opacity.
+   On the homepage the fade-in is delayed so the split-line shift completes first. */
+html[data-player-position='header-center'].has-fixed-player .fixed-player-bar {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-player-position='header-center'][data-page='home'].has-fixed-player .fixed-player-bar {
+  transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1) 600ms;
+}
+
+/* During homepage intro animation, hide the bar until the intro finishes. */
+html[data-player-position='header-center'][data-page='home'].home-intro-animating.has-fixed-player:not(.has-fixed-player-reveal-done) .fixed-player-bar {
+  transform: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}
+
+/* Deferred state (small screens / portrait) — also hidden until scroll reveals header. */
+html[data-player-position='header-center'].home-player-deferred .fixed-player-bar {
+  transform: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}
+
+/* No extra footer padding for header-center. */
+html[data-player-position='header-center'].has-fixed-player .site-footer {
+  padding-bottom: clamp(1.1rem, 3vw, 1.7rem);
+}
+
+html[data-player-position='header-center'].has-fixed-player:not(:has(.fixed-player-bar .featured-seek)):not(:has(.fixed-player-bar .featured-time)) .site-footer {
+  padding-bottom: clamp(1.1rem, 3vw, 1.7rem);
+}
+
+/* On homepage columns layout, nudge the split line down so it meets the player track
+   once the player fades in, rather than running under the controls. */
+html[data-player-position='header-center'][data-page='home'].has-fixed-player-reveal-done .image-column::after {
+  margin-top: 50px;
+  height: calc(100% - 50px);
+  transition: margin-top 600ms cubic-bezier(0.16, 1, 0.3, 1), height 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Hide the seek/time row by default on hover-capable devices; reveal on hover or focus-within.
+   Use opacity instead of display so the row keeps its layout space and avoids shifts. */
+@media (hover: hover) and (pointer: fine) {
+  html[data-player-position='header-center'] .fixed-player-bar .featured-player-shell {
+    opacity: 0.2;
+    filter: grayscale(1);
+    pointer-events: none;
+    transition: opacity 200ms ease, filter 200ms ease;
+  }
+
+  html[data-player-position='header-center'] .fixed-player-bar:hover .featured-player-shell,
+  html[data-player-position='header-center'] .fixed-player-bar:focus-within .featured-player-shell {
+    opacity: 1;
+    filter: grayscale(0);
+    pointer-events: auto;
+  }
+}
+
+/* On touch devices, dim the seek/time row when not playing; full opacity when playing. */
+@media (hover: none) and (pointer: coarse) {
+  html[data-player-position='header-center'] .fixed-player-bar .featured-player-shell {
+    opacity: 0.2;
+    filter: grayscale(1);
+    pointer-events: none;
+    transition: opacity 200ms ease, filter 200ms ease;
+  }
+
+  html[data-player-position='header-center'] .fixed-player-bar.has-player-playing .featured-player-shell {
+    opacity: 1;
+    filter: grayscale(0);
+    pointer-events: auto;
+  }
+}
+
+/* Volume panel opens downward (same as top position). */
+html[data-player-position='header-center'] .fixed-player-bar-volume-panel {
+  inset-block-end: auto;
+  inset-block-start: calc(100% - 0.12rem);
+  transform-origin: top center;
+  transform: translate(-50%, -0.3rem) scale(0.96);
+}
+
+html[data-player-position='header-center'] .fixed-player-bar-volume-control:focus-within .fixed-player-bar-volume-panel {
+  transform: translate(-50%, 0) scale(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html[data-player-position='header-center'] .fixed-player-bar-volume-control:hover .fixed-player-bar-volume-panel {
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* Mobile (<768px): fixed toggles need clearance; hide marquee, keep info + volume right-aligned. */
+@media (max-width: 47.999rem) {
+  .header-player-anchor {
+    margin-inline-end: calc(var(--menu-toggle-width) + var(--mobile-search-toggle-size) + 1rem);
+  }
+
+  html[data-player-position='header-center'] .fixed-player-bar .fixed-player-bar-marquee-slot {
+    display: none;
+  }
+
+  /* Push info + volume to the right when marquee is gone */
+  html[data-player-position='header-center'] .fixed-player-bar .fixed-player-bar-info {
+    margin-inline-start: auto;
+  }
+
+  /* Fallback: if info is absent, push volume to the right instead */
+  html[data-player-position='header-center'] .fixed-player-bar .fixed-player-bar-main-controls + .fixed-player-bar-volume-control {
+    margin-inline-start: auto;
+  }
+}
+
+/* Narrow mobile (<460px): strip to transport-only, centered. Info stays but dims. */
+@media (max-width: 28.749rem) {
+  html[data-player-position='header-center'] .fixed-player-bar .fixed-player-bar-volume-control,
+  html[data-player-position='header-center'] .fixed-player-bar .featured-time-current,
+  html[data-player-position='header-center'] .fixed-player-bar .featured-time-total {
+    display: none;
+  }
+
+  html[data-player-position='header-center'] .fixed-player-bar .fixed-player-bar-meta {
+    justify-content: center;
+  }
+
+  html[data-player-position='header-center'] .fixed-player-bar .fixed-player-bar-info {
+    margin-inline-start: 0;
+    opacity: 0.2;
+    transition: opacity 200ms ease;
+  }
+
+  html[data-player-position='header-center'] .fixed-player-bar.has-player-playing .fixed-player-bar-info {
+    opacity: 1;
+  }
 }
 

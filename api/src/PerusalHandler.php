@@ -102,9 +102,34 @@ final class PerusalHandler
 
         // Notify the site owner (fire-and-forget — don't fail the request).
         try {
-            $mailer->sendPerusalNotification($email, $firstName, $workTitle, $workSubtitle, $workId);
+            $newsletterOptIn = ($body['newsletter'] ?? '') === 'true';
+            $mailer->sendPerusalNotification($email, $firstName, $workTitle, $workSubtitle, $workId, $newsletterOptIn);
         } catch (\Exception) {
             // Silently ignore — the magic link was already sent successfully.
+        }
+
+        // Store submission for admin review (non-blocking).
+        try {
+            $submissions = new SubmissionManager();
+            $submissions->add('perusal', $firstName, $email, [
+                'workId'          => $workId,
+                'newsletterOptIn' => $newsletterOptIn,
+            ]);
+        } catch (\Exception $e) {
+            error_log('[PerusalHandler] submission storage error: ' . $e->getMessage());
+        }
+
+        // Newsletter opt-in (non-blocking — subscription failure doesn't affect the response).
+        $newsletterField = $body['newsletter'] ?? '';
+        $newsletterEnabled = $_ENV['NEWSLETTER_ENABLED'] ?? '';
+
+        if ($newsletterField === 'true' && $newsletterEnabled === 'true') {
+            try {
+                $manager = new SubscriberManager();
+                $manager->add($email, $firstName, 'perusal');
+            } catch (\Exception $e) {
+                error_log('[PerusalHandler] subscriber add error: ' . $e->getMessage());
+            }
         }
 
         return ['status' => 200, 'body' => ['success' => true]];

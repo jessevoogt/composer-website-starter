@@ -121,6 +121,12 @@ function initContactForm(): () => void {
     }
     data.timestamp = new Date().toISOString()
 
+    // Newsletter opt-in: include checkbox state if the field exists.
+    const newsletterCheckbox = form!.querySelector<HTMLInputElement>('[name="newsletter"]')
+    if (newsletterCheckbox) {
+      data.newsletter = newsletterCheckbox.checked ? 'true' : 'false'
+    }
+
     const userName = data.name ?? ''
     const userMessage = data.request ?? ''
 

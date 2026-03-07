@@ -28,6 +28,8 @@
     "build:full": "npm run ingest:assets && npm run ingest:works && npm run generate:data && npm run lint && astro build && node ./scripts/check-trailing-slashes.mjs && node ./scripts/generate-redirects.mjs",
     "deploy": "node ./scripts/deploy.mjs",
     "preview": "astro preview",
+    "newsletter:list": "node ./scripts/send-newsletter.mjs --list",
+    "newsletter:send": "node ./scripts/send-newsletter.mjs",
     "init:source": "node ./scripts/init-source.mjs",
     "init:source:reset": "node ./scripts/init-source.mjs --reset",
     "setup": "node scripts/setup-server.mjs",

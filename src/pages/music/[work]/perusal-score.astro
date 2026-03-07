@@ -161,6 +161,7 @@ function getPerusalRecordingTracks(nextWork: WorkWithImage): PerusalRecordingTra
 
 const perusalRecordingTracks = getPerusalRecordingTracks(work)
 const perusalRecordingSrc = perusalRecordingTracks[0]?.src ?? null
+const showPerusalAudioPlayer = perusalViewerConfig.showAudioPlayer && !!perusalRecordingSrc
 const perusalRecordingTracksJson = JSON.stringify(perusalRecordingTracks)
 const hasMultiplePerusalTracks = perusalRecordingTracks.length > 1
 const perusalViewModeOptions: { value: string; label: string; icon: 'single-page' | 'double-page' }[] =
@@ -194,7 +195,7 @@ const perusalPageJumpOptions = Array.from({ length: pageCount }, (_, index) => (
     data-perusal-work-id={work.id}
     data-perusal-work-title={work.data.title}
     data-perusal-has-multiple-tracks={hasMultiplePerusalTracks ? 'true' : 'false'}
-    data-perusal-recording-src={perusalRecordingSrc ?? undefined}
+    data-perusal-recording-src={showPerusalAudioPlayer ? (perusalRecordingSrc ?? undefined) : undefined}
     data-perusal-reveal-state="loading"
     data-perusal-gating-enabled={isGated ? 'true' : 'false'}
     data-perusal-flip-enabled={perusalViewerConfig.flipAnimationEnabled ? 'true' : 'false'}
@@ -640,7 +641,7 @@ const perusalPageJumpOptions = Array.from({ length: pageCount }, (_, index) => (
       </div>
 
       <div class="perusal-score-topbar-end">
-        <div class="perusal-score-audio-group" data-perusal-audio-ui hidden={!perusalRecordingSrc}>
+        <div class="perusal-score-audio-group" data-perusal-audio-ui hidden={!showPerusalAudioPlayer}>
           <div class="perusal-score-transport-group">
             <button
               type="button"
@@ -713,7 +714,7 @@ const perusalPageJumpOptions = Array.from({ length: pageCount }, (_, index) => (
           <div
             class="perusal-score-track-info-wrap perusal-score-audio-control"
             data-perusal-track-info
-            hidden={!perusalRecordingSrc}
+            hidden={!showPerusalAudioPlayer}
           >
             <button
               type="button"
@@ -860,7 +861,7 @@ const perusalPageJumpOptions = Array.from({ length: pageCount }, (_, index) => (
       </div>
     </div>
 
-    <div class="perusal-score-mobile-scrubber" data-perusal-mobile-scrubber hidden={!perusalRecordingSrc}>
+    <div class="perusal-score-mobile-scrubber" data-perusal-mobile-scrubber hidden={!showPerusalAudioPlayer}>
       <label class="sr-only" for={`perusal-mobile-seek-${work.id}`}>Seek recording of {work.data.title}</label>
       <input
         id={`perusal-mobile-seek-${work.id}`}

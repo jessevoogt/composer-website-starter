@@ -70,7 +70,8 @@ final class ContactHandler
             $mailer = new Mailer();
 
             // 1. Send the message to the site owner (notification email).
-            $sent = $mailer->sendContactMessage($name, $email, $message);
+            $newsletterOptIn = ($body['newsletter'] ?? '') === 'true';
+            $sent = $mailer->sendContactMessage($name, $email, $message, $newsletterOptIn);
 
             // 2. Send auto-reply to the submitter (thank you + copy of their message).
             $mailer->sendContactAutoReply(
@@ -84,6 +85,30 @@ final class ContactHandler
 
         if (!$sent) {
             return ['status' => 500, 'body' => ['success' => false, 'message' => 'Failed to send your message. Please try again.']];
+        }
+
+        // Store submission for admin review (non-blocking).
+        try {
+            $submissions = new SubmissionManager();
+            $submissions->add('contact', $name, $email, [
+                'message'        => $message,
+                'newsletterOptIn' => $newsletterOptIn,
+            ]);
+        } catch (\Exception $e) {
+            error_log('[ContactHandler] submission storage error: ' . $e->getMessage());
+        }
+
+        // Newsletter opt-in (non-blocking — subscription failure doesn't affect the response).
+        $newsletterField = $body['newsletter'] ?? '';
+        $newsletterEnabled = $_ENV['NEWSLETTER_ENABLED'] ?? '';
+
+        if ($newsletterField === 'true' && $newsletterEnabled === 'true') {
+            try {
+                $manager = new SubscriberManager();
+                $manager->add($email, $name, 'contact');
+            } catch (\Exception $e) {
+                error_log('[ContactHandler] subscriber add error: ' . $e->getMessage());
+            }
         }
 
         return ['status' => 200, 'body' => ['success' => true]];

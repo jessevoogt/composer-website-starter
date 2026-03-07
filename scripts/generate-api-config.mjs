@@ -30,6 +30,7 @@ const contact = loadYaml('source/pages/contact.yaml')
 const perusal = loadYaml('source/site/perusal-access.yaml')
 const scorePdf = loadYaml('source/site/score-pdf.yaml')
 const emailLayout = loadYaml('source/site/email-layout.yaml')
+const newsletter = loadYaml('source/site/newsletter.yaml')
 
 // ── .env.validation (form field constraints) ─────────────────────────────────
 
@@ -52,6 +53,9 @@ const lines = [
   `EMAIL_SHOW_HEADER_FAVICON=${emailLayout.showHeaderFavicon !== false}`,
   `EMAIL_SHOW_SIGNATURE_LOGO=${emailLayout.showSignatureLogo !== false}`,
   `EMAIL_SIGNATURE_LOGO_WIDTH=${Number.isInteger(emailLayout.signatureLogoWidth) ? emailLayout.signatureLogoWidth : 160}`,
+  '',
+  '# Newsletter (from source/site/newsletter.yaml)',
+  `NEWSLETTER_ENABLED=${newsletter.enabled === true}`,
 ]
 
 const envPath = path.join(root, 'api', '.env.validation')

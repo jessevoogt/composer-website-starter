@@ -24,6 +24,7 @@ import {
   getHomeFeaturedWork,
   getHomeSelectWorks,
   getHomeLayout,
+  getFeaturedPlayerConfig,
   type HeroVariant,
 } from '@/utils/source-config'
 
@@ -156,7 +157,7 @@ const heroSearchButtonVariant =
   heroSearchButtonStyle === 'outline' || heroSearchButtonStyle === 'solid' ? 'primary' : 'inline'
 const heroListenButtonLabel = homeHero.actions.listenNow.label.trim() || 'Listen Now'
 const heroSearchButtonLabel = homeHero.actions.searchMusic.label.trim() || 'Search Music'
-const showHeroListenButton = heroShowsCopy && homeHero.actions.listenNow.visible
+const showHeroListenButton = heroShowsCopy && homeHero.actions.listenNow.visible && visibleSections.has('featured-work')
 const showHeroSearchButton = heroShowsCopy && homeHero.actions.searchMusic.visible
 const showHeroActions = showHeroListenButton || showHeroSearchButton
 const heroAccessibleTitle = [heroTitle, heroSubtitle].filter(Boolean).join(' - ')
@@ -278,8 +279,25 @@ const fallbackFeaturedRecording: ClientRecordingEntry = recordingEntries.find(
     featured: false,
   }
 
+const featuredPlayerConfig = getFeaturedPlayerConfig()
 const featuredRecordingPool = recordingEntries.filter((entry) => entry.featured && entry.mp3)
 const initialFeaturedRecording = featuredRecordingPool[0] ?? fallbackFeaturedRecording
+const isFeaturedPlayerEnabled = featuredPlayerConfig.enabled && recordingEntries.some((entry) => entry.mp3)
+
+// When the audio player is disabled, swap audio-centric defaults for work-centric ones.
+// User-customized labels are preserved (only the known defaults are swapped).
+const resolvedFeaturedSectionTitle = !isFeaturedPlayerEnabled && featuredSectionTitle === 'Featured Recording'
+  ? 'Featured Work'
+  : featuredSectionTitle
+const resolvedFeaturedActiveSectionTitle = !isFeaturedPlayerEnabled && featuredActiveSectionTitle === 'Currently Playing'
+  ? 'Featured Work'
+  : featuredActiveSectionTitle
+const resolvedHeroListenButtonLabel = !isFeaturedPlayerEnabled && heroListenButtonLabel === 'Listen Now'
+  ? 'Featured Work'
+  : heroListenButtonLabel
+
+// Resolve the featured work entry for showing details when the player is disabled
+const featuredWork = worksWithImages.find((w) => w.id === initialFeaturedRecording.workId)
 
 const listenImage = {
   src: initialFeaturedRecording.imageSrc,
@@ -465,7 +483,7 @@ const pageData = JSON.stringify({
                               class="hero-action-listen-btn"
                               data-hero-action-style={heroListenButtonStyle}
                             >
-                              {heroListenButtonLabel}
+                              {resolvedHeroListenButtonLabel}
                               <span slot="append" style="display:contents">
                                 <span class="hero-action-icon hero-action-icon-listen" aria-hidden="true">
                                   <svg
@@ -539,21 +557,32 @@ const pageData = JSON.stringify({
                     <h2
                       id="listen-title"
                       data-featured-section-title
-                      data-featured-section-default-title={featuredSectionTitle}
-                      data-featured-section-active-title={featuredActiveSectionTitle}
+                      data-featured-section-default-title={resolvedFeaturedSectionTitle}
+                      data-featured-section-active-title={resolvedFeaturedActiveSectionTitle}
                       data-featured-default-recording-key={initialFeaturedRecording.key}
                     >
-                      {featuredSectionTitle}
+                      {resolvedFeaturedSectionTitle}
                     </h2>
-                    <p
-                      class="featured-recording-meta"
-                      data-featured-meta
-                      data-featured-meta-instrumentation={initialFeaturedRecording.instrumentation}
-                    >
-                      <span data-featured-meta-title>{initialFeaturedRecording.title}</span>
-                      <span data-featured-meta-performer>{initialFeaturedRecording.performer}</span>
-                      <span data-featured-meta-date>{initialFeaturedRecording.date}</span>
-                    </p>
+                    {!isFeaturedPlayerEnabled && featuredWork && (
+                      <div class="featured-work-details">
+                        <p class="featured-work-details-title">{featuredWork.data.title}</p>
+                        {featuredWork.data.subtitle && (
+                          <p class="featured-work-details-subtitle">{featuredWork.data.subtitle}</p>
+                        )}
+                        <p class="featured-work-details-description">{featuredWork.data.description}</p>
+                      </div>
+                    )}
+                    {isFeaturedPlayerEnabled && featuredPlayerConfig.showTrackInfo && (
+                      <p
+                        class="featured-recording-meta"
+                        data-featured-meta
+                        data-featured-meta-instrumentation={initialFeaturedRecording.instrumentation}
+                      >
+                        <span data-featured-meta-title>{initialFeaturedRecording.title}</span>
+                        <span data-featured-meta-performer>{initialFeaturedRecording.performer}</span>
+                        <span data-featured-meta-date>{initialFeaturedRecording.date}</span>
+                      </p>
+                    )}
                     <p class="featured-recording-action">
                       <ButtonLink
                         href={initialFeaturedRecording.workHref}
@@ -593,90 +622,98 @@ const pageData = JSON.stringify({
                     height="620"
                     data-featured-image
                   />
-                  <PlayButton
-                    class="listen-bleed-trigger"
-                    innerClass="listen-bleed-trigger-inner"
-                    data-listen-trigger
-                    aria-controls="featured-track-player"
-                    aria-label="Play featured recording"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
+                  {isFeaturedPlayerEnabled && (
+                    <PlayButton
+                      class="listen-bleed-trigger"
+                      innerClass="listen-bleed-trigger-inner"
+                      data-listen-trigger
+                      aria-controls="featured-track-player"
+                      aria-label="Play featured recording"
                     >
-                      <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none" />
-                    </svg>
-                    <span slot="sr-label">Play featured recording</span>
-                  </PlayButton>
-                  <PlayButton
-                    class="listen-bleed-pause"
-                    innerClass="listen-bleed-pause-inner"
-                    data-bleed-pause
-                    hidden
-                    aria-label="Pause featured recording"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M8.8 7.4L17 12L8.8 16.6V7.4Z" fill="currentColor" stroke="none" />
+                      </svg>
+                      <span slot="sr-label">Play featured recording</span>
+                    </PlayButton>
+                  )}
+                  {isFeaturedPlayerEnabled && (
+                    <PlayButton
+                      class="listen-bleed-pause"
+                      innerClass="listen-bleed-pause-inner"
+                      data-bleed-pause
+                      hidden
+                      aria-label="Pause featured recording"
                     >
-                      <path
-                        class="icon-bleed-play"
-                        d="M8.8 7.4L17 12L8.8 16.6V7.4Z"
-                        fill="currentColor"
-                        stroke="none"
-                      />
-                      <path class="icon-bleed-pause" d="M9.4 7.4V16.6M14.6 7.4V16.6" />
-                    </svg>
-                    <span slot="sr-label">Toggle featured recording playback</span>
-                  </PlayButton>
-                  <button
-                    type="button"
-                    class="listen-bleed-nav listen-bleed-nav-prev"
-                    data-listen-prev
-                    hidden
-                    aria-label="Previous featured recording"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.9"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path
+                          class="icon-bleed-play"
+                          d="M8.8 7.4L17 12L8.8 16.6V7.4Z"
+                          fill="currentColor"
+                          stroke="none"
+                        />
+                        <path class="icon-bleed-pause" d="M9.4 7.4V16.6M14.6 7.4V16.6" />
+                      </svg>
+                      <span slot="sr-label">Toggle featured recording playback</span>
+                    </PlayButton>
+                  )}
+                  {isFeaturedPlayerEnabled && (
+                    <button
+                      type="button"
+                      class="listen-bleed-nav listen-bleed-nav-prev"
+                      data-listen-prev
+                      hidden
+                      aria-label="Previous featured recording"
                     >
-                      <path d="m15 6-6 6 6 6" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="listen-bleed-nav listen-bleed-nav-next"
-                    data-listen-next
-                    hidden
-                    aria-label="Next featured recording"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.9"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.9"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m15 6-6 6 6 6" />
+                      </svg>
+                    </button>
+                  )}
+                  {isFeaturedPlayerEnabled && (
+                    <button
+                      type="button"
+                      class="listen-bleed-nav listen-bleed-nav-next"
+                      data-listen-next
+                      hidden
+                      aria-label="Next featured recording"
                     >
-                      <path d="m9 6 6 6-6 6" />
-                    </svg>
-                  </button>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.9"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="m9 6 6 6-6 6" />
+                      </svg>
+                    </button>
+                  )}
                 </figure>
               </section>
             )}

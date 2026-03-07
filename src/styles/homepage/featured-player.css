@@ -15,8 +15,7 @@
 }
 
 .featured-player-ui {
-  display: grid;
-  grid-template-columns: auto auto auto 1fr auto auto auto;
+  display: flex;
   align-items: center;
   gap: clamp(0.42rem, 0.8vw, 0.68rem);
 }
@@ -105,12 +104,12 @@
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
+  flex: 1 1 0%;
   margin: 0;
   box-shadow: none !important;
   border: none !important;
   background: transparent;
   padding: 0;
-  width: 100%;
   min-width: 0;
   height: 1.4rem;
   touch-action: pan-y;
@@ -235,6 +234,35 @@
     margin-left: 0;
     content: none;
   }
+}
+
+.featured-work-details {
+  margin: 0 0 1rem;
+  color: color-mix(in srgb, var(--ink) 88%, var(--ink-soft) 12%);
+}
+
+.featured-work-details-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.featured-work-details-subtitle {
+  margin: 0.15rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.featured-work-details-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  margin: 0.4rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .featured-recording-action {

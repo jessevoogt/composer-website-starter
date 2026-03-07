@@ -1,5 +1,6 @@
 ---
 import type { PerusalAccessConfig } from '@/utils/source-config'
+import { getNewsletterConfig } from '@/utils/source-config'
 import Button from '@components/ui/Button.astro'
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 
 const { workId, workTitle, config, gateTitle, gateMessage, successMessage, apiEndpoint, composerEmail, perusalScoreUrl } =
   Astro.props
+const newsletterConfig = getNewsletterConfig()
 ---
 
 <dialog
@@ -79,6 +81,47 @@ const { workId, workTitle, config, gateTitle, gateMessage, successMessage, apiEn
             <label for="perusal-gate-email">Email</label>
             <span class="perusal-gate-field-error" data-field-error="email" role="alert" aria-live="assertive"></span>
           </div>
+
+          {newsletterConfig.enabled && (
+            <div class="perusal-gate-field perusal-gate-field-checkbox">
+              <label class="perusal-gate-newsletter-label">
+                <input
+                  type="checkbox"
+                  name="newsletter"
+                  checked={newsletterConfig.checkboxDefaultChecked ? true : undefined}
+                />
+                <span>{newsletterConfig.checkboxLabel}</span>
+              </label>
+              {newsletterConfig.showCheckboxInfo && newsletterConfig.checkboxInfoText && (
+                <div class="newsletter-info-wrap">
+                  <button
+                    type="button"
+                    class="newsletter-info-btn"
+                    aria-label="About newsletter signup"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.9"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      class="newsletter-info-icon"
+                    >
+                      <circle cx="12" cy="12" r="8.8"></circle>
+                      <path d="M12 11.2v5"></path>
+                      <path d="M12 7.8h.01"></path>
+                    </svg>
+                    <span class="sr-only">About newsletter signup</span>
+                  </button>
+                  <div class="newsletter-info-popover" role="tooltip">
+                    <p>{newsletterConfig.checkboxInfoText}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div class="perusal-gate-actions">
             <Button type="submit" variant="primary" class="perusal-gate-submit" data-perusal-gate-submit>
@@ -272,6 +315,127 @@ const { workId, workTitle, config, gateTitle, gateMessage, successMessage, apiEn
 
   .perusal-gate-field-error:empty {
     display: none;
+  }
+
+  .perusal-gate-field-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Override the floating-label positioning from .perusal-gate-field label */
+  .perusal-gate-field-checkbox label,
+  .perusal-gate-field-checkbox:focus-within label {
+    position: static;
+    top: auto;
+    left: auto;
+    transform: none;
+    transition: none;
+    pointer-events: auto;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+  }
+
+  .perusal-gate-newsletter-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--ink-soft, #aab8c4);
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .perusal-gate-newsletter-label input[type='checkbox'] {
+    flex-shrink: 0;
+    margin-top: 0.25em;
+    width: 0.9rem;
+    height: 0.9rem;
+    accent-color: var(--accent, #97c6de);
+    cursor: pointer;
+  }
+
+  .perusal-gate-newsletter-label input[type='checkbox']:focus-visible {
+    outline: 2px solid var(--focus-ring-color, #97c6de);
+    outline-offset: 2px;
+  }
+
+  .newsletter-info-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: 0.3em;
+  }
+
+  .newsletter-info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--ink-soft, #aab8c4);
+    opacity: 0.5;
+    transition: opacity 170ms ease;
+  }
+
+  .newsletter-info-btn:hover,
+  .newsletter-info-btn:focus-visible {
+    opacity: 1;
+  }
+
+  .newsletter-info-btn:focus-visible {
+    outline: 2px solid var(--focus-ring-color, #97c6de);
+    outline-offset: 2px;
+  }
+
+  .newsletter-info-icon {
+    width: 0.85em;
+    height: 0.85em;
+  }
+
+  .newsletter-info-popover {
+    position: absolute;
+    inset-block-start: calc(100% + 0.4rem);
+    inset-inline-start: 50%;
+    transform: translateX(-50%) translateY(-0.18rem);
+    z-index: 34;
+    width: max-content;
+    max-width: min(16rem, 86vw);
+    padding: 0.5rem 0.6rem;
+    border: 1px solid color-mix(in srgb, var(--line, #2c3c4b) 74%, #b9cad8 26%);
+    background: color-mix(in srgb, var(--bg-soft, #18212b) 86%, #000 14%);
+    box-shadow: 0 12px 22px rgb(0 0 0 / 0.32);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 170ms ease,
+      transform 190ms ease;
+  }
+
+  .newsletter-info-popover p {
+    margin: 0;
+    color: var(--ink-soft, #aab8c4);
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+
+  .newsletter-info-wrap:focus-within .newsletter-info-popover {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .newsletter-info-wrap:hover .newsletter-info-popover {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
   }
 
   .perusal-gate-actions {

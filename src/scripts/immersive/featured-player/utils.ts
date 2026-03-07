@@ -65,6 +65,27 @@ export function parseFeaturedRecordings(): FeaturedRecording[] {
   }
 }
 
+export interface FeaturedPlayerClientConfig {
+  position: 'top' | 'bottom' | 'header-center'
+  trackInfoScrollingText: boolean
+}
+
+export function parseFeaturedPlayerConfig(): FeaturedPlayerClientConfig {
+  const el = document.querySelector<HTMLScriptElement>('[data-featured-player-config]')
+  if (!el?.textContent) return { position: 'bottom', trackInfoScrollingText: true }
+  try {
+    const parsed = JSON.parse(el.textContent)
+    const position: FeaturedPlayerClientConfig['position'] =
+      parsed.position === 'top' ? 'top' : parsed.position === 'header-center' ? 'header-center' : 'bottom'
+    return {
+      position,
+      trackInfoScrollingText: parsed.trackInfoScrollingText !== false,
+    }
+  } catch {
+    return { position: 'bottom', trackInfoScrollingText: true }
+  }
+}
+
 export function getScrollPaddingTop(): number {
   const scrollPaddingTop = window.getComputedStyle(document.documentElement).scrollPaddingTop
   const parsed = Number.parseFloat(scrollPaddingTop)

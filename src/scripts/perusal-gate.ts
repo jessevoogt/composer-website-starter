@@ -271,6 +271,12 @@ function initGateDialog(
       timestamp: new Date().toISOString(),
     }
 
+    // Newsletter opt-in: include checkbox state if the field exists.
+    const newsletterCheckbox = form!.querySelector<HTMLInputElement>('[name="newsletter"]')
+    if (newsletterCheckbox) {
+      submissionData.newsletter = newsletterCheckbox.checked ? 'true' : 'false'
+    }
+
     // ── Dual channel: always fire webhook as backup data capture ──
     submitToWebhook(config.webhookUrl, submissionData)
 

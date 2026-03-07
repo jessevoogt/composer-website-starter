@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Submissions Admin</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root {
+  --bg: #0e0e10;
+  --bg-soft: #18181b;
+  --bg-muted: #27272a;
+  --border: #3f3f46;
+  --text: #e4e4e7;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --radius: 6px;
+}
+html[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-soft: #f4f4f5;
+  --bg-muted: #e4e4e7;
+  --border: #d4d4d8;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --text-dim: #71717a;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+html { background: var(--bg); color: var(--text); }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 32px 80px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  margin: 0 0 24px;
+  border-bottom: 1px solid var(--border);
+}
+.page-header .page-logo {
+  height: 28px;
+  width: auto;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.page-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.back-link {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--text); }
+
+/* ── Config banner ─────────────────────────────────────────────────────── */
+.config-banner {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  margin-bottom: 24px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.config-banner.error { border-color: var(--danger); }
+.config-banner code {
+  background: var(--bg-muted);
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
+/* ── Stats ──────────────────────────────────────────────────────────────── */
+.submission-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  flex: 1;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  padding: 16px;
+  text-align: center;
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* ── Refresh button ────────────────────────────────────────────────────── */
+.refresh-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+}
+.refresh-btn:hover { background: var(--border); }
+
+/* ── Filter bar ────────────────────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.filter-bar input,
+.filter-bar select {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  color: var(--text);
+  line-height: 1.4;
+}
+.filter-bar input { flex: 1; min-width: 160px; }
+.filter-bar input::placeholder { color: var(--text-dim); }
+.filter-bar select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background: var(--bg-muted) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239e9e9e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;
+  cursor: pointer;
+}
+.filter-clear {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filter-clear:hover { background: var(--accent-hover, var(--accent)); }
+.filter-bar input:focus,
+.filter-bar select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.filter-count {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+
+/* ── Bulk actions ──────────────────────────────────────────────────────── */
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  visibility: hidden;
+}
+.bulk-actions.visible {
+  visibility: visible;
+}
+.bulk-delete-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  background: var(--danger);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}
+.bulk-delete-btn:hover { opacity: 0.9; }
+.bulk-count {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ── Table ──────────────────────────────────────────────────────────────── */
+.submission-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.submission-table th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--border);
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.submission-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.submission-table tr:hover td { background: var(--bg-soft); }
+.submission-table tr.selected td { background: color-mix(in srgb, var(--accent) 10%, var(--bg)); }
+.col-check { width: 32px; text-align: center; }
+
+/* ── Action buttons (hover/focus-within visibility) ────────────────────── */
+.cell-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.submission-table .mailto-btn,
+.submission-table .copy-btn,
+.submission-table .copy-name-btn {
+  visibility: hidden;
+  display: inline-flex;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  line-height: 1;
+}
+.submission-table tr:hover .mailto-btn,
+.submission-table tr:hover .copy-btn,
+.submission-table tr:hover .copy-name-btn,
+.submission-table tr:focus-within .mailto-btn,
+.submission-table tr:focus-within .copy-btn,
+.submission-table tr:focus-within .copy-name-btn {
+  visibility: visible;
+}
+.submission-table .mailto-btn:hover,
+.submission-table .copy-btn:hover,
+.submission-table .copy-name-btn:hover {
+  color: var(--text);
+}
+
+/* ── Type badge ────────────────────────────────────────────────────────── */
+.type-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.type-badge.contact { background: color-mix(in srgb, var(--accent) 15%, var(--bg-soft)); color: var(--accent-hover, var(--accent)); }
+.type-badge.perusal { background: color-mix(in srgb, var(--success) 15%, var(--bg-soft)); color: var(--success); }
+
+/* ── Message preview ───────────────────────────────────────────────────── */
+.message-preview {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.message-preview:hover {
+  white-space: normal;
+  overflow: visible;
+}
+.message-preview.expanded {
+  white-space: pre-wrap;
+  overflow: visible;
+  word-break: break-word;
+}
+.work-id-link {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.work-id-link:hover { color: var(--text); text-decoration: underline; }
+
+/* ── Empty / error states ──────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 48px 0;
+  color: var(--text-dim);
+}
+
+/* ── Confirm dialog ────────────────────────────────────────────────────── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.confirm-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.confirm-dialog {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+}
+.confirm-dialog h3 { margin-bottom: 8px; font-size: 16px; }
+.confirm-dialog p { margin-bottom: 20px; color: var(--text-muted); font-size: 13px; }
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+.btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-secondary { background: var(--bg-muted); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { opacity: 0.9; }
+
+/* ── Opt-in indicator ──────────────────────────────────────────────────── */
+.optin-yes { color: var(--success); font-size: 11px; }
+.optin-no { color: var(--text-dim); font-size: 11px; }
+
+/* ── Sortable columns ─────────────────────────────────────────────────── */
+.submission-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 20px;
+}
+.submission-table th.sortable:hover { color: var(--text); }
+.submission-table th.sortable::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--text-dim);
+  margin-top: 3px;
+  opacity: 0.3;
+}
+.submission-table th.sortable.asc::after {
+  border-top-color: transparent;
+  border-bottom-color: var(--text);
+  margin-top: -3px;
+  opacity: 1;
+}
+.submission-table th.sortable.desc::after {
+  border-top-color: var(--text);
+  margin-top: 3px;
+  opacity: 1;
+}
+</style>
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search)
+  var explicit = params.get('theme')
+  function apply(t) { document.documentElement.setAttribute('data-theme', t) }
+  if (explicit === 'light' || explicit === 'dark') {
+    apply(explicit)
+  } else {
+    apply(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+  }
+  window.addEventListener('message', function(e) {
+    if (e.data && typeof e.data === 'object' && e.data.type === 'theme-change' && (e.data.theme === 'dark' || e.data.theme === 'light')) {
+      apply(e.data.theme)
+    }
+  })
+  if (!explicit) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+      apply(e.matches ? 'dark' : 'light')
+    })
+  }
+})()
+</script>
+</head>
+<body>
+
+<header class="page-header">
+  <img src="/favicon.svg" alt="" class="page-logo">
+  <h1>Submissions</h1>
+  <a href="/keystatic/" class="back-link">Back to CMS</a>
+</header>
+
+<div id="config-banner" class="config-banner" style="display:none"></div>
+
+<div class="submission-stats">
+  <div class="stat-card">
+    <div class="stat-value" id="total-count">--</div>
+    <div class="stat-label">Total Submissions</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="contact-count">--</div>
+    <div class="stat-label">Contact Form</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value" id="perusal-count">--</div>
+    <div class="stat-label">Perusal Requests</div>
+  </div>
+</div>
+
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+  <button class="refresh-btn" id="refresh-btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg> Refresh</button>
+  <span id="status-msg" style="font-size:12px;color:var(--text-dim)"></span>
+</div>
+
+<div id="submission-list"></div>
+
+<!-- ── Confirm dialog ───────────────────────────────────────────────────── -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-dialog" role="alertdialog" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+    <h3 id="confirm-title">Delete submissions?</h3>
+    <p id="confirm-desc">This will permanently delete the selected submissions. This action cannot be undone.</p>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Yes, delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict'
+
+  const API_BASE = '/api/dev/submissions'
+  const searchParams = new URLSearchParams(window.location.search)
+  const isModalMode = searchParams.get('modal') === '1'
+
+  // ── Modal mode: hide back-link (parent panel has its own ✕ button) ───
+  if (isModalMode) {
+    const backLink = document.querySelector('.back-link')
+    if (backLink) backLink.style.display = 'none'
+    document.body.style.paddingRight = '48px'
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const confirmOverlay = document.getElementById('confirm-overlay')
+        if (confirmOverlay && confirmOverlay.classList.contains('visible')) return
+        e.preventDefault()
+        window.parent.postMessage({ type: 'submissions-admin-close' }, '*')
+      }
+    })
+  }
+
+  // ── Config check ──────────────────────────────────────────────────────
+  let configOk = false
+
+  async function checkConfig() {
+    try {
+      const res = await fetch(API_BASE + '/config')
+      const data = await res.json()
+      const banner = document.getElementById('config-banner')
+
+      if (!data.hasSecret) {
+        banner.style.display = 'block'
+        banner.classList.add('error')
+        banner.innerHTML = '<strong>Admin secret not configured.</strong><br>'
+          + 'Add <code>NEWSLETTER_SECRET="..."</code> to <code>api/.env</code>.'
+        return
+      }
+
+      if (!data.apiEndpoint || data.apiEndpoint === '/api') {
+        banner.style.display = 'block'
+        banner.classList.add('error')
+        banner.innerHTML = '<strong>API endpoint not configured.</strong><br>'
+          + 'Set <code>FRONTEND_URL</code> or <code>API_ENDPOINT</code> in <code>api/.env</code>.'
+        return
+      }
+
+      configOk = true
+      banner.style.display = 'none'
+      loadSubmissions()
+    } catch (err) {
+      const banner = document.getElementById('config-banner')
+      banner.style.display = 'block'
+      banner.classList.add('error')
+      banner.textContent = 'Failed to load config: ' + err.message
+    }
+  }
+
+  // ── Submissions ───────────────────────────────────────────────────────
+  let submissionList = []
+  let selectedIds = new Set()
+  let sortCol = 'date'   // default sort column
+  let sortDir = 'desc'   // 'asc' or 'desc'
+  let filterText = ''
+  let filterType = 'all'
+  let filterNewsletter = 'all'
+  let filterWork = 'all'
+
+  function filteredList() {
+    return submissionList.filter(sub => {
+      if (filterType !== 'all' && sub.type !== filterType) return false
+      if (filterNewsletter !== 'all') {
+        const wanted = filterNewsletter === 'yes'
+        if (!!sub.newsletterOptIn !== wanted) return false
+      }
+      if (filterWork !== 'all' && (sub.workId || '') !== filterWork) return false
+      if (filterText) {
+        const q = filterText.toLowerCase()
+        const haystack = [sub.name, sub.email, sub.message, sub.workId]
+          .filter(Boolean).join(' ').toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
+      return true
+    })
+  }
+
+  function getSortValue(sub, col) {
+    switch (col) {
+      case 'type':       return sub.type || ''
+      case 'email':      return sub.email || ''
+      case 'name':       return (sub.name || '').toLowerCase()
+      case 'details':    return sub.type === 'contact' ? (sub.message || '') : (sub.workId || '')
+      case 'newsletter': return sub.newsletterOptIn ? 1 : 0
+      case 'date':       return sub.createdAt || ''
+      default:           return ''
+    }
+  }
+
+  function sortedList() {
+    const sorted = filteredList()
+    sorted.sort((a, b) => {
+      const va = getSortValue(a, sortCol)
+      const vb = getSortValue(b, sortCol)
+      let cmp = 0
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb
+      } else {
+        cmp = String(va).localeCompare(String(vb))
+      }
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+    return sorted
+  }
+
+  function toggleSort(col) {
+    if (sortCol === col) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc'
+    } else {
+      sortCol = col
+      sortDir = col === 'date' ? 'desc' : 'asc'
+    }
+    renderSubmissions()
+  }
+
+  async function loadSubmissions() {
+    if (!configOk) return
+
+    const statusEl = document.getElementById('status-msg')
+    statusEl.textContent = 'Loading...'
+
+    try {
+      const res = await fetch(API_BASE + '/list')
+      const data = await res.json()
+
+      if (!data.success) {
+        statusEl.textContent = 'Error: ' + (data.message || 'Failed to load')
+        return
+      }
+
+      submissionList = data.submissions || []
+      const count = data.count ?? submissionList.length
+
+      document.getElementById('total-count').textContent = count
+      const contactCount = submissionList.filter(s => s.type === 'contact').length
+      const perusalCount = submissionList.filter(s => s.type === 'perusal').length
+      document.getElementById('contact-count').textContent = contactCount
+      document.getElementById('perusal-count').textContent = perusalCount
+
+      statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString()
+      selectedIds.clear()
+      renderSubmissions()
+    } catch (err) {
+      statusEl.textContent = 'Error: ' + err.message
+    }
+  }
+
+  function esc(s) {
+    const d = document.createElement('div')
+    d.textContent = s
+    return d.innerHTML
+  }
+
+  const clipboardSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+  const envelopeSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>'
+  const checkSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+
+  function renderSubmissions() {
+    const list = submissionList
+    const container = document.getElementById('submission-list')
+
+    // ── Build filter bar ───────────────────────────────────────────────
+    const workIds = [...new Set(list.map(s => s.workId).filter(Boolean))].sort()
+    let filterHtml = '<div class="filter-bar">'
+      + '<input type="text" id="filter-search" placeholder="Search name, email, message, work\u2026" value="' + esc(filterText) + '">'
+      + '<select id="filter-type"><option value="all"'+ (filterType === 'all' ? ' selected' : '') +'>All types</option>'
+      + '<option value="contact"'+ (filterType === 'contact' ? ' selected' : '') +'>Contact</option>'
+      + '<option value="perusal"'+ (filterType === 'perusal' ? ' selected' : '') +'>Perusal</option></select>'
+      + '<select id="filter-newsletter"><option value="all"'+ (filterNewsletter === 'all' ? ' selected' : '') +'>Newsletter: All</option>'
+      + '<option value="yes"'+ (filterNewsletter === 'yes' ? ' selected' : '') +'>Newsletter: Yes</option>'
+      + '<option value="no"'+ (filterNewsletter === 'no' ? ' selected' : '') +'>Newsletter: No</option></select>'
+    if (workIds.length > 0) {
+      filterHtml += '<select id="filter-work"><option value="all"'+ (filterWork === 'all' ? ' selected' : '') +'>All works</option>'
+      for (const wid of workIds) {
+        filterHtml += '<option value="' + esc(wid) + '"'+ (filterWork === wid ? ' selected' : '') +'>' + esc(wid) + '</option>'
+      }
+      filterHtml += '</select>'
+    }
+    const isFiltered = filterText || filterType !== 'all' || filterNewsletter !== 'all' || filterWork !== 'all'
+    if (isFiltered) {
+      filterHtml += '<button type="button" class="filter-clear" id="filter-clear">Clear filters</button>'
+    }
+    filterHtml += '</div>'
+
+    const bulkHtml = '<div class="bulk-actions' + (selectedIds.size > 0 ? ' visible' : '') + '" id="bulk-actions">'
+      + '<button class="bulk-delete-btn" id="bulk-delete-btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg> Delete selected</button>'
+      + '<span class="bulk-count" id="bulk-count">' + (selectedIds.size > 0 ? selectedIds.size + ' selected' : '') + '</span>'
+      + '</div>'
+
+    // ── Empty state (no data at all) ──────────────────────────────────
+    if (list.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No submissions yet.</p>'
+        + '<p style="font-size:12px">Submissions are recorded when visitors submit the contact or perusal request forms.</p></div>'
+      return
+    }
+
+    const sorted = sortedList()
+
+    // ── Update stats with filter counts ───────────────────────────────
+    const totalEl = document.getElementById('total-count')
+    const contactEl = document.getElementById('contact-count')
+    const perusalEl = document.getElementById('perusal-count')
+    if (isFiltered) {
+      const fc = sorted.filter(s => s.type === 'contact').length
+      const fp = sorted.filter(s => s.type === 'perusal').length
+      totalEl.innerHTML = sorted.length + '<span class="filter-count">of ' + list.length + '</span>'
+      contactEl.innerHTML = fc + '<span class="filter-count">of ' + list.filter(s => s.type === 'contact').length + '</span>'
+      perusalEl.innerHTML = fp + '<span class="filter-count">of ' + list.filter(s => s.type === 'perusal').length + '</span>'
+    } else {
+      totalEl.textContent = list.length
+      contactEl.textContent = list.filter(s => s.type === 'contact').length
+      perusalEl.textContent = list.filter(s => s.type === 'perusal').length
+    }
+
+    // ── No results after filtering ────────────────────────────────────
+    if (sorted.length === 0) {
+      container.innerHTML = filterHtml + bulkHtml
+        + '<div class="empty-state"><p>No submissions match the current filters.</p></div>'
+      bindFilterEvents(container)
+      bindBulkDelete(container)
+      return
+    }
+
+    const cols = [
+      { key: 'type', label: 'Type' },
+      { key: 'email', label: 'Email' },
+      { key: 'name', label: 'Name' },
+      { key: 'details', label: 'Details' },
+      { key: 'newsletter', label: 'Newsletter' },
+      { key: 'date', label: 'Date' },
+    ]
+
+    let html = filterHtml + bulkHtml + '<table class="submission-table"><thead><tr>'
+      + '<th class="col-check"><input type="checkbox" id="select-all-toggle" title="Select all"></th>'
+    for (const col of cols) {
+      const cls = 'sortable' + (sortCol === col.key ? ' ' + sortDir : '')
+      html += '<th class="' + cls + '" data-sort="' + col.key + '">' + col.label + '</th>'
+    }
+    html += '</tr></thead><tbody>'
+
+    for (const sub of sorted) {
+      const id = sub.id || ''
+      const email = sub.email || ''
+      const date = (sub.createdAt || '').slice(0, 10)
+      const checked = selectedIds.has(id) ? ' checked' : ''
+      const selectedClass = selectedIds.has(id) ? ' selected' : ''
+      const typeClass = sub.type === 'contact' ? 'contact' : 'perusal'
+      const typeLabel = sub.type === 'contact' ? 'Contact' : 'Perusal'
+
+      // Details column
+      let detailHtml
+      if (sub.type === 'contact') {
+        const msg = sub.message || ''
+        detailHtml = msg
+          ? '<span class="message-preview" title="Click to expand">' + esc(msg) + '</span>'
+          : '<span style="color:var(--text-dim)">--</span>'
+      } else {
+        const workId = sub.workId || ''
+        detailHtml = workId
+          ? '<a class="work-id-link" href="/music/' + esc(workId) + '/" target="_blank">' + esc(workId) + '</a>'
+          : '<span style="color:var(--text-dim)">--</span>'
+      }
+
+      html += '<tr class="sub-row' + selectedClass + '" data-id="' + esc(id) + '">'
+        + '<td class="col-check"><input type="checkbox" class="sub-check"' + checked + '></td>'
+        + '<td><span class="type-badge ' + typeClass + '">' + typeLabel + '</span></td>'
+        + '<td><div class="cell-actions">'
+        + '<span class="cell-value email-masked">' + esc(email) + '</span>'
+        + '<button class="mailto-btn" type="button" aria-label="Send email">' + envelopeSvg + '</button>'
+        + '<button class="copy-btn" type="button" aria-label="Copy email to clipboard">' + clipboardSvg + '</button>'
+        + '</div></td>'
+        + '<td><div class="cell-actions">'
+        + '<span class="cell-value">' + esc(sub.name || '--') + '</span>'
+        + '<button class="copy-name-btn" type="button" aria-label="Copy name to clipboard">' + clipboardSvg + '</button>'
+        + '</div></td>'
+        + '<td>' + detailHtml + '</td>'
+        + '<td>' + (sub.newsletterOptIn ? '<span class="optin-yes">Yes</span>' : '<span class="optin-no">No</span>') + '</td>'
+        + '<td style="white-space:nowrap">' + esc(date || '--') + '</td>'
+        + '</tr>'
+    }
+
+    html += '</tbody></table>'
+    container.innerHTML = html
+
+    // Bulk delete handler
+    bindBulkDelete(container)
+
+    // Sort column headers
+    container.querySelectorAll('th.sortable').forEach(th => {
+      th.addEventListener('click', () => toggleSort(th.dataset.sort))
+    })
+
+    // Filter events
+    bindFilterEvents(container)
+
+    // Select-all toggle (operates on filtered/visible rows only)
+    const selectAll = document.getElementById('select-all-toggle')
+    if (selectAll) {
+      const visibleIds = sorted.map(s => s.id)
+      selectAll.checked = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id))
+      selectAll.addEventListener('change', () => {
+        if (selectAll.checked) {
+          visibleIds.forEach(id => selectedIds.add(id))
+        } else {
+          visibleIds.forEach(id => selectedIds.delete(id))
+        }
+        renderSubmissions()
+      })
+    }
+
+    // Individual checkboxes
+    container.querySelectorAll('.sub-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const id = cb.closest('tr').dataset.id
+        if (cb.checked) selectedIds.add(id); else selectedIds.delete(id)
+        cb.closest('tr').classList.toggle('selected', cb.checked)
+        updateBulkActions()
+        const selectAll = document.getElementById('select-all-toggle')
+        if (selectAll) selectAll.checked = sorted.length > 0 && sorted.every(s => selectedIds.has(s.id))
+      })
+    })
+
+    // Message preview expand/collapse
+    container.querySelectorAll('.message-preview').forEach(el => {
+      el.addEventListener('click', () => {
+        el.classList.toggle('expanded')
+      })
+    })
+
+    // Mailto — fetch real email, then open mailto: link
+    container.querySelectorAll('.mailto-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('tr')
+        const subId = row.dataset.id
+        btn.disabled = true
+        btn.style.opacity = '0.4'
+        try {
+          const res = await fetch(API_BASE + '/detail?id=' + encodeURIComponent(subId))
+          const data = await res.json()
+          if (data.success && data.email) {
+            const name = data.name || ''
+            const body = name ? 'Hi ' + name + ',\n\n' : ''
+            window.location.href = 'mailto:' + encodeURIComponent(data.email) + '?body=' + encodeURIComponent(body)
+          } else {
+            alert('Could not load email: ' + (data.message || 'Unknown error'))
+          }
+        } catch (err) {
+          alert('Could not load email: ' + err.message)
+        } finally {
+          btn.disabled = false
+          btn.style.opacity = ''
+        }
+      })
+    })
+
+    // Copy email to clipboard
+    container.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const row = btn.closest('tr')
+        const subId = row.dataset.id
+        btn.disabled = true
+        btn.style.opacity = '0.4'
+        try {
+          const res = await fetch(API_BASE + '/detail?id=' + encodeURIComponent(subId))
+          const data = await res.json()
+          if (data.success && data.email) {
+            await navigator.clipboard.writeText(data.email)
+            const origHtml = btn.innerHTML
+            btn.innerHTML = checkSvg
+            setTimeout(() => { btn.innerHTML = origHtml }, 1200)
+          } else {
+            alert('Could not load email: ' + (data.message || 'Unknown error'))
+          }
+        } catch (err) {
+          alert('Could not copy email: ' + err.message)
+        } finally {
+          btn.disabled = false
+          btn.style.opacity = ''
+        }
+      })
+    })
+
+    // Copy name to clipboard
+    container.querySelectorAll('.copy-name-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cell = btn.closest('.cell-actions')
+        const name = cell.querySelector('.cell-value').textContent.trim()
+        if (!name || name === '--') return
+        try {
+          await navigator.clipboard.writeText(name)
+          const origHtml = btn.innerHTML
+          btn.innerHTML = checkSvg
+          setTimeout(() => { btn.innerHTML = origHtml }, 1200)
+        } catch (err) {
+          alert('Could not copy name: ' + err.message)
+        }
+      })
+    })
+  }
+
+  function bindFilterEvents(container) {
+    const search = container.querySelector('#filter-search')
+    const type = container.querySelector('#filter-type')
+    const newsletter = container.querySelector('#filter-newsletter')
+    const work = container.querySelector('#filter-work')
+
+    if (search) {
+      search.addEventListener('input', () => { filterText = search.value; renderSubmissions() })
+      // Restore cursor position after re-render
+      search.focus()
+      search.setSelectionRange(search.value.length, search.value.length)
+    }
+    if (type) type.addEventListener('change', () => { filterType = type.value; renderSubmissions() })
+    if (newsletter) newsletter.addEventListener('change', () => { filterNewsletter = newsletter.value; renderSubmissions() })
+    if (work) work.addEventListener('change', () => { filterWork = work.value; renderSubmissions() })
+    const clear = container.querySelector('#filter-clear')
+    if (clear) clear.addEventListener('click', () => {
+      filterText = ''; filterType = 'all'; filterNewsletter = 'all'; filterWork = 'all'
+      renderSubmissions()
+    })
+  }
+
+  function updateBulkActions() {
+    const bar = document.getElementById('bulk-actions')
+    const count = selectedIds.size
+    if (count === 0) {
+      bar.classList.remove('visible')
+    } else {
+      bar.classList.add('visible')
+      document.getElementById('bulk-count').textContent = count + ' selected'
+    }
+  }
+
+  // ── Bulk delete ────────────────────────────────────────────────────────
+  function bindBulkDelete(container) {
+    const btn = container.querySelector('#bulk-delete-btn')
+    if (!btn) return
+    btn.addEventListener('click', () => {
+      if (selectedIds.size === 0) return
+      document.getElementById('confirm-title').textContent = 'Delete ' + selectedIds.size + ' submission' + (selectedIds.size > 1 ? 's' : '') + '?'
+      document.getElementById('confirm-desc').textContent = 'This will permanently delete the selected submission' + (selectedIds.size > 1 ? 's' : '') + '. This action cannot be undone.'
+      document.getElementById('confirm-ok').textContent = 'Yes, delete'
+      showConfirm(async () => {
+        try {
+          const res = await fetch(API_BASE + '/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: Array.from(selectedIds) }),
+          })
+          const data = await res.json()
+          if (data.success) {
+            selectedIds.clear()
+            loadSubmissions()
+          } else {
+            alert('Delete failed: ' + (data.message || 'Unknown error'))
+          }
+        } catch (err) {
+          alert('Delete failed: ' + err.message)
+        }
+      })
+    })
+  }
+
+  // ── Confirm dialog ────────────────────────────────────────────────────
+  let confirmCallback = null
+
+  function showConfirm(onConfirm) {
+    confirmCallback = onConfirm
+    document.getElementById('confirm-overlay').classList.add('visible')
+    document.getElementById('confirm-cancel').focus()
+  }
+
+  function hideConfirm() {
+    document.getElementById('confirm-overlay').classList.remove('visible')
+    confirmCallback = null
+  }
+
+  document.getElementById('confirm-cancel').addEventListener('click', hideConfirm)
+  document.getElementById('confirm-ok').addEventListener('click', () => {
+    if (confirmCallback) confirmCallback()
+    hideConfirm()
+  })
+
+  // Close confirm on overlay click
+  document.getElementById('confirm-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) hideConfirm()
+  })
+
+  // ── Refresh ───────────────────────────────────────────────────────────
+  document.getElementById('refresh-btn').addEventListener('click', () => {
+    if (configOk) loadSubmissions()
+  })
+
+  // ── Init ──────────────────────────────────────────────────────────────
+  checkConfig()
+})()
+</script>
+</body>
+</html>

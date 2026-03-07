@@ -426,6 +426,12 @@ export function getPageSingletons(deps: PageSingletonsDeps) {
           defaultValue: 100,
           validation: { min: 50, max: 300 },
         }),
+        showAudioPlayer: fields.checkbox({
+          label: 'Show audio player',
+          description:
+            'Display the audio player on perusal score pages when a recording is available for the work. Disabling this hides the transport controls and playback UI.',
+          defaultValue: true,
+        }),
       },
     }),
 

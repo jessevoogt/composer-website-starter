@@ -210,6 +210,14 @@ npm run ingest:works    # Process works into content collections
 npm run build           # Rebuild the site
 ```
 
+## Newsletter
+
+Collect subscriber emails through your contact and perusal score request forms, and send newsletters from your local machine.
+
+To enable: go to Keystatic > **Global: Newsletter** and toggle **Enable newsletter opt-in**. Then add a `NEWSLETTER_SECRET` to `api/.env` for sending.
+
+Full setup, sending instructions, and subscriber management: **[Newsletter Guide](NEWSLETTER.md)**
+
 ## Deployment
 
 ### SFTP Deploy
