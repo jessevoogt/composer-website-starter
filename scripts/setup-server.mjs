@@ -1288,6 +1288,9 @@ async function handleWork(req, res) {
     const slug = typeof body.slug === 'string' ? body.slug.trim() : ''
     const thumbnailAlt = typeof body.thumbnailAlt === 'string' ? body.thumbnailAlt.trim() : ''
     const thumbnailUploaded = body.thumbnailUploaded === true
+    const thumbnailFilename = typeof body.thumbnailFilename === 'string' ? body.thumbnailFilename.trim() : ''
+    const audioFilename = typeof body.audioFilename === 'string' ? body.audioFilename.trim() : ''
+    const scoreFilename = typeof body.scoreFilename === 'string' ? body.scoreFilename.trim() : ''
     const hasRecording = body.hasRecording === true
     const recordingFolder = typeof body.recordingFolder === 'string' ? body.recordingFolder.trim() : ''
     const instrumentation = Array.isArray(body.instrumentation) ? body.instrumentation.filter(s => typeof s === 'string' && s.trim()) : []
@@ -1340,18 +1343,27 @@ async function handleWork(req, res) {
       title,
       subtitle: subtitle || '',
       description,
-      thumbnail: { alt: thumbnailAlt || title, crop: '' },
+      thumbnail: {
+        ...(thumbnailFilename ? { src: thumbnailFilename } : {}),
+        alt: thumbnailAlt || title,
+        crop: '',
+      },
       completionDate: today,
       duration: '',
       difficulty: '',
-      tags: [],
-      instrumentation,
-      searchKeywords: [],
-      selected: true,
-      selectedOrder: 1,
+      categorization: {
+        tags: [],
+        instrumentation: { instruments: instrumentation },
+        searchKeywords: [],
+      },
+      homepageSelection: {
+        selected: true,
+        selectedOrder: 1,
+      },
       recordings: [],
       performances: [],
       sheetMusic: [],
+      ...(scoreFilename ? { scoreSrc: scoreFilename } : {}),
     }
 
     if (hasRecording && recordingFolder) {
@@ -1362,6 +1374,7 @@ async function handleWork(req, res) {
         duration: '',
         youtubeUrl: youtubeUrl || '',
         photo: { alt: '' },
+        ...(audioFilename ? { audioSrc: audioFilename } : {}),
         featuredRecording: true,
         movements: [],
       })

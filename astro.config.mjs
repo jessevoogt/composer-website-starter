@@ -217,10 +217,17 @@ export default defineConfig({
         // worktree directory. Vite's default allow list only covers the project root,
         // so dev toolbar and other node_modules resources get blocked. Resolve the
         // actual astro package location and allow its parent node_modules tree.
-        allow: [
-          fileURLToPath(new URL('.', import.meta.url)),
-          path.resolve(fileURLToPath(import.meta.resolve('astro')), '..', '..'),
-        ],
+        allow: (() => {
+          const dirs = [fileURLToPath(new URL('.', import.meta.url))]
+          try {
+            // import.meta.resolve is not always available in Vite's SSR module runner
+            dirs.push(path.resolve(fileURLToPath(import.meta.resolve('astro')), '..', '..'))
+          } catch {
+            // Fallback: allow the project-local node_modules tree
+            dirs.push(path.resolve(fileURLToPath(new URL('.', import.meta.url)), 'node_modules'))
+          }
+          return dirs
+        })(),
       },
     },
     resolve: {

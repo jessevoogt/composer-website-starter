@@ -678,6 +678,20 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   let sortField = 'title'
   let sortDir = 'asc'
 
+  // ── Helpers ────────────────────────────────────────────────────────────
+  /**
+   * Flatten instrumentation to a plain string[] regardless of schema format.
+   * Handles legacy flat array, flat-mode object, and grouped-mode object.
+   */
+  function flattenInstrumentation(instr) {
+    if (Array.isArray(instr)) return instr
+    if (!instr || typeof instr !== 'object') return []
+    if (!instr.grouped) return Array.isArray(instr.instruments) ? instr.instruments : []
+    return (instr.sections || []).flatMap(s =>
+      (s.instruments || []).flatMap(i => typeof i === 'string' ? [i] : [i.label, ...(i.details || [])])
+    )
+  }
+
   // ── Elements ───────────────────────────────────────────────────────────
   const $ = (s) => document.querySelector(s)
   const $$ = (s) => [...document.querySelectorAll(s)]
@@ -833,8 +847,8 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 
   // ── Resolve effective gating ───────────────────────────────────────────
   function resolveGating(work) {
-    if (work.scores.perusalScoreGated === 'gated') return true
-    if (work.scores.perusalScoreGated === 'ungated') return false
+    if (work.scores.viewerGating === 'gated') return true
+    if (work.scores.viewerGating === 'ungated') return false
     return globalConfig.gatingEnabled
   }
 
@@ -846,7 +860,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
         const q = normalize(filters.search)
         const searchable = normalize([
           work.title, work.subtitle, work.description,
-          ...work.tags, ...work.instrumentation, ...work.searchKeywords,
+          ...work.tags, ...flattenInstrumentation(work.instrumentation), ...work.searchKeywords,
           work.programNote,
           ...work.recordings.flatMap(r => [...r.performers, r.ensemble].filter(Boolean)),
           ...work.movementNames,
@@ -886,7 +900,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
       // Multi-select
       if (filters.difficulties.length > 0 && !filters.difficulties.includes(work.difficulty)) return false
       if (filters.tags.length > 0 && !filters.tags.some(t => work.tags.includes(t))) return false
-      if (filters.instruments.length > 0 && !filters.instruments.some(i => work.instrumentation.includes(i))) return false
+      if (filters.instruments.length > 0 && !filters.instruments.some(i => flattenInstrumentation(work.instrumentation).includes(i))) return false
 
       // Performer / ensemble
       if (filters.performers.length > 0) {

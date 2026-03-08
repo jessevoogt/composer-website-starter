@@ -198,21 +198,25 @@ function hashPdfConfig(pdfConfig, wmConfig) {
 
 function loadWorkOverrides(workYamlPath) {
   const defaults = {
-    pdfWatermarkedOverride: '',
-    pdfOriginalOverride: '',
-    pdfWatermarkedGatedOverride: '',
-    pdfOriginalGatedOverride: '',
+    viewerWatermark: '',
+    pdfWatermarked: '',
+    pdfOriginal: '',
+    pdfWatermarkedGating: '',
+    pdfOriginalGating: '',
   }
 
   if (!isFile(workYamlPath)) return defaults
 
   try {
     const raw = yaml.load(fs.readFileSync(workYamlPath, 'utf8')) || {}
+    const so = raw.scoreOverrides
+    if (!so || typeof so !== 'object') return defaults
     return {
-      pdfWatermarkedOverride: raw.pdfWatermarkedOverride || '',
-      pdfOriginalOverride: raw.pdfOriginalOverride || '',
-      pdfWatermarkedGatedOverride: raw.pdfWatermarkedGatedOverride || '',
-      pdfOriginalGatedOverride: raw.pdfOriginalGatedOverride || '',
+      viewerWatermark: so.viewerWatermark || '',
+      pdfWatermarked: so.pdfWatermarked || '',
+      pdfOriginal: so.pdfOriginal || '',
+      pdfWatermarkedGating: so.pdfWatermarkedGating || '',
+      pdfOriginalGating: so.pdfOriginalGating || '',
     }
   } catch {
     return defaults
@@ -229,8 +233,8 @@ function loadWorkMetadata(workYamlPath) {
     return {
       title: typeof raw.title === 'string' ? raw.title : '',
       subtitle: typeof raw.subtitle === 'string' ? raw.subtitle : '',
-      instrumentation: Array.isArray(raw.instrumentation)
-        ? raw.instrumentation.filter((i) => typeof i === 'string')
+      instrumentation: Array.isArray(raw.categorization?.instrumentation)
+        ? raw.categorization.instrumentation.filter((i) => typeof i === 'string')
         : [],
     }
   } catch {
@@ -262,20 +266,20 @@ function loadComposerName() {
 function resolveWorkPdfSettings(globalConfig, overrides) {
   return {
     watermarkedEnabled:
-      overrides.pdfWatermarkedOverride === 'enabled' ? true
-        : overrides.pdfWatermarkedOverride === 'disabled' ? false
+      overrides.pdfWatermarked === 'enabled' ? true
+        : overrides.pdfWatermarked === 'disabled' ? false
           : globalConfig.pdfWatermarkedEnabled,
     originalEnabled:
-      overrides.pdfOriginalOverride === 'enabled' ? true
-        : overrides.pdfOriginalOverride === 'disabled' ? false
+      overrides.pdfOriginal === 'enabled' ? true
+        : overrides.pdfOriginal === 'disabled' ? false
           : globalConfig.pdfOriginalEnabled,
     watermarkedGated:
-      overrides.pdfWatermarkedGatedOverride === 'gated' ? true
-        : overrides.pdfWatermarkedGatedOverride === 'ungated' ? false
+      overrides.pdfWatermarkedGating === 'gated' ? true
+        : overrides.pdfWatermarkedGating === 'ungated' ? false
           : globalConfig.pdfWatermarkedGated,
     originalGated:
-      overrides.pdfOriginalGatedOverride === 'gated' ? true
-        : overrides.pdfOriginalGatedOverride === 'ungated' ? false
+      overrides.pdfOriginalGating === 'gated' ? true
+        : overrides.pdfOriginalGating === 'ungated' ? false
           : globalConfig.pdfOriginalGated,
   }
 }
@@ -552,7 +556,7 @@ function discoverScores(sourceDir) {
 
 // ─── WebP Processing ────────────────────────────────────────────────────────
 
-async function processScore(slug, pdfPath, wmConfig) {
+async function processScore(slug, pdfPath, wmConfig, viewerWatermarkOverride = '') {
   const { pdfToPng } = await import('pdf-to-png-converter')
   const sharp = (await import('sharp')).default
 
@@ -568,6 +572,12 @@ async function processScore(slug, pdfPath, wmConfig) {
   console.log(`  ${pages.length} page(s) found`)
   const pageHashes = []
 
+  // Resolve per-work watermark: override > global setting
+  const watermarkEnabled =
+    viewerWatermarkOverride === 'enabled' ? true
+      : viewerWatermarkOverride === 'disabled' ? false
+        : wmConfig.watermarkEnabled
+
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i]
     const pageNum = i + 1
@@ -580,8 +590,8 @@ async function processScore(slug, pdfPath, wmConfig) {
 
     let pipeline = sharp(metadata.data)
 
-    // Apply watermark overlay if enabled
-    if (wmConfig.watermarkEnabled) {
+    // Apply watermark overlay if enabled (per-work override > global)
+    if (watermarkEnabled) {
       const watermarkSvg = buildWatermarkSvg(width, height, wmConfig)
       pipeline = pipeline.composite([{ input: watermarkSvg, blend: 'over' }])
     }
@@ -840,23 +850,33 @@ async function main() {
       cachedPageCount > 0 &&
       cachedPageHashes.length === cachedPageCount
 
+    // Per-work viewer watermark override — if it changed, regenerate WebP
+    const viewerWmOverride = score.overrides.viewerWatermark || ''
+    const previousViewerWmOverride = previousEntry.viewerWatermarkOverride || ''
+    const viewerWmChanged = viewerWmOverride !== previousViewerWmOverride
+
     // ── WebP generation ──
-    if (!forceAll && currentHash === previousHash && hasCompleteCachedHashes) {
-      // PDF unchanged — use cached page count
+    if (!forceAll && !viewerWmChanged && currentHash === previousHash && hasCompleteCachedHashes) {
+      // PDF unchanged and viewer watermark override unchanged — use cached page count
       const previousTimestamp = typeof previousEntry.timestamp === 'string' ? previousEntry.timestamp : undefined
       manifest[score.slug] = {
         hash: currentHash,
         pageCount: cachedPageCount,
         ...(previousTimestamp ? { timestamp: previousTimestamp } : {}),
         pageHashes: cachedPageHashes,
+        viewerWatermarkOverride: viewerWmOverride,
       }
       console.log(`Skipping WebP: ${score.slug}`)
       console.log(`  Cache keys unchanged for ${cachedPageCount} page(s)`)
       scoreData.push({ slug: score.slug, pageCount: cachedPageCount, pageHashes: cachedPageHashes })
       stats.skipped++
     } else {
-      console.log(`Processing WebP: ${score.slug}`)
-      const { pageCount, pageHashes } = await processScore(score.slug, score.pdfPath, wmConfig)
+      if (viewerWmChanged) {
+        console.log(`Processing WebP: ${score.slug} (viewer watermark override changed)`)
+      } else {
+        console.log(`Processing WebP: ${score.slug}`)
+      }
+      const { pageCount, pageHashes } = await processScore(score.slug, score.pdfPath, wmConfig, viewerWmOverride)
       const previousPageHashes = normalizePageHashes(previousEntry.pageHashes)
       let changedPages = 0
       for (let i = 0; i < pageHashes.length; i++) {
@@ -870,6 +890,7 @@ async function main() {
         pageCount,
         timestamp: new Date().toISOString(),
         pageHashes,
+        viewerWatermarkOverride: viewerWmOverride,
       }
       console.log(`  Cache keys changed: ${changedPages}/${pageCount} page(s)`)
       scoreData.push({ slug: score.slug, pageCount, pageHashes })

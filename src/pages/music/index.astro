@@ -10,7 +10,7 @@ import Dropdown from '@components/Dropdown.astro'
 import { getCollection } from 'astro:content'
 import type { SearchableWorkItem } from '../../scripts/search-types'
 import prepareWorks from '@/utils/prepareWorks'
-import { buildSearchableWorkItems } from '@/utils/search-items'
+import { buildSearchableWorkItems, summarizeInstrumentation } from '@/utils/search-items'
 import { marked } from 'marked'
 
 const siteConfig = getSiteConfig()
@@ -162,7 +162,7 @@ const showCheckboxes = showScoreCheckbox || showRecordingCheckbox
               url={'/music/' + work.id + '/'}
               title={work.data.title}
               headingLevel="h2"
-              footer={'Instrumentation: ' + work.data.instrumentation.join(', ')}
+              footer={(() => { const s = summarizeInstrumentation(work.data.categorization.instrumentation); return s ? `Instrumentation: ${s}` : undefined })()}
               imageData={work.featuredImage}
               imageAlt={work.data.thumbnail?.alt ?? ''}
               data-work-id={work.id}

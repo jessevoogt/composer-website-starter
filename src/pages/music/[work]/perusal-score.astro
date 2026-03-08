@@ -35,7 +35,7 @@ const pageCount = perusalScores[work.id]
 const scorePageHashes = perusalScorePageHashes[work.id] ?? []
 
 // Per-work gating: work override > site-wide default
-const workGatingOverride = work.data.perusalScoreGated ?? ''
+const workGatingOverride = work.data.scoreOverrides?.viewerGating ?? ''
 const isGated =
   workGatingOverride === 'gated' ? true : workGatingOverride === 'ungated' ? false : siteGatingActive
 

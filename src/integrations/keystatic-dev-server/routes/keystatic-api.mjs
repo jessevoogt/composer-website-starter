@@ -23,7 +23,12 @@ import {
   gatherWorksData,
   injectToolbarIntoHtml,
   consumeKeystaticPostSetupResetMarker,
+  runPipeline,
+  runHeroPipeline,
 } from '../helpers.mjs'
+
+// Debounce timer for CMS-mode post-save pipeline (npm run cms)
+let cmsPipelineTimer = null
 
 // These are set by the index.mjs module via setSharedState()
 let viteServer = null
@@ -139,6 +144,30 @@ export async function handleKeystaticApi(req, res, rawUrl, pathname) {
 
     res.writeHead(response.status, headersObj)
     res.end(responseBody)
+
+    // ── Post-save pipeline ──────────────────────────────────────────────────
+    // When running `npm run dev` (KEYSTATIC_NO_WATCH), file watchers are
+    // disabled so the ingest pipeline never runs automatically. After a
+    // successful update we detect which collections were touched and
+    // schedule the appropriate pipeline(s) with a debounce so the user
+    // doesn't wait and rapid saves don't queue up redundant runs.
+    if (process.env.KEYSTATIC_NO_WATCH && pathname === '/api/keystatic/update' && req.method === 'POST' && response.status === 200) {
+      try {
+        const payloadStr = body.toString('utf-8')
+        const touchesWorks = payloadStr.includes('source/works/')
+        const touchesHeroes = payloadStr.includes('source/heroes/')
+
+        if (touchesWorks || touchesHeroes) {
+          clearTimeout(cmsPipelineTimer)
+          cmsPipelineTimer = setTimeout(async () => {
+            if (touchesWorks) await runPipeline()
+            if (touchesHeroes) await runHeroPipeline()
+          }, 1500)
+        }
+      } catch {
+        // Payload inspection failed — skip pipeline trigger
+      }
+    }
   } catch (e) {
     console.error('[keystatic-api]', e)
     res.writeHead(500, { 'Content-Type': 'application/json' })
@@ -227,14 +256,30 @@ export async function handleKeystaticAdmin(req, res, rawUrl) {
 
     // Astro pages handle the converted jv:vite-full-reload event via
     // sourceYamlReloadBridge. Keystatic is a standalone HTML entry, so it
-    // needs its own listener or it can remain in a mixed module state until
-    // a manual hard refresh.
+    // needs its own listener — but it should NOT reload for content/YAML
+    // changes (Keystatic already knows about saves it just made, and its
+    // API reads from disk on each request). Only code changes (e.g.
+    // keystatic.config.ts) should trigger a reload.
+    //
+    // Two-layer defense:
+    // 1. Suppress window: after any YAML change in source/, suppress all
+    //    reloads for 10 s — covers the immediate full-reload AND the
+    //    delayed pipeline-generated file changes (1.5 s debounce + runtime).
+    // 2. Path filter: outside the suppress window, skip reloads whose path
+    //    matches content/YAML/generated files.
     const keystaticReloadBridgeScript = [
       '<script type="module">',
       'if(import.meta.hot){',
-      '  import.meta.hot.on("jv:vite-full-reload",function(){',
-      '    window.location.reload()',
-      '  })',
+      '  var _ksSuppress=0;',
+      '  import.meta.hot.on("jv:source-yaml-changed",function(){',
+      '    _ksSuppress=Date.now()+10000;',
+      '  });',
+      '  import.meta.hot.on("jv:vite-full-reload",function(data){',
+      '    if(Date.now()<_ksSuppress)return;',
+      '    var p=(data&&data.path)||"";',
+      '    if(p&&(/\\/source\\//.test(p)||/\\/src\\/content\\//.test(p)||/\\.(yaml|mdx)$/.test(p)))return;',
+      '    window.location.reload();',
+      '  });',
       '}',
       '</script>',
     ].join('')

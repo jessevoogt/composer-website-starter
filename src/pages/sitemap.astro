@@ -3,6 +3,7 @@ import SiteLayout from '@layouts/SiteLayout.astro'
 import ImmersivePageHeader from '@components/immersive/ImmersivePageHeader.astro'
 import { getCollection } from 'astro:content'
 import { getSiteConfig, getSitemapPage } from '@/utils/source-config'
+import { flattenInstrumentation } from '@/utils/search-items'
 import { resolvePageHero } from '@/utils/page-hero'
 
 const siteConfig = getSiteConfig()
@@ -86,7 +87,7 @@ const staticPages = [
                 <p>{project.data.description}</p>
                 <div style="font-size: 0.82rem;">
                   <p style="margin-bottom: 0.25rem;">
-                    Instrumentation: <span style="font-weight: 500;">{project.data.instrumentation.join(', ')}</span>
+                    Instrumentation: <span style="font-weight: 500;">{flattenInstrumentation(project.data.categorization.instrumentation).join(', ')}</span>
                   </p>
                   <p>
                     URL: <code>/music/{project.id}/</code>

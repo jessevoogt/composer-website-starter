@@ -30,6 +30,7 @@ import {
 
 type ImageData = (typeof worksImages)[number]['data']
 import { asDate, flattenRecordingEntries } from '@/utils/immersive-helpers'
+import { summarizeInstrumentation } from '@/utils/search-items'
 import perusalScores from '@/utils/perusal-scores'
 import type { ClientRecordingEntry } from '../scripts/immersive/types'
 
@@ -334,8 +335,8 @@ function compareWorkByOldest(left: HomeSelectWorkEntry, right: HomeSelectWorkEnt
 }
 
 function compareWorkBySelectedOrder(left: HomeSelectWorkEntry, right: HomeSelectWorkEntry): number {
-  const leftOrder = typeof left.data.selectedOrder === 'number' ? left.data.selectedOrder : Number.MAX_SAFE_INTEGER
-  const rightOrder = typeof right.data.selectedOrder === 'number' ? right.data.selectedOrder : Number.MAX_SAFE_INTEGER
+  const leftOrder = typeof left.data.homepageSelection.selectedOrder === 'number' ? left.data.homepageSelection.selectedOrder : Number.MAX_SAFE_INTEGER
+  const rightOrder = typeof right.data.homepageSelection.selectedOrder === 'number' ? right.data.homepageSelection.selectedOrder : Number.MAX_SAFE_INTEGER
 
   if (leftOrder !== rightOrder) {
     return leftOrder - rightOrder
@@ -371,7 +372,7 @@ function orderSelectedWorks(items: HomeSelectWorkEntry[]): HomeSelectWorkEntry[]
   }
 }
 
-const selectedPool = worksWithImages.filter((work) => work.data.selected)
+const selectedPool = worksWithImages.filter((work) => work.data.homepageSelection.selected)
 const selectedWorksSource = homeSelectWorks.ignoreSelected
   ? worksWithImages
   : selectedPool.length > 0
@@ -385,7 +386,7 @@ const selectedWorks = orderSelectedWorks(selectedWorksSource)
   .map((work) => ({
     workId: work.id,
     title: work.data.title,
-    detail: work.data.instrumentation.length > 0 ? work.data.instrumentation.join(', ') : 'Composition',
+    detail: summarizeInstrumentation(work.data.categorization.instrumentation) || 'Composition',
     href: `/music/${work.id}/`,
     image: work.featuredImage?.src ?? work.data.thumbnail?.src ?? '',
     imageData: work.featuredImage ?? resolveImageData(work.data.thumbnail?.src),

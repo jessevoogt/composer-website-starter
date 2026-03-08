@@ -26,7 +26,7 @@ export async function getStaticPaths() {
   return preparedWorks
     .filter((work) => {
       if (!work.data.hasPerusalScore || !perusalScores[work.id]) return false
-      const override = work.data.perusalScoreGated ?? ''
+      const override = work.data.scoreOverrides?.viewerGating ?? ''
       return override === 'gated' ? true : override === 'ungated' ? false : gatingActive
     })
     .map((work) => ({

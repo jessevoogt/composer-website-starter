@@ -53,6 +53,30 @@ export const performanceSchema = z.object({
   notes: z.string().optional(),
 })
 
+export const instrumentLineSchema = z.object({
+  label: z.string(),
+  details: z.array(z.string()).default([]),
+  note: z.string().optional(),
+})
+
+export const instrumentSectionSchema = z.object({
+  section: z.string(),
+  instruments: z.array(
+    z.union([z.string(), instrumentLineSchema])
+  ).default([]),
+})
+
+export const instrumentationSchema = z.object({
+  label: z.string().optional(),
+  grouped: z.boolean().default(false),
+  instruments: z.array(z.string()).default([]),
+  sections: z.array(instrumentSectionSchema).default([]),
+}).default({ grouped: false, instruments: [], sections: [] })
+
+export type InstrumentLineType = z.infer<typeof instrumentLineSchema>
+export type InstrumentSectionType = z.infer<typeof instrumentSectionSchema>
+export type InstrumentationType = z.infer<typeof instrumentationSchema>
+
 export type RecordingLinkType = z.infer<typeof recordingLinkSchema>
 export type RecordingImageType = z.infer<typeof recordingImageSchema>
 export type RecordingType = z.infer<typeof recordingSchema>
@@ -71,22 +95,29 @@ const works = defineCollection({
       src: z.string(),
       alt: z.string(),
     }).optional(),
-    tags: z.array(z.string()).default([]),
-    searchKeywords: z.array(z.string()).default([]),
-    selected: z.boolean().default(false),
-    selectedOrder: z.number().int().optional(),
-    instrumentation: z.array(z.string()).default([]),
+    categorization: z.object({
+      tags: z.array(z.string()).default([]),
+      instrumentation: instrumentationSchema,
+      searchKeywords: z.array(z.string()).default([]),
+    }).default({}),
+    homepageSelection: z.object({
+      selected: z.boolean().default(false),
+      selectedOrder: z.number().int().optional(),
+    }).default({}),
     duration: z.string().optional(),
     completionDate: z.string().optional(),
     difficulty: z.string().optional(),
     programNote: z.string().optional(),
     movements: z.array(movementSchema).default([]),
     hasPerusalScore: z.boolean().optional(),
-    perusalScoreGated: z.enum(['', 'gated', 'ungated']).default(''),
-    pdfWatermarkedOverride: z.enum(['', 'enabled', 'disabled']).default(''),
-    pdfOriginalOverride: z.enum(['', 'enabled', 'disabled']).default(''),
-    pdfWatermarkedGatedOverride: z.enum(['', 'gated', 'ungated']).default(''),
-    pdfOriginalGatedOverride: z.enum(['', 'gated', 'ungated']).default(''),
+    scoreOverrides: z.object({
+      viewerWatermark: z.enum(['', 'enabled', 'disabled']).default(''),
+      viewerGating: z.enum(['', 'gated', 'ungated']).default(''),
+      pdfWatermarked: z.enum(['', 'enabled', 'disabled']).default(''),
+      pdfOriginal: z.enum(['', 'enabled', 'disabled']).default(''),
+      pdfWatermarkedGating: z.enum(['', 'gated', 'ungated']).default(''),
+      pdfOriginalGating: z.enum(['', 'gated', 'ungated']).default(''),
+    }).default({}),
     preferredHeroId: z.string().optional(),
     sheetMusic: z.array(sheetMusicSchema).default([]),
     recordings: z.array(recordingSchema).default([]),

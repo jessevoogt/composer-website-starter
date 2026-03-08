@@ -31,10 +31,11 @@ import {
   SETUP_FINALIZE_API_PATH,
   NEWSLETTER_ADMIN_API_PREFIX,
   SUBMISSIONS_ADMIN_API_PREFIX,
+  FILE_UPLOAD_API_PATH,
   state,
 } from './constants.mjs'
 
-import { startWorksWatcher } from './helpers.mjs'
+import { startWorksWatcher, startHeroesWatcher } from './helpers.mjs'
 
 // Route handlers
 import { handleHeroPreference } from './routes/hero-preference.mjs'
@@ -83,6 +84,7 @@ import {
   handleSubmissionsDetailProxy,
   handleSubmissionsDeleteProxy,
 } from './routes/submissions-admin.mjs'
+import { handleFileUpload } from './routes/file-upload.mjs'
 
 // ─── Vite plugin: combined Keystatic middleware + toolbar ─────────────────────
 
@@ -293,6 +295,12 @@ function keystatic_DevPlugin() {
       }
     }
 
+    // ── File Upload API (Keystatic preview fields) ────────────────────────
+    if (pathname === FILE_UPLOAD_API_PATH) {
+      await handleFileUpload(req, res, rawUrl)
+      return
+    }
+
     // ── Works Data API ─────────────────────────────────────────────────────
     if (pathname === '/api/works-data' && req.method === 'GET') {
       await handleWorksData(req, res)
@@ -344,8 +352,20 @@ function keystatic_DevPlugin() {
         getAllowedDirectoriesCached,
       })
 
-      // Start the source/works/ file watcher
-      startWorksWatcher()
+      // Start file watchers (only when running `npm run dev:watch`).
+      // The watchers trigger the ingest pipeline on source/ changes, which
+      // modifies files imported by keystatic.config.ts. Vite's HMR then
+      // re-mounts the Keystatic React tree, causing "Entry not found" errors
+      // for items that were just created. `npm run dev` skips watchers so
+      // Keystatic editing is uninterrupted; the post-save pipeline handles
+      // ingestion after saves. Use `npm run dev:watch` when you need live
+      // filesystem monitoring (e.g. dropping files into source/ via Finder).
+      if (!process.env.KEYSTATIC_NO_WATCH) {
+        startWorksWatcher()
+        startHeroesWatcher()
+      } else {
+        console.log('[dev] File watchers disabled. Post-save pipeline active. Use npm run dev:watch for live filesystem monitoring.')
+      }
 
       // Kill preview process on server close
       server.httpServer?.on('close', () => {

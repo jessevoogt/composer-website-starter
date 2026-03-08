@@ -795,6 +795,24 @@ export function safeYamlRead(filePath) {
   }
 }
 
+/**
+ * Flatten the new instrumentation schema to a plain string[].
+ * Handles:
+ *  - Legacy flat array: ['piano', 'violin']
+ *  - Flat-mode object: { instruments: ['piano', 'violin'] }
+ *  - Grouped-mode object: { grouped: true, sections: [{ section: 'Woodwinds', instruments: [...] }] }
+ * Within grouped sections, instruments can be plain strings or objects:
+ *  { label: '3 Flutes', details: ['Piccolo', 'Flute', 'Alto Flute'], note: '...' }
+ */
+function flattenInstrumentation(instr) {
+  if (Array.isArray(instr)) return instr
+  if (!instr || typeof instr !== 'object') return []
+  if (!instr.grouped) return Array.isArray(instr.instruments) ? instr.instruments : []
+  return (instr.sections || []).flatMap((s) =>
+    (s.instruments || []).flatMap((i) => (typeof i === 'string' ? [i] : [i.label, ...(i.details || [])]))
+  )
+}
+
 export function gatherWorksData() {
   const worksDir = path.join(SOURCE_DIR, 'works')
   if (!fs.existsSync(worksDir))
@@ -833,8 +851,9 @@ export function gatherWorksData() {
     const data = safeYamlRead(yamlPath)
     if (!data.title) continue
 
-    const tags = Array.isArray(data.tags) ? data.tags : []
-    const instrumentation = Array.isArray(data.instrumentation) ? data.instrumentation : []
+    const cat = data.categorization || {}
+    const tags = Array.isArray(cat.tags) ? cat.tags : []
+    const instrumentation = flattenInstrumentation(cat.instrumentation)
     tags.forEach((t) => tagsSet.add(t))
     instrumentation.forEach((i) => instrumentsSet.add(i))
     if (data.difficulty) difficultiesSet.add(data.difficulty)
@@ -885,25 +904,25 @@ export function gatherWorksData() {
       completionYear: isNaN(completionYear) ? null : completionYear,
       duration: data.duration || null,
       difficulty: data.difficulty || null,
-      selected: data.selected === true,
+      selected: data.homepageSelection?.selected === true,
       tags,
       instrumentation,
-      searchKeywords: Array.isArray(data.searchKeywords) ? data.searchKeywords : [],
+      searchKeywords: Array.isArray(cat.searchKeywords) ? cat.searchKeywords : [],
       programNote: data.programNote || null,
 
       scores: {
         hasPerusalScore,
-        perusalScoreGated: data.perusalScoreGated || '',
+        viewerGating: data.scoreOverrides?.viewerGating || '',
         perusalScorePageCount: scoreInfo.pageCount || null,
         hasWatermarkedPdf,
         hasOriginalPdf,
         watermarkedGated: pdfInfo.watermarkedGated ?? perusalConfig.pdfWatermarkedGated ?? true,
         originalGated: pdfInfo.originalGated ?? perusalConfig.pdfOriginalGated ?? true,
         hasAnyScore: hasPerusalScore || hasWatermarkedPdf || hasOriginalPdf,
-        pdfWatermarkedOverride: data.pdfWatermarkedOverride || '',
-        pdfOriginalOverride: data.pdfOriginalOverride || '',
-        pdfWatermarkedGatedOverride: data.pdfWatermarkedGatedOverride || '',
-        pdfOriginalGatedOverride: data.pdfOriginalGatedOverride || '',
+        pdfWatermarked: data.scoreOverrides?.pdfWatermarked || '',
+        pdfOriginal: data.scoreOverrides?.pdfOriginal || '',
+        pdfWatermarkedGating: data.scoreOverrides?.pdfWatermarkedGating || '',
+        pdfOriginalGating: data.scoreOverrides?.pdfOriginalGating || '',
       },
 
       hasThumbnail,
@@ -953,6 +972,7 @@ export function gatherWorksData() {
 import {
   WORKS_SOURCE_DIR,
   INGEST_SCRIPT,
+  INGEST_ASSETS_SCRIPT,
   CLEANUP_SCRIPT,
   GENERATE_IMAGES_SCRIPT,
   GENERATE_SCORES_SCRIPT,
@@ -963,23 +983,24 @@ import {
 let pipelineTimer = null
 let pipelineRunning = false
 
-async function runPipeline() {
+export async function runPipeline() {
   if (pipelineRunning) return
   pipelineRunning = true
-  console.log('\n[watch] source/works changed — running pipeline...')
+  const tag = process.env.KEYSTATIC_NO_WATCH ? '[dev]' : '[watch]'
+  console.log(`\n${tag} source/works changed — running pipeline...`)
   try {
     await spawnScript(INGEST_SCRIPT)
-    console.log('[watch] ingest complete')
+    console.log(`${tag} ingest complete`)
     await spawnScript(CLEANUP_SCRIPT, ['--apply'])
-    console.log('[watch] cleanup complete')
+    console.log(`${tag} cleanup complete`)
     await spawnScript(GENERATE_IMAGES_SCRIPT)
-    console.log('[watch] image generation complete')
+    console.log(`${tag} image generation complete`)
     await spawnScript(GENERATE_SCORES_SCRIPT)
-    console.log('[watch] perusal scores complete')
+    console.log(`${tag} perusal scores complete`)
     await spawnScript(GENERATE_SEARCH_SCRIPT)
-    console.log('[watch] search index complete\n')
+    console.log(`${tag} search index complete\n`)
   } catch (err) {
-    console.error(`[watch] pipeline failed — ${err.message}\n`)
+    console.error(`${tag} pipeline failed — ${err.message}\n`)
   } finally {
     pipelineRunning = false
   }
@@ -999,6 +1020,43 @@ export function startWorksWatcher() {
     pipelineTimer = setTimeout(runPipeline, 300)
   })
   console.log('[watch] watching source/works/ for changes (YAML, prose, images, audio, PDFs)...')
+}
+
+// ─── Heroes pipeline file watcher ───────────────────────────────────────────
+
+const HERO_WATCHED_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.yaml'])
+let heroTimer = null
+let heroRunning = false
+
+export async function runHeroPipeline() {
+  if (heroRunning) return
+  heroRunning = true
+  const tag = process.env.KEYSTATIC_NO_WATCH ? '[dev]' : '[watch]'
+  console.log(`\n${tag} source/heroes changed — running ingest-assets...`)
+  try {
+    await spawnScript(INGEST_ASSETS_SCRIPT)
+    console.log(`${tag} hero ingest-assets complete\n`)
+  } catch (err) {
+    console.error(`${tag} hero ingest failed — ${err.message}\n`)
+  } finally {
+    heroRunning = false
+  }
+}
+
+export function startHeroesWatcher() {
+  if (!fs.existsSync(HEROES_DIR)) {
+    console.warn('[watch] source/heroes/ not found — hero watching disabled')
+    return
+  }
+
+  fs.watch(HEROES_DIR, { recursive: true }, (_event, filename) => {
+    if (!filename) return
+    const ext = path.extname(filename).toLowerCase()
+    if (!HERO_WATCHED_EXTS.has(ext)) return
+    clearTimeout(heroTimer)
+    heroTimer = setTimeout(runHeroPipeline, 300)
+  })
+  console.log('[watch] watching source/heroes/ for changes (YAML, images)...')
 }
 
 // ─── Toolbar HTML injection ─────────────────────────────────────────────────

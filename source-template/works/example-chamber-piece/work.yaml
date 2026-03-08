@@ -9,17 +9,21 @@ thumbnail:
 completionDate: '2025-01-01'
 duration: "ca. 8'"
 difficulty: ''
-tags:
-  - Chamber Music
-  - Strings
-instrumentation:
-  - Violin I
-  - Violin II
-  - Viola
-  - Cello
-searchKeywords: []
-selected: true
-selectedOrder: 1
+movements: []
+categorization:
+  tags:
+    - Chamber Music
+    - Strings
+  instrumentation:
+    instruments:
+      - Violin I
+      - Violin II
+      - Viola
+      - Cello
+  searchKeywords: []
+homepageSelection:
+  selected: true
+  selectedOrder: 1
 recordings: []
 performances: []
 sheetMusic: []

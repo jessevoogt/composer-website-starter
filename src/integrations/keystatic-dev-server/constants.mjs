@@ -78,6 +78,7 @@ export const VALID_SOCIAL_PLATFORMS = new Set([
 export const WORKS_SEARCH_HTML_PATH = path.join(ROOT, 'scripts', 'works-search.html')
 export const NEWSLETTER_ADMIN_API_PREFIX = '/api/dev/newsletter'
 export const SUBMISSIONS_ADMIN_API_PREFIX = '/api/dev/submissions'
+export const FILE_UPLOAD_API_PATH = '/api/dev/file-upload'
 export const IMAGE_EXTS_SEARCH = ['.webp', '.jpg', '.jpeg', '.png', '.tiff']
 export const DEPLOY_SCRIPT = path.join(ROOT, 'scripts', 'deploy.mjs')
 export const PREVIEW_PORT = Number(process.env.PREVIEW_PORT || 4323)
@@ -104,6 +105,7 @@ export const state = {
 
 export const WORKS_SOURCE_DIR = path.join(ROOT, 'source', 'works')
 export const INGEST_SCRIPT = path.join(ROOT, 'scripts', 'ingest-works.mjs')
+export const INGEST_ASSETS_SCRIPT = path.join(ROOT, 'scripts', 'ingest-assets.mjs')
 export const CLEANUP_SCRIPT = path.join(ROOT, 'scripts', 'cleanup-generated-files.mjs')
 export const GENERATE_IMAGES_SCRIPT = path.join(ROOT, 'scripts', 'generate-works-images.mjs')
 export const GENERATE_SCORES_SCRIPT = path.join(ROOT, 'scripts', 'generate-perusal-scores.mjs')

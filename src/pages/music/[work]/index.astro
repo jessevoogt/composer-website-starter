@@ -38,7 +38,7 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
 
 // Perusal score gating
 const siteGatingActive = isScoreGatingActive()
-const workGatingOverride = work.data.perusalScoreGated ?? ''
+const workGatingOverride = work.data.scoreOverrides?.viewerGating ?? ''
 const isWorkGated =
   workGatingOverride === 'gated' ? true : workGatingOverride === 'ungated' ? false : siteGatingActive
 

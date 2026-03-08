@@ -9,14 +9,18 @@ thumbnail:
 completionDate: '2024-03-15'
 duration: "ca. 4'"
 difficulty: ''
-tags:
-  - Solo
-  - Piano
-instrumentation:
-  - Piano
-searchKeywords: []
-selected: true
-selectedOrder: 2
+movements: []
+categorization:
+  tags:
+    - Solo
+    - Piano
+  instrumentation:
+    instruments:
+      - Piano
+  searchKeywords: []
+homepageSelection:
+  selected: true
+  selectedOrder: 2
 recordings: []
 performances: []
 sheetMusic: []

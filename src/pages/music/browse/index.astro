@@ -81,11 +81,15 @@ const frontmatterTagKeys = new Set<string>()
 const instrumentationTerms = new Set<string>()
 
 for (const work of worksCollection) {
-  for (const tag of work.data.tags) {
+  for (const tag of work.data.categorization.tags) {
     frontmatterTagKeys.add(normalizeCreditKey(tag))
   }
 
-  for (const instrument of work.data.instrumentation) {
+  const instrData = work.data.categorization.instrumentation
+  const instrFlat = instrData.grouped
+    ? instrData.sections.flatMap((s) => s.instruments.map((i) => (typeof i === 'string' ? i : i.label)))
+    : instrData.instruments
+  for (const instrument of instrFlat) {
     addInstrumentationTerm(instrumentationTerms, normalizeInstrumentation(instrument))
   }
 

@@ -5,6 +5,7 @@
 
 import type { WorkWithImage } from '@/utils/prepareWorks'
 import type { RecordingLinkType, RecordingType } from '../content.config'
+import { summarizeInstrumentation } from '@/utils/search-items'
 import type { ClientRecordingEntry } from '../scripts/immersive/types'
 
 /** Parse a date-like string to a timestamp, returning 0 on failure. */
@@ -74,7 +75,7 @@ export function flattenRecordingEntries(
               : undefined,
             title: link.label ? `${work.data.title} — ${link.label}` : work.data.title,
             performer: ensemble || primaryPerformer || 'Performer to be announced',
-            instrumentation: work.data.instrumentation.length > 0 ? work.data.instrumentation.join(', ') : '',
+            instrumentation: summarizeInstrumentation(work.data.categorization.instrumentation),
             date: formatDateLabel(link.date ?? recording.date) ?? 'Date unavailable',
             imageSrc:
               resolveImagePath(link.image?.src ?? recording.image?.src) ||

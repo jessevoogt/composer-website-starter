@@ -13,6 +13,7 @@ export default [
       'dist/**',
       'node_modules/**',
       '.astro/**',
+      '.starter-kit/**',
       '**/*.d.ts', // Ignore generated TypeScript declaration files
     ],
   },
@@ -114,6 +115,19 @@ export default [
       ...jsxA11y.configs.strict.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
       '@typescript-eslint/no-non-null-assertion': 'off',
+    },
+  },
+
+  // Keystatic custom fields: work around jsx-a11y plugin issues
+  // - label-has-associated-control: minimatch import bug crashes the plugin
+  // - no-static-element-interactions / no-noninteractive-tabindex: drop zones use
+  //   conditional role="button" + tabIndex which strict mode can't analyze statically
+  {
+    files: ['src/keystatic/**/*.tsx'],
+    rules: {
+      'jsx-a11y/label-has-associated-control': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+      'jsx-a11y/no-noninteractive-tabindex': 'off',
     },
   },
 ]

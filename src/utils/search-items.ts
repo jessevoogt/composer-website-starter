@@ -1,6 +1,6 @@
 import type { SearchableTagItem, SearchableWorkItem } from '../scripts/search-types'
 import type { WorkWithImage } from '@/utils/prepareWorks'
-import type { RecordingType, PerformanceType } from '../content.config'
+import type { RecordingType, PerformanceType, InstrumentationType } from '../content.config'
 
 function unique(values: string[]): string[] {
   return [...new Set(values)]
@@ -15,6 +15,38 @@ function tokenize(value: string): string[] {
 
 function stripDiacritics(value: string): string {
   return value.normalize('NFD').replace(/\p{Mn}/gu, '')
+}
+
+export function flattenInstrumentation(instr: InstrumentationType): string[] {
+  if (!instr.grouped) return instr.instruments
+  return instr.sections.flatMap((s) =>
+    s.instruments.flatMap((i) => (typeof i === 'string' ? [i] : [i.label, ...i.details]))
+  )
+}
+
+const INSTRUMENT_COUNT_THRESHOLD = 8
+
+/**
+ * Return a concise display string for instrumentation.
+ * Uses the label if present, falls back to "N instruments" when the count
+ * exceeds the threshold, otherwise joins the flat list with commas.
+ */
+export function summarizeInstrumentation(instr: InstrumentationType): string {
+  if (instr.label) return instr.label
+
+  if (instr.grouped) {
+    const count = instr.sections.reduce(
+      (sum, s) => sum + s.instruments.length,
+      0,
+    )
+    return count > 0 ? `${count} instruments` : ''
+  }
+
+  if (instr.instruments.length > INSTRUMENT_COUNT_THRESHOLD) {
+    return `${instr.instruments.length} instruments`
+  }
+
+  return instr.instruments.join(', ')
 }
 
 export function buildSearchableWorkItems(worksWithImages: WorkWithImage[]): SearchableWorkItem[] {
@@ -41,9 +73,9 @@ export function buildSearchableWorkItems(worksWithImages: WorkWithImage[]): Sear
       title: work.data.title,
       subtitle: work.data.subtitle ?? '',
       description: work.data.description,
-      keywords: unique([...work.data.searchKeywords, ...extraKeywords]),
-      tags: work.data.tags,
-      instrumentation: work.data.instrumentation,
+      keywords: unique([...work.data.categorization.searchKeywords, ...extraKeywords]),
+      tags: work.data.categorization.tags,
+      instrumentation: flattenInstrumentation(work.data.categorization.instrumentation),
       performers,
       composer: work.data.composer,
       venues,

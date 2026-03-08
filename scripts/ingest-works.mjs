@@ -395,10 +395,21 @@ function buildFrontmatter(work, config) {
   fm.composer = workMeta.composer || config.defaultComposer
   fm.description = workMeta.description || ''
 
-  // Tags & categorization
-  if (workMeta.tags?.length) fm.tags = workMeta.tags
-  if (workMeta.searchKeywords?.length) fm.searchKeywords = workMeta.searchKeywords
-  if (workMeta.instrumentation?.length) fm.instrumentation = workMeta.instrumentation
+  // Categorization (nested object from work.yaml)
+  const cat = workMeta.categorization
+  if (cat && typeof cat === 'object') {
+    const categorization = {}
+    if (cat.tags?.length) categorization.tags = cat.tags
+    if (cat.instrumentation && typeof cat.instrumentation === 'object') {
+      // New object format: { instruments: [...] } or { grouped: true, sections: [...] }
+      categorization.instrumentation = cat.instrumentation
+    } else if (Array.isArray(cat.instrumentation) && cat.instrumentation.length) {
+      // Legacy flat array format — wrap in object
+      categorization.instrumentation = { instruments: cat.instrumentation }
+    }
+    if (cat.searchKeywords?.length) categorization.searchKeywords = cat.searchKeywords
+    if (Object.keys(categorization).length > 0) fm.categorization = categorization
+  }
 
   // Dates, difficulty, etc.
   if (workMeta.completionDate) fm.completionDate = workMeta.completionDate
@@ -411,12 +422,30 @@ function buildFrontmatter(work, config) {
   if (isFile(path.join(work.sourceDir, 'score.pdf'))) {
     fm.hasPerusalScore = true
   }
-  if (workMeta.perusalScoreGated) fm.perusalScoreGated = workMeta.perusalScoreGated
+
+  // Score & PDF overrides: nested object from work.yaml
+  const so = workMeta.scoreOverrides
+  if (so && typeof so === 'object') {
+    const overrides = {}
+    if (so.viewerWatermark) overrides.viewerWatermark = so.viewerWatermark
+    if (so.viewerGating) overrides.viewerGating = so.viewerGating
+    if (so.pdfWatermarked) overrides.pdfWatermarked = so.pdfWatermarked
+    if (so.pdfOriginal) overrides.pdfOriginal = so.pdfOriginal
+    if (so.pdfWatermarkedGating) overrides.pdfWatermarkedGating = so.pdfWatermarkedGating
+    if (so.pdfOriginalGating) overrides.pdfOriginalGating = so.pdfOriginalGating
+    if (Object.keys(overrides).length > 0) fm.scoreOverrides = overrides
+  }
+
   if (workMeta.preferredHeroId) fm.preferredHeroId = workMeta.preferredHeroId
 
-  // Selected
-  if (workMeta.selected) fm.selected = true
-  if (workMeta.selectedOrder != null) fm.selectedOrder = workMeta.selectedOrder
+  // Homepage selection (nested object from work.yaml)
+  const hs = workMeta.homepageSelection
+  if (hs && typeof hs === 'object') {
+    const homepageSelection = {}
+    if (hs.selected) homepageSelection.selected = true
+    if (hs.selectedOrder != null) homepageSelection.selectedOrder = hs.selectedOrder
+    if (Object.keys(homepageSelection).length > 0) fm.homepageSelection = homepageSelection
+  }
 
   // Thumbnail: auto-detected as thumbnail.{webp,jpg,jpeg,png,tiff} in the work folder
   const thumbnailSrcPath = findFile(work.sourceDir, 'thumbnail', IMAGE_EXTS)

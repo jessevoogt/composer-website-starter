@@ -1225,7 +1225,6 @@ function AccordionSectionsInput({
         const sectionLabel = SECTION_LABELS[section.block.discriminant] ?? section.block.discriminant
 
         return (
-          // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- DnD wrapper; keyboard reorder via dedicated move-up/move-down buttons
           <div
             key={`${section.block.discriminant}-${index}`}
             className={`hp-section${isDragging ? ' hp-section--dragging' : ''}`}
@@ -1258,7 +1257,6 @@ function AccordionSectionsInput({
                 }
               }}
             >
-              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- drag handle stops propagation to prevent accordion toggle; keyboard reorder via move buttons */}
               <span
                 className="hp-section__drag-handle"
                 onClick={(e) => e.stopPropagation()}
@@ -1285,7 +1283,6 @@ function AccordionSectionsInput({
                 </svg>
                 {sectionLabel}
               </span>
-              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- event barrier to prevent action buttons from toggling the accordion */}
               <span
                 className="hp-section__actions"
                 onClick={(e) => e.stopPropagation()}
@@ -1367,7 +1364,7 @@ function AccordionSectionsInput({
           {addMenuOpen && (
             <>
               {/* Click-away backdrop */}
-              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+              {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events */}
               <div
                 onClick={() => setAddMenuOpen(false)}
                 style={{

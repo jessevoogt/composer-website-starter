@@ -494,6 +494,16 @@ export async function handleWorkNext(btn: HTMLButtonElement): Promise<boolean> {
       }
     }
 
+    // Build filenames for src fields (stored in YAML so Keystatic knows the extension)
+    const thumbnailFilename = state.workThumbnailFile
+      ? `thumbnail${getFileExtension(state.workThumbnailFile) || '.jpg'}`
+      : ''
+    const audioFilename =
+      state.workAudioFile && hasRecording
+        ? `recording${getFileExtension(state.workAudioFile) || '.wav'}`
+        : ''
+    const scoreFilename = state.workScoreFile ? 'score.pdf' : ''
+
     // Save work metadata
     const result = await apiPost('/api/dev/setup/work', {
       addFirstWork: true,
@@ -503,6 +513,9 @@ export async function handleWorkNext(btn: HTMLButtonElement): Promise<boolean> {
       slug,
       thumbnailAlt: title,
       thumbnailUploaded: true,
+      thumbnailFilename,
+      audioFilename,
+      scoreFilename,
       instrumentation,
       hasRecording,
       recordingFolder,

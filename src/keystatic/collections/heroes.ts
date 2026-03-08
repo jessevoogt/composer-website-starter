@@ -15,10 +15,11 @@ export function getHeroesCollection() {
           name: {
             label: 'Label',
             description: 'Display name for this hero image (e.g. "Profile", "Concert Hall")',
+            validation: { isRequired: true },
           },
         }),
         // Image file is auto-detected by convention: image.{jpg,jpeg,webp,png} in the hero folder.
-        imagePreview: heroImagePreviewField({
+        src: heroImagePreviewField({
           label: 'Hero image',
           description:
             "Place a file named image.jpg (or .webp, .png) in this hero's folder. Large landscape images (1200px+ wide) work best.",
@@ -27,6 +28,7 @@ export function getHeroesCollection() {
           label: 'Alt text',
           description:
             'Describe the image for screen readers. Required for accessibility, even if the image is used decoratively (the alt text is available if the image is ever displayed as a non-decorative element).',
+          validation: { isRequired: true },
         }),
         credit: fields.text({
           label: 'Credit / source',

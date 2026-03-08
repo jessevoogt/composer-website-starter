@@ -97,7 +97,7 @@ export function prepareWorks(works: CollectionEntry<'works'>[]) {
       .map((key) => creditLabelByKey.get(key))
       .filter((label): label is string => Boolean(label))
 
-    const tagLabels = [...new Set([...work.data.tags, ...derivedCreditTags])]
+    const tagLabels = [...new Set([...work.data.categorization.tags, ...derivedCreditTags])]
     const tagSlugs = tagLabels.map((tagLabel) => slugify(tagLabel))
     const creditTagLinks = Object.fromEntries(
       derivedCreditKeys.map((key) => {

@@ -67,18 +67,55 @@ function getSheetMusicUrl(sm: (typeof work.data.sheetMusic)[number]) {
   }
 }
 
-const instrumentationValues = (Array.isArray(work.data.instrumentation) ? work.data.instrumentation : [work.data.instrumentation])
-  .map((value) => value.trim())
-  .filter(Boolean)
+import type { InstrumentationType, InstrumentSectionType } from '../content.config'
+
 const tagSlugsForWork = new Set(work.tagSlugs)
-const instrumentationEntries = instrumentationValues.map((label) => {
+
+function resolveInstrumentLink(label: string) {
   const slug = slugify(label)
-  return {
-    label,
-    href: tagSlugsForWork.has(slug) ? `/music/browse/${slug}/` : undefined,
-  }
-})
-const tagEntries = work.data.tags
+  return tagSlugsForWork.has(slug) ? `/music/browse/${slug}/` : undefined
+}
+
+interface InstrumentEntry {
+  label: string
+  href: string | undefined
+  note?: string
+  details: string[]
+}
+
+interface SectionEntry {
+  section: string
+  instruments: InstrumentEntry[]
+}
+
+const instr: InstrumentationType = work.data.categorization.instrumentation
+const isGrouped = instr.grouped
+
+function normalizeInstrumentEntry(item: string | { label: string; details?: string[]; note?: string }): InstrumentEntry {
+  const label = typeof item === 'string' ? item.trim() : item.label.trim()
+  const details = typeof item === 'string' ? [] : (item.details ?? [])
+  const note = typeof item === 'string' ? undefined : item.note
+  return { label, href: resolveInstrumentLink(label), note, details }
+}
+
+const flatEntries: InstrumentEntry[] = isGrouped
+  ? []
+  : instr.instruments.map((s) => ({ label: s.trim(), href: resolveInstrumentLink(s.trim()), details: [] })).filter((e) => e.label)
+
+const sectionEntries: SectionEntry[] = isGrouped
+  ? instr.sections.map((s: InstrumentSectionType) => ({
+      section: s.section,
+      instruments: s.instruments.map(normalizeInstrumentEntry).filter((e) => e.label),
+    }))
+  : []
+
+const totalInstrumentCount = isGrouped
+  ? sectionEntries.reduce((sum, s) => sum + s.instruments.length, 0)
+  : flatEntries.length
+const instrumentLabel = isGrouped
+  ? (instr.label || `${totalInstrumentCount} instruments`)
+  : undefined
+const tagEntries = work.data.categorization.tags
   .map((value) => value.trim())
   .filter(Boolean)
   .map((label) => {
@@ -118,17 +155,44 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
     <div class="work-meta-panel">
       <div class="work-meta-panel-scroll">
         <dl class="work-meta-grid">
-          <dt>Instrumentation:</dt>
-          <dd>
-            {
-              instrumentationEntries.map((instrument, index) => (
-                <>
-                  {index > 0 ? ', ' : ''}
-                  {instrument.href ? <a href={instrument.href}>{instrument.label}</a> : instrument.label}
-                </>
-              ))
-            }
-          </dd>
+          {totalInstrumentCount > 0 ? (
+            <>
+              <dt>Instrumentation:</dt>
+              <dd>
+                {isGrouped ? (
+                  <button
+                    type="button"
+                    class="instr-modal-trigger"
+                    aria-label={`View full instrumentation for ${work.data.title}`}
+                    data-instr-modal-open
+                  >
+                    {instrumentLabel}
+                    <svg class="instr-modal-trigger-icon" aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <polyline points="9 21 3 21 3 15"></polyline>
+                      <line x1="21" y1="3" x2="14" y2="10"></line>
+                      <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                  </button>
+                ) : totalInstrumentCount > 8 ? (
+                  <details class="instr-collapse" open>
+                    <summary>{totalInstrumentCount} instruments</summary>
+                    <ul class="instrumentation-list" role="list">
+                      {flatEntries.map((inst) => (
+                        <li>{inst.href ? <a href={inst.href}>{inst.label}</a> : inst.label}</li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : (
+                  <ul class="instrumentation-list" role="list">
+                    {flatEntries.map((inst) => (
+                      <li>{inst.href ? <a href={inst.href}>{inst.label}</a> : inst.label}</li>
+                    ))}
+                  </ul>
+                )}
+              </dd>
+            </>
+          ) : null}
 
           {
             work.data.duration ? (
@@ -194,6 +258,142 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
       </div>
     </div>
   </div>
+  {isGrouped && sectionEntries.length > 0 && (
+    <dialog
+      class="instr-modal"
+      id="instr-modal"
+      aria-labelledby="instr-modal-title"
+      data-instr-modal
+    >
+      <div class="instr-modal-panel" tabindex="-1" data-instr-modal-panel>
+        <button
+          type="button"
+          class="instr-modal-close"
+          data-instr-modal-close
+          aria-label="Close instrumentation"
+        >
+          <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
+            <path d="M6 6L18 18"></path>
+            <path d="M18 6L6 18"></path>
+          </svg>
+        </button>
+        <h2 id="instr-modal-title" class="instr-modal-heading">
+          {instrumentLabel}
+        </h2>
+        <div class="instr-modal-sections" data-even={sectionEntries.length % 2 === 0 ? '' : undefined}>
+          {sectionEntries.map((s) => (
+            <div class="instr-modal-section">
+              <h3 class="instr-modal-section-name">{s.section}</h3>
+              <ul class="instr-modal-list" role="list">
+                {s.instruments.map((inst) => (
+                  <li>
+                    {inst.href ? <a href={inst.href}>{inst.label}</a> : inst.label}
+                    {inst.details.length > 0 && (
+                      <ul class="instr-modal-details" role="list">
+                        {inst.details.map((d) => <li>{d}</li>)}
+                      </ul>
+                    )}
+                    {inst.note ? <span class="instr-note">{inst.note}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </dialog>
+  )}
+  <script>
+    interface InstrModalWindow extends Window {
+      __instrModalBound?: boolean
+    }
+    function initInstrModal(): () => void {
+      const modal = document.querySelector<HTMLDialogElement>('[data-instr-modal]')
+      const trigger = document.querySelector<HTMLButtonElement>('[data-instr-modal-open]')
+      if (!modal || !trigger) return () => {}
+
+      const panel = modal.querySelector<HTMLElement>('[data-instr-modal-panel]')
+      const closeBtn = modal.querySelector<HTMLButtonElement>('[data-instr-modal-close]')
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const closeMs = 180
+      let closeTimer = 0
+      let openFrame = 0
+
+      function clearTimers(): void {
+        if (closeTimer) { window.clearTimeout(closeTimer); closeTimer = 0 }
+        if (openFrame) { window.cancelAnimationFrame(openFrame); openFrame = 0 }
+      }
+
+      function syncClosed(): void {
+        modal!.classList.remove('is-visible', 'is-closing')
+      }
+
+      function finishClose(): void {
+        clearTimers()
+        if (modal!.open) modal!.close()
+        syncClosed()
+      }
+
+      function closeModal(): void {
+        clearTimers()
+        if (!modal!.open) { syncClosed(); return }
+        if (reducedMotion) { finishClose(); return }
+        modal!.classList.remove('is-visible')
+        modal!.classList.add('is-closing')
+        closeTimer = window.setTimeout(finishClose, closeMs)
+      }
+
+      function openModal(): void {
+        clearTimers()
+        if (!modal!.open) modal!.showModal()
+        modal!.classList.remove('is-closing')
+        if (reducedMotion) {
+          modal!.classList.add('is-visible')
+        } else {
+          openFrame = requestAnimationFrame(() => {
+            openFrame = requestAnimationFrame(() => {
+              openFrame = 0
+              modal!.classList.add('is-visible')
+            })
+          })
+        }
+        panel?.focus()
+      }
+
+      const onTrigger = (): void => openModal()
+      const onClose = (): void => closeModal()
+      const onCancel = (e: Event): void => { e.preventDefault(); closeModal() }
+      const onClick = (e: MouseEvent): void => { if (e.target === modal) closeModal() }
+      const onDialogClose = (): void => syncClosed()
+
+      trigger.addEventListener('click', onTrigger)
+      closeBtn?.addEventListener('click', onClose)
+      modal.addEventListener('cancel', onCancel)
+      modal.addEventListener('click', onClick)
+      modal.addEventListener('close', onDialogClose)
+
+      return () => {
+        clearTimers()
+        trigger.removeEventListener('click', onTrigger)
+        closeBtn?.removeEventListener('click', onClose)
+        modal.removeEventListener('cancel', onCancel)
+        modal.removeEventListener('click', onClick)
+        modal.removeEventListener('close', onDialogClose)
+        if (modal.open) modal.close()
+        syncClosed()
+      }
+    }
+
+    const w = window as unknown as InstrModalWindow
+    if (!w.__instrModalBound) {
+      w.__instrModalBound = true
+      document.addEventListener('astro:page-load', () => {
+        const teardown = initInstrModal()
+        document.addEventListener('astro:before-swap', () => teardown(), { once: true })
+      })
+    }
+  </script>
+
   {work.data.recordings ? (
     <div class="work-detail-recordings-row">
       <RecordingList
@@ -383,7 +583,8 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
   @media (min-width: 64rem), (min-width: 48rem) and (orientation: landscape) {
     .work-detail-page-header .page-header-inner {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr minmax(0, auto);
+      grid-template-rows: auto auto auto 1fr;
       column-gap: var(--space-s);
       row-gap: 0;
       align-items: start;
@@ -416,8 +617,9 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
 
     .work-meta-panel {
       grid-column: 2;
-      grid-row: 1 / 4;
+      grid-row: 1 / 5;
       align-self: start;
+      max-width: min(22rem, 40vw);
       border: 1px solid var(--line);
       border-color: color-mix(in srgb, var(--line) 62%, transparent);
       border-radius: var(--radius-md);
@@ -428,7 +630,7 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
 
     .work-description-panel {
       grid-column: 1 / -1;
-      grid-row: 4;
+      grid-row: 5;
       margin-top: var(--space-s);
       max-height: calc(1.5 * var(--font-size-0) * 6 + 3.75em);
       overflow-y: auto;
@@ -447,7 +649,7 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
 
     .work-detail-recordings-row {
       grid-column: 1 / -1;
-      grid-row: 5;
+      grid-row: 6;
     }
   }
 
@@ -505,6 +707,269 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
 
     .work-detail-recordings-row {
       order: 5;
+    }
+  }
+
+  /* ── Instrumentation list (flat mode) ─────────────────────────────── */
+
+  .instrumentation-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+  }
+
+  .instrumentation-list li {
+    line-height: 1.4;
+  }
+
+  /* ── Grouped instrumentation label + modal trigger ────────────────── */
+
+  .instr-modal-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+  }
+
+  .instr-modal-trigger:hover,
+  .instr-modal-trigger:focus-visible {
+    color: var(--ink);
+  }
+
+  .instr-modal-trigger-icon {
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+
+  .instr-modal-trigger:hover .instr-modal-trigger-icon,
+  .instr-modal-trigger:focus-visible .instr-modal-trigger-icon {
+    opacity: 1;
+  }
+
+  /* ── Instrumentation modal ─────────────────────────────────────────── */
+
+  .instr-modal {
+    border: none;
+    padding: 0;
+    background: transparent;
+    max-width: min(56rem, 92vw);
+    max-height: min(80vh, 44rem);
+    width: 100%;
+    overflow: visible;
+    opacity: 0;
+  }
+
+  .instr-modal::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+  }
+
+  .instr-modal.is-visible {
+    opacity: 1;
+  }
+
+  .instr-modal.is-visible::backdrop {
+    opacity: 1;
+  }
+
+  .instr-modal.is-closing {
+    opacity: 0;
+  }
+
+  .instr-modal.is-closing::backdrop {
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .instr-modal {
+      transition: opacity 180ms ease;
+    }
+
+    .instr-modal::backdrop {
+      transition: opacity 180ms ease;
+    }
+
+    .instr-modal-panel {
+      transition: transform 180ms ease;
+    }
+
+    .instr-modal:not(.is-visible):not(.is-closing) .instr-modal-panel {
+      transform: scale(0.97);
+    }
+
+    .instr-modal.is-visible .instr-modal-panel {
+      transform: scale(1);
+    }
+
+    .instr-modal.is-closing .instr-modal-panel {
+      transform: scale(0.97);
+    }
+  }
+
+  .instr-modal-panel {
+    position: relative;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    padding: var(--space-m);
+    max-height: min(80vh, 44rem);
+    overflow-y: auto;
+    outline: none;
+  }
+
+  .instr-modal-close {
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+
+  .instr-modal-close:hover,
+  .instr-modal-close:focus-visible {
+    color: var(--ink);
+  }
+
+  .instr-modal-heading {
+    font-size: var(--font-size-1);
+    font-weight: 600;
+    margin: 0 0 var(--space-s);
+    color: var(--ink);
+    padding-right: 2.5rem;
+  }
+
+  .instr-modal-sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    max-width: 56rem;
+    gap: var(--space-m);
+  }
+
+  /* Even section counts: 1 → 2 → 4 columns (skip 3 to avoid orphans) */
+  .instr-modal-sections[data-even] {
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 28rem) {
+    .instr-modal-sections[data-even] {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* 4+ columns: show vertical separators (borders replace column gap) */
+  @media (min-width: 56rem) {
+    .instr-modal-sections[data-even] {
+      grid-template-columns: repeat(auto-fit, minmax(25%, 1fr));
+      column-gap: 0;
+    }
+
+    .instr-modal-section {
+      padding-inline: var(--space-s);
+      border-inline-start: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+    }
+
+    .instr-modal-section:nth-child(4n + 1) {
+      border-inline-start: none;
+      padding-inline-start: 0;
+    }
+  }
+
+  .instr-modal-section-name {
+    font-size: var(--font-size--1);
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 0.3em;
+  }
+
+  .instr-modal-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    font-size: var(--font-size--1);
+    color: var(--ink-soft);
+  }
+
+  .instr-modal-list li {
+    line-height: 1;
+    margin-bottom: 0.5em;
+  }
+
+  .instr-modal-list li:last-child {
+    margin-bottom: 0;
+  }
+
+  .instr-modal-details {
+    list-style: none;
+    margin: 0.1em 0 0 0;
+    padding-left: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05em;
+    font-size: 0.92em;
+    color: var(--ink-soft);
+  }
+
+  .instr-note {
+    display: block;
+    font-style: italic;
+    font-size: 0.88em;
+    color: var(--ink-soft);
+    opacity: 0.8;
+    margin-top: 0.05em;
+  }
+
+  /* Collapse toggle for long lists */
+  .instr-collapse > summary {
+    cursor: pointer;
+    color: var(--ink-soft);
+    font-weight: 500;
+    list-style: none;
+  }
+
+  .instr-collapse > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .instr-collapse > summary::before {
+    content: '▸';
+    display: inline-block;
+    font-size: 0.75em;
+    margin-right: 0.3em;
+    transition: transform 150ms ease;
+  }
+
+  .instr-collapse[open] > summary::before {
+    transform: rotate(90deg);
+  }
+
+  .instr-collapse[open] > summary {
+    margin-bottom: 0.3em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .instr-collapse > summary::before {
+      transition: none;
     }
   }
 </style>
