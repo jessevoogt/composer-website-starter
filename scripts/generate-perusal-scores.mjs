@@ -557,17 +557,28 @@ function discoverScores(sourceDir) {
 // ─── WebP Processing ────────────────────────────────────────────────────────
 
 async function processScore(slug, pdfPath, wmConfig, viewerWatermarkOverride = '') {
-  const { pdfToPng } = await import('pdf-to-png-converter')
+  const mupdf = await import('mupdf')
   const sharp = (await import('sharp')).default
 
   const outputDir = path.join(SCORES_OUTPUT_DIR, slug)
   fs.mkdirSync(outputDir, { recursive: true })
 
-  // Convert all PDF pages to PNG buffers
+  // Convert all PDF pages to PNG buffers using mupdf
   console.log(`  Converting PDF pages...`)
-  const pages = await pdfToPng(pdfPath, {
-    viewportScale: 2.0, // 2x for crisp rendering before downscale
-  })
+  const pdfData = fs.readFileSync(pdfPath)
+  const doc = mupdf.Document.openDocument(pdfData, 'application/pdf')
+  const pageCount = doc.countPages()
+  const pages = []
+  for (let i = 0; i < pageCount; i++) {
+    const page = doc.loadPage(i)
+    const pixmap = page.toPixmap(
+      mupdf.Matrix.scale(2.0, 2.0), // 2x for crisp rendering before downscale
+      mupdf.ColorSpace.DeviceRGB,
+      false, // no alpha (white background)
+      true,  // include annotations
+    )
+    pages.push({ content: Buffer.from(pixmap.asPNG()) })
+  }
 
   console.log(`  ${pages.length} page(s) found`)
   const pageHashes = []
