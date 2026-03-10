@@ -230,7 +230,7 @@
 
   .music-page-header .page-header-inner {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 32rem);
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 36rem);
     grid-template-areas:
       'title filter'
       'subtitle filter';
@@ -252,7 +252,7 @@
     grid-area: filter;
     align-self: start;
     justify-self: end;
-    width: min(100%, 32rem);
+    width: min(100%, 36rem);
   }
 }
 
