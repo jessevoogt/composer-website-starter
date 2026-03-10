@@ -16,6 +16,7 @@ import type { SearchableWorkItem } from './search-types'
 interface WorkMeta {
   hasScore: boolean
   hasRecording: boolean
+  premiereAvailable: boolean
 }
 
 type SortMode = 'default' | 'newest' | 'oldest' | 'title'
@@ -204,6 +205,7 @@ function initMusicFilter(): (() => void) | null {
   // Checkbox elements (may not exist if all works have the attribute)
   const scoreCheckbox = document.getElementById('music-filter-has-score') as HTMLInputElement | null
   const recordingCheckbox = document.getElementById('music-filter-has-recording') as HTMLInputElement | null
+  const premiereCheckbox = document.getElementById('music-filter-premiere') as HTMLInputElement | null
 
   // Sort dropdown + configurable defaults from data attributes
   const sortDropdown = document.getElementById('music-sort-dropdown') as HTMLElement | null
@@ -273,7 +275,8 @@ function initMusicFilter(): (() => void) | null {
     const hasText = input!.value.trim().length > 0
     const hasScore = scoreCheckbox?.checked ?? false
     const hasRecording = recordingCheckbox?.checked ?? false
-    return hasText || hasScore || hasRecording
+    const hasPremiere = premiereCheckbox?.checked ?? false
+    return hasText || hasScore || hasRecording || hasPremiere
   }
 
   function restoreOriginalOrder(): void {
@@ -302,8 +305,9 @@ function initMusicFilter(): (() => void) | null {
     const trimmed = input!.value.trim()
     const requireScore = scoreCheckbox?.checked ?? false
     const requireRecording = recordingCheckbox?.checked ?? false
+    const requirePremiere = premiereCheckbox?.checked ?? false
     const mode = (sortDropdown?.dataset.dropdownValue ?? 'default') as SortMode
-    const noFilters = !trimmed && !requireScore && !requireRecording
+    const noFilters = !trimmed && !requireScore && !requireRecording && !requirePremiere
     const isDefaultSort = mode === 'default' || mode === defaultSortNoFilter
 
     // Fast path: no filters + server-matching sort → original server order
@@ -331,6 +335,10 @@ function initMusicFilter(): (() => void) | null {
         continue
       }
       if (requireRecording && !meta?.hasRecording) {
+        hidden.push(card)
+        continue
+      }
+      if (requirePremiere && !meta?.premiereAvailable) {
         hidden.push(card)
         continue
       }
@@ -412,6 +420,7 @@ function initMusicFilter(): (() => void) | null {
     input!.value = ''
     if (scoreCheckbox) scoreCheckbox.checked = false
     if (recordingCheckbox) recordingCheckbox.checked = false
+    if (premiereCheckbox) premiereCheckbox.checked = false
     resetSortDropdown()
     input!.focus()
     restoreOriginalOrder()
@@ -429,6 +438,7 @@ function initMusicFilter(): (() => void) | null {
   input.addEventListener('keydown', onKeydown)
   scoreCheckbox?.addEventListener('change', onCheckboxChange)
   recordingCheckbox?.addEventListener('change', onCheckboxChange)
+  premiereCheckbox?.addEventListener('change', onCheckboxChange)
   sortDropdown?.addEventListener('shared-dropdown-change', onSortChange)
 
   // ------ Teardown ------
@@ -439,6 +449,7 @@ function initMusicFilter(): (() => void) | null {
     input.removeEventListener('keydown', onKeydown)
     scoreCheckbox?.removeEventListener('change', onCheckboxChange)
     recordingCheckbox?.removeEventListener('change', onCheckboxChange)
+    premiereCheckbox?.removeEventListener('change', onCheckboxChange)
     sortDropdown?.removeEventListener('shared-dropdown-change', onSortChange)
     clearScrollReveal(allCards, scrollObserver)
     scrollObserver = null

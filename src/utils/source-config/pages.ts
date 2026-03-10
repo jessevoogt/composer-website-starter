@@ -84,6 +84,8 @@ const musicPageSchema = z.object({
   scoreCheckboxLabel: z.string().default(''),
   recordingCheckboxEnabled: z.boolean().default(true),
   recordingCheckboxLabel: z.string().default(''),
+  premiereCheckboxEnabled: z.boolean().default(false),
+  premiereCheckboxLabel: z.string().default(''),
   preferredHeroId: nullableString,
 })
 

@@ -315,6 +315,16 @@ export function getPageSingletons(deps: PageSingletonsDeps) {
           label: '"Has recording" checkbox label',
           description: 'Custom label for the recording filter checkbox. Defaults to "Has recording".',
         }),
+        premiereCheckboxEnabled: fields.checkbox({
+          label: 'Show "Live premiere ready" filter',
+          description:
+            'Show a checkbox to filter works that have no performances yet. Only appears when not all works lack performances.',
+          defaultValue: false,
+        }),
+        premiereCheckboxLabel: fields.text({
+          label: '"Live premiere ready" checkbox label',
+          description: 'Custom label for the premiere filter checkbox. Defaults to "Live premiere ready".',
+        }),
         preferredHeroId: fields.relationship({
           label: 'Background hero image',
           description: 'Hero image to use as page background. Leave blank for no background.',
