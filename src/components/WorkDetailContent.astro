@@ -8,6 +8,7 @@ import ButtonLink from '@components/ui/ButtonLink.astro'
 import { render } from 'astro:content'
 import type { WorkWithImage } from '@/utils/prepareWorks'
 import perusalScores from '@/utils/perusal-scores'
+import worksImages from '@/utils/works-images'
 import { slugify } from '@/utils/slugify'
 import { marked } from 'marked'
 import { getSharingConfig } from '@/utils/source-config'
@@ -126,6 +127,15 @@ const tagEntries = work.data.categorization.tags
     }
   })
 const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.id])
+
+const hasRecordings = Boolean(work.data.recordings && work.data.recordings.length > 0)
+const showThumbnailFallback = !hasRecordings && work.data.thumbnail
+const resolvedThumbnailSrc = (() => {
+  if (!work.data.thumbnail) return ''
+  const normalized = work.data.thumbnail.src.toLowerCase()
+  const matched = worksImages.find((img) => img.path.toLowerCase() === normalized)
+  return matched ? matched.data.src : work.data.thumbnail.src
+})()
 ---
 
 <ImmersivePageHeader title={work.data.title} subtitle={work.data.subtitle} subtitleClass="work-detail-subtitle" class="work-detail-page-header">
@@ -149,8 +159,19 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
     ) : null
   }
   <div class="work-header-meta-layout">
-    <div class="work-description-panel">
+    <div class={`work-description-panel${showThumbnailFallback ? ' has-thumbnail' : ''}`}>
       <div class="work-description-text" set:html={descriptionHtml} />
+      {showThumbnailFallback ? (
+        <figure class="work-thumbnail-figure">
+          <img
+            src={resolvedThumbnailSrc}
+            alt={work.data.thumbnail!.alt}
+            loading="lazy"
+            decoding="async"
+            class="work-thumbnail-image"
+          />
+        </figure>
+      ) : null}
     </div>
     <div class="work-meta-panel">
       <div class="work-meta-panel-scroll">
@@ -394,10 +415,10 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
     }
   </script>
 
-  {work.data.recordings ? (
+  {hasRecordings ? (
     <div class="work-detail-recordings-row">
       <RecordingList
-        recordings={work.data.recordings}
+        recordings={work.data.recordings!}
         workId={work.id}
         workTitle={work.data.title}
         composer={work.data.composer}
@@ -546,6 +567,27 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
     min-width: 0;
   }
 
+  .work-description-panel.has-thumbnail {
+    display: grid;
+    gap: var(--space-s);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--surface-soft) 50%, transparent);
+    padding: var(--space-s);
+  }
+
+  .work-thumbnail-figure {
+    margin: 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .work-thumbnail-image {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+  }
+
   .work-description-text {
     color: var(--ink-soft);
     font-size: var(--font-size-0);
@@ -633,6 +675,26 @@ const hasPerusalScore = Boolean(work.data.hasPerusalScore && perusalScores[work.
       grid-row: 5;
       margin-top: var(--space-s);
       max-height: calc(1.5 * var(--font-size-0) * 6 + 3.75em);
+      overflow-y: auto;
+    }
+
+    .work-description-panel.has-thumbnail {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      align-items: center;
+      max-height: none;
+    }
+
+    .work-description-panel.has-thumbnail .work-thumbnail-figure {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .work-description-panel.has-thumbnail .work-description-text {
+      grid-column: 2;
+      grid-row: 1;
+      max-width: 32ch;
+      max-height: 20rem;
+      margin: 0 auto;
       overflow-y: auto;
     }
 
