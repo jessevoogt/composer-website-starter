@@ -769,23 +769,21 @@ function InstrumentationSection({
         </div>
       </div>
 
-      {value.grouped && (
-        <div style={{ marginTop: '6px' }}>
-          <label htmlFor="instr-label-input" style={toggleLabelStyle}>Label</label>
-          <input
-            id="instr-label-input"
-            type="text"
-            style={{ ...addInputStyle, marginTop: '4px' }}
-            placeholder="e.g. Full Orchestra"
-            value={value.label ?? ''}
-            onChange={(e) => {
-              const val = e.target.value
-              onChange({ ...value, label: val || undefined })
-            }}
-            aria-label="Instrumentation label"
-          />
-        </div>
-      )}
+      <div style={{ marginTop: '6px' }}>
+        <label htmlFor="instr-label-input" style={toggleLabelStyle}>Label</label>
+        <input
+          id="instr-label-input"
+          type="text"
+          style={{ ...addInputStyle, marginTop: '4px' }}
+          placeholder={value.grouped ? 'e.g. Full Orchestra' : 'e.g. String Quartet'}
+          value={value.label ?? ''}
+          onChange={(e) => {
+            const val = e.target.value
+            onChange({ ...value, label: val || undefined })
+          }}
+          aria-label="Instrumentation label"
+        />
+      </div>
 
       {value.grouped ? (
         <GroupedInstrumentationSection

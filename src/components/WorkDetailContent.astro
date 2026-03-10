@@ -113,9 +113,7 @@ const sectionEntries: SectionEntry[] = isGrouped
 const totalInstrumentCount = isGrouped
   ? sectionEntries.reduce((sum, s) => sum + s.instruments.length, 0)
   : flatEntries.length
-const instrumentLabel = isGrouped
-  ? (instr.label || `${totalInstrumentCount} instruments`)
-  : undefined
+const instrumentLabel = instr.label || (isGrouped ? `${totalInstrumentCount} instruments` : undefined)
 const tagEntries = work.data.categorization.tags
   .map((value) => value.trim())
   .filter(Boolean)
@@ -197,13 +195,22 @@ const resolvedThumbnailSrc = (() => {
                   </button>
                 ) : totalInstrumentCount > 8 ? (
                   <details class="instr-collapse" open>
-                    <summary>{totalInstrumentCount} instruments</summary>
+                    <summary>{instrumentLabel || `${totalInstrumentCount} instruments`}</summary>
                     <ul class="instrumentation-list" role="list">
                       {flatEntries.map((inst) => (
                         <li>{inst.href ? <a href={inst.href}>{inst.label}</a> : inst.label}</li>
                       ))}
                     </ul>
                   </details>
+                ) : instrumentLabel ? (
+                  <div class="instr-labeled-flat">
+                    <span class="instr-flat-label">{instrumentLabel}</span>
+                    <ul class="instrumentation-list" role="list">
+                      {flatEntries.map((inst) => (
+                        <li>{inst.href ? <a href={inst.href}>{inst.label}</a> : inst.label}</li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : (
                   <ul class="instrumentation-list" role="list">
                     {flatEntries.map((inst) => (
@@ -1027,6 +1034,15 @@ const resolvedThumbnailSrc = (() => {
 
   .instr-collapse[open] > summary {
     margin-bottom: 0.3em;
+  }
+
+  .instr-flat-label {
+    font-weight: 500;
+  }
+
+  .instr-labeled-flat > .instrumentation-list {
+    list-style: disc;
+    padding-inline-start: 1.2em;
   }
 
   @media (prefers-reduced-motion: reduce) {
